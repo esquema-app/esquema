@@ -65,7 +65,7 @@ button { cursor: pointer; }
 .carpeta { display: flex; align-items: center; gap: 8px; margin: 4px 10px 10px; padding: 6px 8px; border-radius: 8px; border: 0; background: transparent; color: var(--gris); text-align: left; min-width: 0; }
 .carpeta:hover { background: var(--hover); color: var(--texto); }
 .carpeta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lateral .nuevo { margin: 0 12px 12px; }
+.lateral .nuevo { margin: 8px 12px 12px; }
 .lista { flex: 1; overflow: auto; padding: 0 8px 8px; }
 .lista h3 { margin: 12px 8px 4px; font-size: 11.5px; letter-spacing: .6px; text-transform: uppercase; color: var(--gris); font-weight: 600; }
 .archivo { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border: 0; border-radius: 7px; background: transparent; text-align: left; min-height: 34px; color: var(--texto); }

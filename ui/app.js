@@ -292,7 +292,7 @@
     const inicio = E.carpeta && !E.proyecto ? `<button class="archivo" data-accion="inicio" aria-current="${!E.sel && !E.panel}">${ic("inicio")}<span>Inicio</span></button>` : "";
     return `<aside class="lateral${E.lateral ? " abierto" : ""}" aria-label="Archivos">
       <div class="marca"><img src="favicon.svg" alt=""><b>Esquema</b></div>
-      <button class="carpeta" data-accion="elegir-carpeta" title="Cambiar de carpeta">${ic("carpeta")}<span data-sin-traducir>${esc(E.carpeta?.nombre || "")}</span></button>
+      ${/* El proyecto abierto ya está en «Proyectos»: otra carpeta se abre con «Agregar proyecto» (o ⌘O). */ ""}
       <button class="boton principal nuevo" data-accion="nuevo">${ic("mas")} Nuevo</button>
       <nav class="lista">
         ${P.esProyecto() ? P.lateralHTML({ arbolDe, arbolHTML, arbolAbierta }) : `${inicio}
