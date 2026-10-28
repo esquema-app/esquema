@@ -24,9 +24,10 @@ def leer(r):
 
 
 ui = leer("ui/app.js")
+ui_todo = ui + leer("ui/proyectos.js")  # el módulo de proyectos también llama host.enviar
 puente = json.loads(leer("pruebas/puente.json"))
 problemas = []
-acciones = set(re.findall(r'host\.enviar\("(\w+)"', ui))
+acciones = set(re.findall(r'host\.enviar\("(\w+)"', ui_todo))
 contrato = set(puente["acciones"])
 problemas += [f'La interfaz manda "{a}" y no está en pruebas/puente.json' for a in sorted(acciones - contrato)]
 problemas += [f'puente.json tiene "{a}" y la interfaz no lo usa' for a in sorted(contrato - acciones)]
@@ -108,11 +109,26 @@ if escritorio:
         problemas.append("Windows/Linux: .npmrc con ignore-scripts=true y package-lock.json versionado")
     if paquete.get("version") != (re.search(r"<key>CFBundleShortVersionString</key>\s*<string>([^<]+)</string>", leer("app/Info.plist") or "") or [None, None])[1]:
         problemas.append("La versión de escritorio/package.json y la de app/Info.plist tienen que ser iguales (publicar.yml)")
+# Proyectos: las apps solo pasan a bin/proyecto.py las órdenes que el script conoce (la misma lista en los tres lados), y un
+# reciente se abre por su posición en proyectos.json (la ruta nunca viene de la interfaz).
+ordenes_py = set(re.findall(r'"(\w+)": \w+', re.search(r"ORDENES = \{([^}]+)\}", leer("bin/proyecto.py")).group(1)))
+if mac is not None:
+    om = re.search(r"ordenesProyecto: Set<String> = \[([^\]]+)\]", mac)
+    if not om or set(re.findall(r'"(\w+)"', om.group(1))) != ordenes_py:
+        problemas.append("Mac: Ventana.ordenesProyecto tiene que ser igual a ORDENES de bin/proyecto.py")
+    if not tiene(mac, r'case "proyecto":.*?ordenesProyecto\.contains\(orden\)', r'proyectos\.json'):
+        problemas.append("Mac: la acción proyecto revisa la orden y abrirProyecto lee la ruta de proyectos.json")
+if escritorio:
+    oe = re.search(r"ORDENES_PROYECTO = \[([^\]]+)\]", escritorio)
+    if not oe or set(re.findall(r'"(\w+)"', oe.group(1))) != ordenes_py:
+        problemas.append("Windows/Linux: ORDENES_PROYECTO tiene que ser igual a ORDENES de bin/proyecto.py")
+    if not tiene(escritorio, r"ORDENES_PROYECTO\.includes\(d\.orden\)", r'"proyectos\.json"'):
+        problemas.append("Windows/Linux: la acción proyecto revisa la orden y abrirProyecto lee la ruta de proyectos.json")
 html = leer("ui/index.html")
 csp = re.search(r'Content-Security-Policy" content="([^"]+)"', html)
 if not csp or "script-src 'self'" not in csp.group(1) or "'unsafe-eval'" in csp.group(1) or "object-src 'none'" not in csp.group(1):
     problemas.append("ui/index.html: la CSP tiene que tener script-src 'self' (sin unsafe-eval) y object-src 'none'")
-if re.search(r"<script>|\son\w+=", html) or re.search(r"\son(click|load|error|input)=", ui):
+if re.search(r"<script>|\son\w+=", html) or re.search(r"\son(click|load|error|input)=", ui_todo):
     problemas.append("Nada de scripts ni manejadores en línea (la CSP los bloquea)")
 if problemas:
     print("✗ Contrato roto:\n  - " + "\n  - ".join(problemas))

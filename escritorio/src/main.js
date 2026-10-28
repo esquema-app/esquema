@@ -6,7 +6,7 @@ const path = require("path");
 const { pathToFileURL } = require("url");
 const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, nativeImage, net, protocol, session, shell } = require("electron");
 const { ES_WIN, datos, prepararDatos, recursos, absoluta } = require("./rutas");
-const { configurar, Config, Idioma, Procesador, EnOrden } = require("./servicios");
+const { configurar, leerJSON, Config, Idioma, Procesador, EnOrden } = require("./servicios");
 const { Vigilante } = require("./vigilante");
 const { Actualizaciones, SIN_CONEXION } = require("./actualizaciones");
 const { crearCatalogo } = require("./catalogo");
@@ -120,7 +120,30 @@ async function enviarEstado() {
   llamar("estado", e);
 }
 
-async function elegirCarpeta() {
+/** Proyectos: lo que bin/proyecto.py sabe hacer (la interfaz no puede pedir otra cosa). */
+const ORDENES_PROYECTO = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar"];
+
+/** Deja `c` como la carpeta, la lista, la vigila y responde carpetaElegida (con proyecto: true si viene de un proyecto). */
+async function usarCarpeta(c, proyecto) {
+  Config.guardarCarpeta(c);
+  const l = await Procesador.correrJSON("carpeta.py", ["listar", c]);
+  if (!l.ok) return llamar("carpetaElegida", { ok: false, error: t(l.error || "No pude abrir esa carpeta.") });
+  vigilante.empezar(c, l.archivos || []);
+  llamar("carpetaElegida", { ok: true, carpeta: l.carpeta, archivos: l.archivos || [], ...(proyecto ? { proyecto: true } : {}) });
+}
+
+/** Un proyecto reciente: la ruta sale de <carpeta de Esquema>/proyectos.json (lo escribe bin/proyecto.py), nunca de la interfaz. */
+async function abrirProyecto(indice) {
+  const d = leerJSON(path.join(datos(), "proyectos.json"), {}) || {};
+  const lista = (Array.isArray(d.recientes) ? d.recientes : []).filter((p) => p && typeof p.ruta === "string" && path.isAbsolute(p.ruta) && typeof p.nombre === "string").slice(0, 8);
+  const p = Number.isInteger(indice) && indice >= 0 && indice < lista.length ? lista[indice] : null;
+  let c = null;
+  try { if (p && fs.statSync(p.ruta).isDirectory()) c = fs.realpathSync(p.ruta); } catch {}
+  if (!c) return llamar("carpetaElegida", { ok: false, error: t("No encontré ese proyecto. ¿Lo moviste?") });
+  await usarCarpeta(c, true);
+}
+
+async function elegirCarpeta(proyecto = false) {
   if (!ventana) return;
   const r = await dialog.showOpenDialog(ventana, {
     title: t("Elige la carpeta con tus documentos y diagramas (la de tu proyecto, por ejemplo). Esquema no los mueve ni los copia."),
@@ -129,11 +152,7 @@ async function elegirCarpeta() {
   if (r.canceled || !r.filePaths[0]) return llamar("carpetaElegida", { ok: false });
   let c;
   try { c = fs.realpathSync(r.filePaths[0]); } catch { return llamar("carpetaElegida", { ok: false, error: t("No pude abrir esa carpeta.") }); }
-  Config.guardarCarpeta(c);
-  const l = await Procesador.correrJSON("carpeta.py", ["listar", c]);
-  if (!l.ok) return llamar("carpetaElegida", { ok: false, error: t(l.error || "No pude abrir esa carpeta.") });
-  vigilante.empezar(c, l.archivos || []);
-  llamar("carpetaElegida", { ok: true, carpeta: l.carpeta, archivos: l.archivos || [] });
+  await usarCarpeta(c, proyecto);
 }
 
 /** Nombre sugerido para «Guardar como»: solo el nombre (sin carpetas), con la extensión del formato. */
@@ -159,8 +178,11 @@ const ACCIONES = {
     if (d.idioma_ui !== undefined) armarMenu();
     if (Idioma.elegido) iniciarTareas();
   },
-  async elegirCarpeta() {
-    await elegirCarpeta();
+  async elegirCarpeta(d) {
+    await elegirCarpeta(d.proyecto === true);
+  },
+  async abrirProyecto(d) {
+    await abrirProyecto(d.indice);
   },
   async abrirArchivo(d) {
     const ruta = typeof d.ruta === "string" ? d.ruta : "";
@@ -209,6 +231,16 @@ const ACCIONES = {
     const tipo = ["auto", "flujo", "secuencia", "arquitectura"].includes(d.tipo) ? d.tipo : "auto";
     llamar("dibujoListo", await Procesador.conEntrada("asistente.py", "dibujar",
       { pedido: texto(d, "pedido", 3000), tipo, actual: texto(d, "actual", 60000), idioma: idiomaDe(d) }));
+  },
+  async proyecto(d) {
+    // Solo órdenes conocidas y siempre sobre la carpeta actual; bin/proyecto.py valida el resto (rutas, docs, esquema.json, tamaños).
+    const orden = ORDENES_PROYECTO.includes(d.orden) ? d.orden : "";
+    const base = carpetaActual();
+    if (!orden || !base) return llamar("proyectoRespuesta", { orden: String(d.orden || "").slice(0, 20), ok: false, error: t("Elige una carpeta primero") });
+    const e = { ...d, carpeta: base };
+    delete e.orden;
+    const r = await Procesador.conEntrada("proyecto.py", orden, e);
+    llamar("proyectoRespuesta", { ...r, orden });
   },
   async exportar(d) {
     const formato = ["svg", "png", "md"].includes(d.formato) ? d.formato : "";

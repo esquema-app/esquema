@@ -1,0 +1,16 @@
+{
+  "titulos": {"README.md": ["Overview", "vision"], "arquitectura.md": ["Architecture", "arquitectura"], "flujos/pagar-una-cuenta.md": ["Pay a bill", "flujo"], "flujos/recibir-el-comprobante.md": ["Get the receipt", "flujo"]},
+  "elementos": [
+    {"id": "persona", "tipo": "actor", "nombre": "Person", "descripcion": "Whoever pays their bills on the web."},
+    {"id": "pantalla-pago", "tipo": "pantalla", "nombre": "Payment screen", "descripcion": "Where the person checks the amount before paying.", "codigo": ["src/web/pagar.js"]},
+    {"id": "boton-pagar", "tipo": "boton", "nombre": "Pay", "descripcion": "Sends the payment to the API.", "codigo": ["src/web/pagar.js"]},
+    {"id": "api-pagos", "tipo": "servicio", "nombre": "Payments API", "descripcion": "Checks the request, asks for the authorization and saves the payment.", "codigo": ["src/api/pagos.py"]},
+    {"id": "banco-ejemplo", "tipo": "servicio", "nombre": "Banco Ejemplo", "descripcion": "Authorizes each card payment."},
+    {"id": "base-pagos", "tipo": "dato", "nombre": "Payments database", "descripcion": "Every payment with its result."},
+    {"id": "servicio-correo", "tipo": "servicio", "nombre": "Email service", "descripcion": "Sends the receipt when the payment is approved.", "codigo": ["src/api/correo.py"]}
+  ],
+  "nota": "I wrote the overview, the architecture and two flows. I found no automated tests: if there are any, tell me where.",
+  "pide": ["src/api/pagos.py"],
+  "notaPide": "To document it well I need to read how the API processes a payment.",
+  "flujo": {"nota": "I documented it by reading src/api/pagos.py.", "elementos": []}
+}

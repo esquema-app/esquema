@@ -534,12 +534,307 @@
  ],
  "estructura": {
   "archivos": [
+   "package.json",
    "README.md",
    "docs/arquitectura.mmd",
    "docs/pago.mmd",
-   "docs/decisiones/0001-usar-cola.md"
+   "docs/decisiones/0001-usar-cola.md",
+   "src/api/correo.py",
+   "src/api/pagos.py",
+   "src/web/pagar.js"
   ],
   "omitidos": 0,
-  "manifiestos": {}
+  "manifiestos": {
+   "package.json": {
+    "name": "pagos-banco-ejemplo",
+    "description": "Pagos ficticios de Banco Ejemplo: la carpeta de ejemplo de Esquema",
+    "scripts": [
+     "start"
+    ]
+   }
+  }
+ },
+ "proyecto": {
+  "encontrado": {
+   "nombre": "Pagos de Banco Ejemplo",
+   "carpeta": "proyecto-ejemplo",
+   "docs": "docs/esquema",
+   "readme": {
+    "ruta": "README.md",
+    "titulo": "Pagos de Banco Ejemplo",
+    "resumen": "Servicio ficticio de pagos que usa la demo de Esquema. Lo mantiene Ana Pérez, junto a Matías Soto."
+   },
+   "guias": [],
+   "lenguajes": [
+    [
+     "Python",
+     2
+    ],
+    [
+     "JavaScript",
+     1
+    ]
+   ],
+   "carpetas": [
+    [
+     "docs",
+     3
+    ],
+    [
+     "src",
+     3
+    ]
+   ],
+   "manifiestos": {
+    "package.json": {
+     "name": "pagos-banco-ejemplo",
+     "description": "Pagos ficticios de Banco Ejemplo: la carpeta de ejemplo de Esquema",
+     "scripts": [
+      "start"
+     ]
+    }
+   },
+   "workflows": [],
+   "archivos": 8,
+   "binarios": 0,
+   "omitidos": 0,
+   "git": {
+    "hay": true,
+    "rama": "main",
+    "ramas": [
+     "main",
+     "correos-en-cola"
+    ],
+    "tags": [
+     "v1.2.0",
+     "v1.1.0"
+    ],
+    "total": 48,
+    "commits": [
+     {
+      "fecha": "2026-10-20",
+      "mensaje": "La API responde sin esperar al correo"
+     },
+     {
+      "fecha": "2026-10-14",
+      "mensaje": "Cola para los avisos de pago"
+     },
+     {
+      "fecha": "2026-10-02",
+      "mensaje": "Pantalla de pago más clara en el celular"
+     },
+     {
+      "fecha": "2026-09-18",
+      "mensaje": "Autorización con Banco Ejemplo"
+     }
+    ]
+   },
+   "documentado": false
+  },
+  "archivos": [
+   "package.json",
+   "README.md",
+   "docs/arquitectura.mmd",
+   "docs/pago.mmd",
+   "docs/decisiones/0001-usar-cola.md",
+   "src/api/correo.py",
+   "src/api/pagos.py",
+   "src/web/pagar.js"
+  ],
+  "codigo": {
+   "src/api/correo.py": "\"\"\"Servicio de correo (ficticio): toma los avisos de la cola y manda el comprobante.\"\"\"\nCOLA = []\n\n\ndef avisar(cuenta):\n    COLA.append({\"cuenta\": cuenta, \"tipo\": \"comprobante\"})\n",
+   "src/api/pagos.py": "\"\"\"API de pagos (ficticia): valida el pedido, pide la autorización a Banco Ejemplo y deja el aviso del comprobante en la cola.\"\"\"\nfrom correo import avisar\n\n\ndef pagar(pedido, banco, base):\n    if not pedido.get(\"cuenta\") or not pedido.get(\"monto\"):\n        return {\"error\": \"Faltan datos\"}, 400\n    aprobado = banco.autorizar(pedido[\"cuenta\"], pedido[\"monto\"])\n    base.guardar(pedido, aprobado)\n    if aprobado:\n        avisar(pedido[\"cuenta\"])\n    return {\"aprobado\": aprobado}, 201\n",
+   "src/web/pagar.js": "// Pantalla de pago (ficticia): la persona revisa el monto y toca «Pagar».\nexport function pantallaDePago(cuenta) {\n  const boton = document.createElement(\"button\");\n  boton.textContent = \"Pagar\";\n  boton.addEventListener(\"click\", () => fetch(\"/pagos\", { method: \"POST\", body: JSON.stringify({ cuenta: cuenta.id, monto: cuenta.monto }) }));\n  return boton;\n}\n"
+  },
+  "ia": {
+   "es": {
+    "inicial": [
+     {
+      "ruta": "README.md",
+      "titulo": "Visión general",
+      "tipo": "vision",
+      "texto": "# Pagos de Banco Ejemplo\n\nServicio ficticio para pagar cuentas desde la web. Una persona como Ana Pérez entra a la [Pantalla de pago](elementos.md#el-pantalla-pago), revisa el monto y toca [Pagar](elementos.md#el-boton-pagar).\n\n## Qué hace\n\n- La [API de pagos](elementos.md#el-api-pagos) valida el pedido y pide la autorización a [Banco Ejemplo](elementos.md#el-banco-ejemplo).\n- Guarda cada pago en la [Base de pagos](elementos.md#el-base-pagos).\n- Si el pago se aprueba, el [Servicio de correo](elementos.md#el-servicio-correo) manda el comprobante.\n\n## Documentos\n\n- [Arquitectura](arquitectura.md)\n- [Pagar una cuenta](flujos/pagar-una-cuenta.md)\n- [Recibir el comprobante](flujos/recibir-el-comprobante.md)\n- [Elementos](elementos.md)\n"
+     },
+     {
+      "ruta": "arquitectura.md",
+      "titulo": "Arquitectura",
+      "tipo": "arquitectura",
+      "texto": "# Arquitectura\n\nLa [Pantalla de pago](elementos.md#el-pantalla-pago) habla solo con la [API de pagos](elementos.md#el-api-pagos); la API es la única que conversa con [Banco Ejemplo](elementos.md#el-banco-ejemplo) y con la base.\n\n```mermaid\nflowchart LR\n    P([Persona]) --> W[Pantalla de pago]\n    W -->|HTTPS| A[API de pagos]\n    A --> B[Banco Ejemplo]\n    A --> D[(Base de pagos)]\n    A -.-> C[Servicio de correo]\n%% esquema: {\"iconos\":{\"A\":\"servidor\",\"B\":\"nube\",\"C\":\"correo\",\"D\":\"base-de-datos\",\"P\":\"persona\",\"W\":\"navegador\"},\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"C\":\"servicio-correo\",\"D\":\"base-pagos\",\"P\":\"persona\",\"W\":\"pantalla-pago\"}}\n```\n"
+     },
+     {
+      "ruta": "flujos/pagar-una-cuenta.md",
+      "titulo": "Pagar una cuenta",
+      "tipo": "flujo",
+      "texto": "# Pagar una cuenta\n\nLa persona elige qué pagar en la [Pantalla de pago](../elementos.md#el-pantalla-pago) y toca [Pagar](../elementos.md#el-boton-pagar). La [API de pagos](../elementos.md#el-api-pagos) pide la autorización y responde en menos de un segundo.\n\n```mermaid\nsequenceDiagram\n    actor P as Persona\n    participant W as Pantalla de pago\n    participant A as API de pagos\n    participant B as Banco Ejemplo\n    P->>W: Toca Pagar\n    W->>+A: POST /pagos\n    A->>B: Autoriza la tarjeta\n    B-->>A: Aprobado\n    A-->>-W: 201 Creado\n    W-->>P: ¡Listo!\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"P\":\"persona\",\"W\":\"pantalla-pago\"}}\n```\n"
+     },
+     {
+      "ruta": "flujos/recibir-el-comprobante.md",
+      "titulo": "Recibir el comprobante",
+      "tipo": "flujo",
+      "texto": "# Recibir el comprobante\n\nDespués de tocar [Pagar](../elementos.md#el-boton-pagar), el comprobante llega por correo sin que la persona espere.\n\n```mermaid\nflowchart TD\n    T[Pagar] --> A[API de pagos]\n    A --> G{¿Aprobado?}\n    G -->|Sí| Q[Cola de avisos]\n    Q --> C[Servicio de correo]\n    C --> F([Llega el comprobante])\n    G -->|No| N([Ve otras formas de pago])\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"C\":\"servicio-correo\",\"T\":\"boton-pagar\"}}\n```\n"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "persona",
+      "tipo": "actor",
+      "nombre": "Persona",
+      "descripcion": "Quien paga sus cuentas desde la web."
+     },
+     {
+      "id": "pantalla-pago",
+      "tipo": "pantalla",
+      "nombre": "Pantalla de pago",
+      "descripcion": "Donde la persona revisa el monto antes de pagar.",
+      "codigo": [
+       "src/web/pagar.js"
+      ]
+     },
+     {
+      "id": "boton-pagar",
+      "tipo": "boton",
+      "nombre": "Pagar",
+      "descripcion": "Manda el pago a la API.",
+      "codigo": [
+       "src/web/pagar.js"
+      ]
+     },
+     {
+      "id": "api-pagos",
+      "tipo": "servicio",
+      "nombre": "API de pagos",
+      "descripcion": "Valida el pedido, pide la autorización y guarda el pago.",
+      "codigo": [
+       "src/api/pagos.py"
+      ]
+     },
+     {
+      "id": "banco-ejemplo",
+      "tipo": "servicio",
+      "nombre": "Banco Ejemplo",
+      "descripcion": "Autoriza cada pago con tarjeta."
+     },
+     {
+      "id": "base-pagos",
+      "tipo": "dato",
+      "nombre": "Base de pagos",
+      "descripcion": "Cada pago con su resultado."
+     },
+     {
+      "id": "servicio-correo",
+      "tipo": "servicio",
+      "nombre": "Servicio de correo",
+      "descripcion": "Manda el comprobante cuando el pago se aprueba.",
+      "codigo": [
+       "src/api/correo.py"
+      ]
+     }
+    ],
+    "nota": "Escribí la visión general, la arquitectura y dos flujos. No encontré pruebas automáticas: si las hay, cuéntame dónde.",
+    "pide": [
+     "src/api/pagos.py"
+    ],
+    "notaPide": "Para documentarlo bien necesito leer cómo la API procesa un pago.",
+    "flujo": {
+     "nota": "Lo documenté leyendo src/api/pagos.py.",
+     "elementos": [],
+     "texto": "# {titulo}\n\nLo que hace la [API de pagos](../elementos.md#el-api-pagos) con cada pago, según `src/api/pagos.py`.\n\n```mermaid\nflowchart TD\n    I([Llega el pago]) --> V{¿Datos completos?}\n    V -->|No| E[Responde con un error]\n    V -->|Sí| A[API de pagos]\n    A --> B[Banco Ejemplo autoriza]\n    B --> G[(Base de pagos)]\n    G --> C{¿Aprobado?}\n    C -->|Sí| M[Aviso a la cola de correos]\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"G\":\"base-pagos\"}}\n```\n\n1. Si falta la cuenta o el monto, responde con un error.\n2. Pide la autorización a [Banco Ejemplo](../elementos.md#el-banco-ejemplo).\n3. Guarda el resultado en la [Base de pagos](../elementos.md#el-base-pagos) y, si se aprobó, deja el aviso para el comprobante.\n"
+    }
+   },
+   "en": {
+    "inicial": [
+     {
+      "ruta": "README.md",
+      "titulo": "Overview",
+      "tipo": "vision",
+      "texto": "# Banco Ejemplo payments\n\nA made-up service to pay bills on the web. Someone like Ana Pérez opens the [Payment screen](elementos.md#el-pantalla-pago), checks the amount and taps [Pay](elementos.md#el-boton-pagar).\n\n## What it does\n\n- The [Payments API](elementos.md#el-api-pagos) checks the request and asks [Banco Ejemplo](elementos.md#el-banco-ejemplo) to authorize it.\n- It saves every payment in the [Payments database](elementos.md#el-base-pagos).\n- When the payment is approved, the [Email service](elementos.md#el-servicio-correo) sends the receipt.\n\n## Documents\n\n- [Architecture](arquitectura.md)\n- [Pay a bill](flujos/pagar-una-cuenta.md)\n- [Get the receipt](flujos/recibir-el-comprobante.md)\n- [Elements](elementos.md)\n"
+     },
+     {
+      "ruta": "arquitectura.md",
+      "titulo": "Architecture",
+      "tipo": "arquitectura",
+      "texto": "# Architecture\n\nThe [Payment screen](elementos.md#el-pantalla-pago) only talks to the [Payments API](elementos.md#el-api-pagos); the API is the only one that talks to [Banco Ejemplo](elementos.md#el-banco-ejemplo) and the database.\n\n```mermaid\nflowchart LR\n    P([Person]) --> W[Payment screen]\n    W -->|HTTPS| A[Payments API]\n    A --> B[Banco Ejemplo]\n    A --> D[(Payments database)]\n    A -.-> C[Email service]\n%% esquema: {\"iconos\":{\"A\":\"servidor\",\"B\":\"nube\",\"C\":\"correo\",\"D\":\"base-de-datos\",\"P\":\"persona\",\"W\":\"navegador\"},\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"C\":\"servicio-correo\",\"D\":\"base-pagos\",\"P\":\"persona\",\"W\":\"pantalla-pago\"}}\n```\n"
+     },
+     {
+      "ruta": "flujos/pagar-una-cuenta.md",
+      "titulo": "Pay a bill",
+      "tipo": "flujo",
+      "texto": "# Pay a bill\n\nThe person picks what to pay on the [Payment screen](../elementos.md#el-pantalla-pago) and taps [Pay](../elementos.md#el-boton-pagar). The [Payments API](../elementos.md#el-api-pagos) asks for the authorization and answers in less than a second.\n\n```mermaid\nsequenceDiagram\n    actor P as Person\n    participant W as Payment screen\n    participant A as Payments API\n    participant B as Banco Ejemplo\n    P->>W: Taps Pay\n    W->>+A: POST /pagos\n    A->>B: Authorize the card\n    B-->>A: Approved\n    A-->>-W: 201 Created\n    W-->>P: Done!\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"P\":\"persona\",\"W\":\"pantalla-pago\"}}\n```\n"
+     },
+     {
+      "ruta": "flujos/recibir-el-comprobante.md",
+      "titulo": "Get the receipt",
+      "tipo": "flujo",
+      "texto": "# Get the receipt\n\nAfter tapping [Pay](../elementos.md#el-boton-pagar), the receipt arrives by email without making the person wait.\n\n```mermaid\nflowchart TD\n    T[Pay] --> A[Payments API]\n    A --> G{Approved?}\n    G -->|Yes| Q[Notice queue]\n    Q --> C[Email service]\n    C --> F([The receipt arrives])\n    G -->|No| N([Sees other ways to pay])\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"C\":\"servicio-correo\",\"T\":\"boton-pagar\"}}\n```\n"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "persona",
+      "tipo": "actor",
+      "nombre": "Person",
+      "descripcion": "Whoever pays their bills on the web."
+     },
+     {
+      "id": "pantalla-pago",
+      "tipo": "pantalla",
+      "nombre": "Payment screen",
+      "descripcion": "Where the person checks the amount before paying.",
+      "codigo": [
+       "src/web/pagar.js"
+      ]
+     },
+     {
+      "id": "boton-pagar",
+      "tipo": "boton",
+      "nombre": "Pay",
+      "descripcion": "Sends the payment to the API.",
+      "codigo": [
+       "src/web/pagar.js"
+      ]
+     },
+     {
+      "id": "api-pagos",
+      "tipo": "servicio",
+      "nombre": "Payments API",
+      "descripcion": "Checks the request, asks for the authorization and saves the payment.",
+      "codigo": [
+       "src/api/pagos.py"
+      ]
+     },
+     {
+      "id": "banco-ejemplo",
+      "tipo": "servicio",
+      "nombre": "Banco Ejemplo",
+      "descripcion": "Authorizes each card payment."
+     },
+     {
+      "id": "base-pagos",
+      "tipo": "dato",
+      "nombre": "Payments database",
+      "descripcion": "Every payment with its result."
+     },
+     {
+      "id": "servicio-correo",
+      "tipo": "servicio",
+      "nombre": "Email service",
+      "descripcion": "Sends the receipt when the payment is approved.",
+      "codigo": [
+       "src/api/correo.py"
+      ]
+     }
+    ],
+    "nota": "I wrote the overview, the architecture and two flows. I found no automated tests: if there are any, tell me where.",
+    "pide": [
+     "src/api/pagos.py"
+    ],
+    "notaPide": "To document it well I need to read how the API processes a payment.",
+    "flujo": {
+     "nota": "I documented it by reading src/api/pagos.py.",
+     "elementos": [],
+     "texto": "# {titulo}\n\nWhat the [Payments API](../elementos.md#el-api-pagos) does with each payment, according to `src/api/pagos.py`.\n\n```mermaid\nflowchart TD\n    I([A payment arrives]) --> V{Complete data?}\n    V -->|No| E[Answers with an error]\n    V -->|Yes| A[Payments API]\n    A --> B[Banco Ejemplo authorizes]\n    B --> G[(Payments database)]\n    G --> C{Approved?}\n    C -->|Yes| M[Notice to the email queue]\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"G\":\"base-pagos\"}}\n```\n\n1. If the account or the amount is missing, it answers with an error.\n2. It asks [Banco Ejemplo](../elementos.md#el-banco-ejemplo) for the authorization.\n3. It saves the result in the [Payments database](../elementos.md#el-base-pagos) and, if approved, leaves the notice for the receipt.\n"
+    }
+   }
+  }
  }
 }

@@ -31,6 +31,10 @@
     revisando: null,        // Ajustes → Actualizaciones: null | "buscando" | "al-dia" | "sin-conexion" | {paso, texto, pct}
     lateral: false,         // en celular: la lista de archivos abierta
     sugerencias: [],
+    // Proyectos (ui/proyectos.js): la documentación de un repo en docs/esquema/, con elementos conectados y versiones.
+    proyecto: null,         // {docs, esquema, git, cambios} si la carpeta tiene docs/esquema/esquema.json
+    recientes: [],          // [{nombre, ruta}] proyectos abiertos antes (los guarda bin/proyecto.py en la carpeta de Esquema)
+    panel: null,            // null (editor) | "proyecto" | "elementos" | "versiones" | "propuestas"
   };
   const ENLACES = { sitio: "https://esquema-app.github.io/esquema/", codigo: "https://github.com/esquema-app/esquema",
     comunidad: "https://github.com/esquema-app/esquema/discussions", catalogo: "https://github.com/esquema-app/esquema-catalogo",
@@ -111,6 +115,8 @@
     flechas: "M2 13c4 0 4-10 12-10M11 1.5 14 3l-1.5 3", direccion: "M8 2v12M4.5 10.5 8 14l3.5-3.5", copiar: "M5.5 5.5h8v8h-8zM10.5 5.5v-3h-8v8h3",
     volver: "M10 3 5 8l5 5", ajustes: "M8 10.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4",
     persona: "M8 7.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 14.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5", github: "M5.5 2.5 1.5 8l4 5.5M10.5 2.5l4 5.5-4 5.5",
+    proyecto: "M2 4.5 8 1.5l6 3v7l-6 3-6-3zM2 4.5l6 3 6-3M8 7.5v7", elemento: "M8 1.5 14.5 8 8 14.5 1.5 8z", historia: "M8 14.5a6.5 6.5 0 1 0-6.2-8.5M1.5 2.5v3.5H5M8 4.5V8l2.5 2",
+    flecha: "M3 8h10M9 4l4 4-4 4",
   };
   const ic = (n) => `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
 
@@ -148,6 +154,7 @@
   function cambiarTexto(nuevo, op = {}) {
     const d = doc();
     if (!d || nuevo === d.texto) return;
+    if (op.ruta && op.ruta !== E.sel) return cambiarTextoDe(op.ruta, nuevo, op);
     const ahora = Date.now();
     if (!(op.agrupar && d.ultimo && ahora - d.ultimo < 900)) { d.pila.push(d.texto); if (d.pila.length > 300) d.pila.shift(); }
     d.ultimo = op.agrupar ? ahora : 0;
@@ -156,6 +163,17 @@
     d.estado = "cambiado";
     programarGuardado(E.sel);
     refrescar(op.origen || "otro");
+  }
+  /** Lo mismo para un archivo que no es el abierto (proyectos: un cambio que toca varios documentos). Se guarda de inmediato. */
+  function cambiarTextoDe(ruta, nuevo, op = {}) {
+    const d = E.docs[ruta];
+    if (!d || d.texto == null || nuevo === d.texto) return false;
+    d.pila.push(d.texto); if (d.pila.length > 300) d.pila.shift();
+    d.ultimo = 0; d.futuro = []; d.texto = nuevo; d.estado = "cambiado";
+    clearTimeout(temporizadores[ruta]);
+    if (op.inmediato) guardar(ruta); else programarGuardado(ruta);
+    if (ruta === E.sel) refrescar(op.origen || "otro");
+    return true;
   }
   function deshacer() { const d = doc(); if (!d || !d.pila.length) return toast("No hay nada que deshacer"); d.futuro.push(d.texto); d.texto = d.pila.pop(); d.ultimo = 0; d.estado = "cambiado"; programarGuardado(E.sel); E.elegido = null; refrescar("historial"); }
   function rehacer() { const d = doc(); if (!d || !d.futuro.length) return toast("No hay nada que rehacer"); d.pila.push(d.texto); d.texto = d.futuro.pop(); d.ultimo = 0; d.estado = "cambiado"; programarGuardado(E.sel); E.elegido = null; refrescar("historial"); }
@@ -182,12 +200,22 @@
   }
   function abrir(ruta) {
     if (E.sel && E.sel !== ruta) guardar(E.sel);
+    E.panel = null;
     E.sel = ruta; E.bloque = null; E.elegido = null; E.menu = null; E.lateral = false; E.lz.ajustar = true; E.tarjetaIA = null;
     E.vista = movil() ? (esDocumento(ruta) ? "dibujo" : "dibujo") : "ambos";
     if (!E.docs[ruta]) { E.docs[ruta] = { texto: null, guardado: null, estado: "cargando", pila: [], futuro: [] }; host.enviar("abrirArchivo", { ruta }); }
     try { localStorage.setItem("esquema.ultimo", ruta); } catch { /* sin almacenamiento: no pasa nada */ }
     pintar();
   }
+
+  // ───────────── Proyectos (ui/proyectos.js) ─────────────
+  const P = window.EsquemaProyectos({
+    E, M, host, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA,
+    pintar: () => pintar(), abrir: (r) => abrir(r), cambiarTextoDe: (r, t, op) => cambiarTextoDe(r, t, op), guardarTodo: () => guardarTodo(),
+    textoLienzo: () => textoLienzo(), ponerTextoLienzo: (t, op) => ponerTextoLienzo(t, op), resultadoBloque: (t, p) => resultadoBloque(t, p),
+    abrirMenu: (tipo, b) => abrirMenu(tipo, b), pintarMenu: () => pintarMenu(), esDiagrama: (r) => esDiagrama(r), porRuta,
+    registrarCambioIA: (c) => { E.cambiosIA.push(c); },
+  });
 
   // ───────────── Pintar ─────────────
   function pintar() {
@@ -210,6 +238,7 @@
     }
     if ($("#lienzo")) { dibujarLienzo(true); if (foco === "lienzo") $("#lienzo").focus(); }
     if ($(".vista-doc")) { pintarVistaDoc(); if (scrollDoc) $(".vista-doc").scrollTop = scrollDoc; }
+    P.despuesDePintar();
     if (foco && foco !== "texto" && foco !== "lienzo") $("#" + foco)?.focus();
     const af = $("[data-autofoco]"); if (af && !app.contains(document.activeElement)) af.focus();
   }
@@ -228,20 +257,23 @@
 
   function lateral() {
     const docs = E.archivos.filter((a) => esDocumento(a.ruta)), diags = E.archivos.filter((a) => esDiagrama(a.ruta));
-    const fila = (a) => `<button class="archivo" data-abrir="${esc(a.ruta)}" aria-current="${a.ruta === E.sel}" title="${esc(a.ruta)}" data-sin-traducir>${ic(esDiagrama(a.ruta) ? "diagrama" : "doc")}<span>${esc(nombreDe(a.ruta))}</span>${carpetaDe(a.ruta) ? `<small>${esc(carpetaDe(a.ruta))}</small>` : ""}</button>`;
+    const fila = (a) => `<button class="archivo" data-abrir="${esc(a.ruta)}" aria-current="${a.ruta === E.sel && !E.panel}" title="${esc(a.ruta)}" data-sin-traducir>${ic(esDiagrama(a.ruta) ? "diagrama" : "doc")}<span>${esc(nombreDe(a.ruta))}</span>${carpetaDe(a.ruta) ? `<small>${esc(carpetaDe(a.ruta))}</small>` : ""}</button>`;
     return `<aside class="lateral${E.lateral ? " abierto" : ""}" aria-label="Archivos">
       <div class="marca"><img src="favicon.svg" alt=""><b>Esquema</b></div>
       <button class="carpeta" data-accion="elegir-carpeta" title="Cambiar de carpeta">${ic("carpeta")}<span data-sin-traducir>${esc(E.carpeta?.nombre || "")}</span></button>
       <button class="boton principal nuevo" data-accion="nuevo">${ic("mas")} Nuevo</button>
       <nav class="lista">
+        ${P.lateralHTML()}
         ${docs.length ? `<h3>Documentos</h3>${docs.map(fila).join("")}` : ""}
         ${diags.length ? `<h3>Diagramas</h3>${diags.map(fila).join("")}` : ""}
         ${!docs.length && !diags.length && E.carpeta ? `<p class="vacio">Esta carpeta todavía no tiene documentos ni diagramas.</p>` : ""}
+        ${P.recientesHTML()}
       </nav>
       <div class="pie-lateral"><button class="boton plano" data-accion="ajustes">${ic("ajustes")} Ajustes</button></div>
     </aside>`;
   }
   function barra() {
+    if (E.panel && E.carpeta) return P.barraHTML();
     const d = doc();
     const tieneDibujo = E.sel && (esDiagrama(E.sel) || E.bloque != null);
     const vistas = E.sel ? (movil() ? [["texto", "Texto"], ["dibujo", esDocumento(E.sel) && E.bloque == null ? "Vista" : "Dibujo"]] : [["texto", "Texto"], ["ambos", "Ambos"], ["dibujo", esDocumento(E.sel) && E.bloque == null ? "Vista" : "Dibujo"]]) : [];
@@ -266,9 +298,10 @@
   function pintarEstadoGuardado() { const el = $("#estado-guardado"); if (el) el.textContent = tr(estadoGuardado()); }
 
   function area() {
-    if (!E.carpeta) return `<div class="vacio"><div><h2>Elige una carpeta</h2><p>Tus documentos y diagramas viven en una carpeta de tu computador, en archivos .md y .mmd que GitHub muestra tal cual.</p><div class="acciones"><button class="boton principal" data-accion="elegir-carpeta">${ic("carpeta")} Elegir carpeta</button></div></div></div>`;
+    if (!E.carpeta) return `<div class="vacio"><div><h2>Elige una carpeta</h2><p>Tus documentos y diagramas viven en una carpeta de tu computador, en archivos .md y .mmd que GitHub muestra tal cual.</p><div class="acciones"><button class="boton principal" data-accion="elegir-carpeta">${ic("carpeta")} Elegir carpeta</button><button class="boton" data-accion="p-nuevo">${ic("proyecto")} Documentar un proyecto</button></div></div></div>`;
+    if (E.panel) return P.areaHTML();
     const d = doc();
-    if (!E.sel || !d) return `<div class="vacio"><div><h2>Empieza un documento o un diagrama</h2><p>Escríbelo como texto o dibújalo en el lienzo: los dos se mantienen al día.</p><div class="acciones"><button class="boton principal" data-accion="nuevo">${ic("mas")} Nuevo</button><button class="boton" data-accion="readme">${ic("github")} README para GitHub</button></div></div></div>`;
+    if (!E.sel || !d) return `<div class="vacio"><div><h2>Empieza un documento o un diagrama</h2><p>Escríbelo como texto o dibújalo en el lienzo: los dos se mantienen al día.</p><div class="acciones"><button class="boton principal" data-accion="nuevo">${ic("mas")} Nuevo</button><button class="boton" data-accion="readme">${ic("github")} README para GitHub</button>${E.proyecto ? "" : `<button class="boton" data-accion="p-nuevo">${ic("proyecto")} Documentar un proyecto</button>`}</div></div></div>`;
     if (d.texto == null) return `<div class="vacio"><div class="esperando"><span class="giro"></span> Abriendo…</div></div>`;
     const vista = movil() && E.vista === "ambos" ? "dibujo" : E.vista;
     const derecha = esDiagrama(E.sel) ? `<section class="panel-dibujo">${lienzoHTML()}</section>`
@@ -527,6 +560,7 @@
       const ev = ultimoResultado?.modelo?.eventos?.[s.id];
       botones = ev && (ev.tipo === "mensaje" || ev.tipo === "nota") ? `<button class="boton" data-accion="renombrar">${ic("lapiz")} Texto</button><button class="boton peligro" data-accion="borrar" aria-label="Borrar">${ic("borrar")}</button>` : "";
     }
+    if (s.tipo === "nodo" || s.tipo === "participante") botones += P.botonElemento(s.id);
     barraSel.className = botones ? "lz-sel" : "";
     barraSel.innerHTML = botones;
     traducirDOM(barraSel);
@@ -733,6 +767,8 @@
     } else if (m.tipo === "flechas") {
       const actual = ultimoResultado?.modelo?.meta?.aristas || "curva";
       h = [["curva", "Curvas"], ["recta", "Rectas"], ["ortogonal", "En ángulo recto"]].map(([v, n]) => `<button data-flechas="${v}" aria-pressed="${actual === v}"><span aria-hidden="true" style="width:12px">${actual === v ? "✓" : ""}</span>${n}</button>`).join("");
+    } else if (m.tipo === "elementos") {
+      h = P.menuElementosHTML();
     } else if (m.tipo === "exportar") {
       h = `<button data-exportar="svg">${ic("exportar")} SVG</button><button data-exportar="png">${ic("exportar")} PNG</button><button data-exportar="md">${ic("doc")} Markdown con Mermaid</button><button data-exportar="github">${ic("copiar")} Copiar para GitHub</button>`;
     }
@@ -741,7 +777,7 @@
   const formaMini = (f) => { const t = M.tamanoForma(f, 20, 10), e = 14 / Math.max(t.w, t.h); return `<svg class="ic esq" viewBox="${-t.w / 2 - 2} ${-t.h / 2 - 2} ${t.w + 4} ${t.h + 4}" aria-hidden="true" style="width:${Math.max(12, t.w * e)}px">${M.dibujarForma(f, t.w, t.h)}</svg>`; };
   function abrirMenu(tipo, boton) {
     const b = boton.getBoundingClientRect();
-    const ancho = tipo === "formas" ? 360 : 240;
+    const ancho = tipo === "formas" ? 360 : tipo === "elementos" ? 280 : 240;
     let x = Math.min(window.innerWidth - ancho - 8, Math.max(8, b.left)), y = b.bottom + 6;
     if (y > window.innerHeight * 0.55) y = Math.max(8, b.top - 6 - (tipo === "formas" ? 420 : 170));
     E.menu = E.menu?.tipo === tipo ? null : { tipo, x, y };
@@ -799,6 +835,7 @@
     if (E.bv === 0) return `<div class="capa capa-idioma"><div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv">${bienvenida()}</div></div>`;
     if (E.bv !== null) return capa("t-bv", bienvenida(), "bienvenida");
     // titulo y texto llegan como HTML ya escapado (frase() o esc() del texto en español; traducirDOM lo traduce); los botones, como texto.
+    const dp = P.dialogoHTML(capa); if (dp && !E.confirmar) return dp;
     if (E.confirmar) return capa("t-conf", `<h2 id="t-conf">${E.confirmar.titulo}</h2><p>${E.confirmar.texto}</p><div class="pie-dialogo"><button class="boton" data-accion="confirmar-no">${esc(E.confirmar.no)}</button><button class="boton principal" data-accion="confirmar-si" data-autofoco>${esc(E.confirmar.si)}</button></div>`);
     if (E.ajustes) return capa("t-aj", dialogoAjustes(), "ajustes");
     if (E.readme) return capa("t-rm", dialogoReadme(), "ancho");
@@ -879,7 +916,7 @@
       <div class="buscar-fila"><input type="search" id="buscar-plantilla" placeholder="Buscar plantillas" value="${esc(n.busqueda || "")}" aria-label="Buscar plantillas" data-sin-traducir data-autofoco></div>
       <div class="chips" style="margin-top:10px">${["todas", ...CATEGORIAS].map((c) => `<button class="chip" data-categoria="${c}" aria-pressed="${n.categoria === c}">${NOMBRE_CAT[c]}</button>`).join("")}</div>
       ${comunidad ? catalogoHTML(q) : `<div class="plantillas">
-        ${n.categoria === "todas" && !q ? `<button class="plantilla ia" data-accion="readme"><span class="previa">${ic("github")}</span><span class="info"><b>README para GitHub</b><small>Tu IA lo escribe desde lo que cuentas y la lista de archivos.</small></span></button>
+        ${n.categoria === "todas" && !q ? `<button class="plantilla ia" data-accion="p-nuevo"><span class="previa">${ic("proyecto")}</span><span class="info"><b>${E.proyecto ? "Documentar un flujo" : "Documentar un proyecto"}</b><small>${E.proyecto ? "Tu IA lo documenta con diagramas, conectado a los elementos del proyecto." : "Elige un repositorio: Esquema lo lee y tu IA escribe la documentación conectada."}</small></span></button><button class="plantilla ia" data-accion="readme"><span class="previa">${ic("github")}</span><span class="info"><b>README para GitHub</b><small>Tu IA lo escribe desde lo que cuentas y la lista de archivos.</small></span></button>
           ${blancos.map(([id, nom, , ]) => `<button class="plantilla" data-plantilla="${id}" aria-pressed="${n.elegida === id}"><span class="previa">${ic(id === "blanco-doc" ? "doc" : "diagrama")}</span><span class="info"><b>${nom}</b><small>En blanco</small></span></button>`).join("")}` : ""}
         ${lista.map((p) => `<button class="plantilla" data-plantilla="${esc(p.id)}" aria-pressed="${n.elegida === p.id}" data-sin-traducir><span class="previa">${previaPlantilla(p)}</span><span class="info"><b>${esc(textoDe(p.nombre))}</b><small>${esc(textoDe(p.descripcion))}</small></span></button>`).join("")}
       </div>`}
@@ -1121,6 +1158,7 @@
     if (t.closest("#menu") === null && E.menu && !t.dataset.accion?.startsWith("menu-")) { E.menu = null; pintarMenu(); }
     const d = t.dataset;
     if (d.idioma) return elegirIdioma(d.idioma);
+    if (d.abrir && d.pBloque !== undefined) return P.clic(t, d, e);
     if (d.abrir) return abrir(d.abrir);
     if (d.vista) { E.vista = d.vista; return pintar(); }
     if (d.bv !== undefined && t.closest(".bienvenida, .capa")) { E.bv = Math.max(1, Number(d.bv)); return pintar(); }
@@ -1150,6 +1188,7 @@
     if (d.forma) { const s = E.elegido; E.menu = null; pintarMenu(); if (s?.tipo === "nodo") ponerTextoLienzo(M.cambiarForma(textoLienzo(), s.id, d.forma, d.icono || null), { origen: "lienzo" }); return; }
     if (d.flechas) { E.menu = null; pintarMenu(); return ponerTextoLienzo(M.estiloAristas(textoLienzo(), d.flechas), { origen: "lienzo" }); }
     if (d.exportar) return exportar(d.exportar);
+    if (P.clic(t, d, e)) return;
     const a = d.accion;
     if (!a) return;
     switch (a) {
@@ -1201,6 +1240,7 @@
   function cerrarDialogo() {
     if (E.bv !== null && E.bv !== 0) { E.bv = null; E.config.bienvenida = true; host.enviar("config", { bienvenida: true }); }
     E.ajustes = false; E.nuevo = null; E.readme = null; E.dibujar = null; E.confirmar = null; E.menu = null;
+    P.cerrarDialogo();
     pintar();
   }
   const primerArchivo = () => (E.archivos.find((a) => /^readme\.md$/i.test(a.ruta)) || E.archivos[0]).ruta;
@@ -1214,6 +1254,7 @@
   }
   function abrirEnlace(url) {
     if (/^https:\/\//.test(url)) return host.enviar("abrirEnlace", { url });
+    if (P.enlace(url)) return;
     if (url.startsWith("#")) { const el = document.getElementById(decodeURIComponent(url.slice(1))); el?.scrollIntoView({ behavior: "smooth" }); return; }
     const destino = E.archivos.find((a) => a.ruta === url.replace(/^\.\//, "").split("#")[0]);
     if (destino) return abrir(destino.ruta);
@@ -1256,7 +1297,7 @@
     const cmd = e.metaKey || e.ctrlKey;
     if (e.key === "Escape") {
       if (E.menu) { E.menu = null; pintarMenu(); return; }
-      if (E.confirmar || E.ajustes || E.nuevo || E.readme || E.dibujar || (E.bv !== null)) return cerrarDialogo();
+      if (E.confirmar || E.ajustes || E.nuevo || E.readme || E.dibujar || P.hayDialogo() || (E.bv !== null)) return cerrarDialogo();
       if (E.lateral) { E.lateral = false; return pintar(); }
       if (E.elegido) { E.elegido = null; return pintarSeleccion(); }
       if (E.bloque != null) { E.bloque = null; return pintar(); }
@@ -1297,12 +1338,13 @@
         E.actualizacion = e.actualizacion.hay ? { hay: true, detalle: e.actualizacion.detalle || "" } : { hay: false };
         if (E.actualizacion.hay && !E.avisoVersion) { E.avisoVersion = true; toast("Hay una versión nueva de Esquema: está en Ajustes"); }
       }
-      Object.assign(E, { config: e.config || {}, ias: e.ias || [], version: e.version || "", plantillas: (e.plantillas || []).filter((p) => !validarPlantilla(p).length), carpeta: e.carpeta || null, archivos: (e.archivos || []).slice().sort(porRuta) });
+      Object.assign(E, { config: e.config || {}, ias: e.ias || [], version: e.version || "", plantillas: (e.plantillas || []).filter((p) => !validarPlantilla(p).length), carpeta: e.carpeta || null, archivos: (e.archivos || []).slice().sort(porRuta), recientes: Array.isArray(e.proyectos) ? e.proyectos : [] });
       const parametros = new URLSearchParams(location.search);
       if (parametros.has("vacio")) { E.carpeta = null; E.archivos = []; }
       await cargarIdioma();
       if (!E.config.bienvenida || parametros.has("bienvenida")) E.bv = E.config.idioma_ui && !parametros.has("bienvenida") ? 1 : 0;
       E.cargado = true;
+      if (E.carpeta && !E.proyecto) P.alCambiarCarpeta({});
       if (!E.sel && E.archivos.length && E.bv === null) {
         let ultimo = null; try { ultimo = localStorage.getItem("esquema.ultimo"); } catch { /* sin almacenamiento */ }
         return abrir(E.archivos.some((a) => a.ruta === ultimo) ? ultimo : primerArchivo());
@@ -1312,6 +1354,8 @@
     carpetaElegida(r) {
       if (!r.ok) { if (r.error) toast(r.error); return; }
       E.carpeta = r.carpeta; E.archivos = (r.archivos || []).slice().sort(porRuta); E.docs = {}; E.sel = null; E.cambiosIA = [];
+      P.alCambiarCarpeta(r);
+      if (r.proyecto) return pintar();
       if (E.bv === null && E.archivos.length) return abrir(primerArchivo());
       pintar();
     },
@@ -1322,6 +1366,7 @@
       d.texto = r.texto; d.guardado = r.texto; d.estado = "guardado";
       if (r.ruta === E.sel) { ultimoBueno = null; pintar(); }
       if (d.alAbrir) { const f = d.alAbrir; d.alAbrir = null; f(); }
+      P.alAbrirArchivo(r.ruta);
     },
     /** Respuesta a `catalogoPlantillas`: {ok, plantillas} (el índice ya validado por bin/plantillas.py) o {ok: false, error}. */
     catalogoListo(r) {
@@ -1342,11 +1387,12 @@
     archivoGuardado(r) {
       const d = E.docs[r.ruta];
       if (!d) return;
-      if (!r.ok) { d.estado = "error"; toast(r.error || "No se pudo guardar"); return pintarEstadoGuardado(); }
+      if (!r.ok) { d.estado = "error"; toast(r.error || "No se pudo guardar"); P.alGuardarArchivo(r.ruta, false); return pintarEstadoGuardado(); }
       d.guardado = d.enviado ?? d.texto;
       d.estado = d.texto === d.guardado ? "guardado" : "cambiado";
       if (d.estado === "cambiado") programarGuardado(r.ruta);
       pintarEstadoGuardado();
+      P.alGuardarArchivo(r.ruta, true);
     },
     /** El archivo cambió en el disco (otro programa, VS Code, git pull…). Si no hay cambios sin guardar, se recarga solo (y se puede
      *  deshacer); si los hay, se pregunta con cuál quedarse. */
@@ -1370,7 +1416,9 @@
       };
       pintar();
     },
-    archivos(r) { E.archivos = (r.archivos || []).slice().sort(porRuta); pintar(); },
+    archivos(r) { E.archivos = (r.archivos || []).slice().sort(porRuta); P.alCambiarArchivos(); pintar(); },
+    /** Proyectos: la respuesta de bin/proyecto.py (r.orden dice cuál: abrir, leer, preparar, generar, guardar, version…). */
+    proyectoRespuesta(r) { P.respuesta(r || {}); },
     iaProbada(r) { delete E.probando[r.ia]; E.resultadoIA[r.ia] = r; if (r.ok) toast("Lista para usar"); pintar(); },
     estructuraLista(r) { if (E.readme?.envio) { E.readme.envio = r.ok ? r : { archivos: [], error: r.error }; pintar(); } },
     readmeListo(r) {
@@ -1413,7 +1461,7 @@
       if (a === "ajustes") { E.lateral = false; E.ajustes = true; return pintar(); }
     },
     _probar(f) { f(E); pintar(); },
-    _pruebas: { validarPlantilla, validarNombre, resumen, abrir, motor: M },
+    _pruebas: { validarPlantilla, validarNombre, resumen, abrir, motor: M, proyectos: () => P },
   };
 
   /** Una plantilla es solo datos: se valida antes de mostrarla (las incluidas y las del catálogo de la comunidad).
@@ -1456,7 +1504,9 @@
           return A.estado({ ...demo, config, archivos: demo.archivos.map((a) => ({ ruta: a.ruta })) });
         });
       case "config": try { const c = JSON.parse(localStorage.getItem("esquema.config") || "{}"); localStorage.setItem("esquema.config", JSON.stringify({ ...c, ...d })); } catch { /* sin almacenamiento */ } return;
-      case "elegirCarpeta": return luego(150, () => A.carpetaElegida({ ok: true, carpeta: DEMO.carpeta, archivos: Object.keys(memoria).map((ruta) => ({ ruta })) }));
+      case "elegirCarpeta": return luego(150, () => A.carpetaElegida({ ok: true, carpeta: DEMO.carpeta, archivos: Object.keys(memoria).map((ruta) => ({ ruta })), ...(d.proyecto ? { proyecto: true } : {}) }));
+      case "abrirProyecto": return luego(150, () => A.carpetaElegida(d.indice === 0 && DEMO.proyecto ? { ok: true, carpeta: DEMO.carpeta, archivos: Object.keys(memoria).map((ruta) => ({ ruta })), proyecto: true } : { ok: false, error: tr("No encontré ese proyecto.") }));
+      case "proyecto": return P.simular(d, memoria, DEMO, luego);
       case "abrirArchivo": return luego(20, () => A.archivoAbierto(d.ruta in memoria ? { ok: true, ruta: d.ruta, texto: memoria[d.ruta] } : { ok: false, ruta: d.ruta, error: tr("No encontré el archivo") }));
       case "guardarArchivo": memoria[d.ruta] = d.texto; return luego(60, () => A.archivoGuardado({ ok: true, ruta: d.ruta }));
       case "probarIA": return luego(500, () => A.iaProbada({ ia: d.ia, ok: true }));

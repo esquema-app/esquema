@@ -1,7 +1,8 @@
 // Prueba de Esquema para Linux en una pantalla virtual: abre la app (Electron de verdad), revisa que la interfaz cargue sin errores
 // y prueba el puente de punta a punta con una carpeta ficticia: idioma primero, config solo con claves conocidas, abrir y guardar,
 // vigilar la carpeta (un cambio de afuera se recarga; con cambios sin guardar se pregunta), archivo nuevo de afuera, rutas fuera de
-// la carpeta, IA falsa sin herramientas, «Dibújame», menú, navegación y protocolo.
+// la carpeta, IA falsa sin herramientas, «Dibújame», proyectos (órdenes conocidas, siempre sobre la carpeta actual, recientes
+// por posición), menú, navegación y protocolo.
 // Uso (desde escritorio/): xvfb-run -a node pruebas/arranque.mjs [carpeta-de-capturas]
 //   HOME y la carpeta de Esquema son temporales (nunca toca tus datos). Playwright puede estar aparte: NODE_PATH=/ruta/node_modules.
 //   SOLO_ARRANQUE=1 con ELECTRON=dist/linux-unpacked/esquema APP=1: solo revisa que la app empaquetada abra y cargue.
@@ -73,7 +74,7 @@ if (await v.evaluate(() => { let a; window.Esquema._probar((E) => { a = E.ajuste
 // Respuestas de la app que la prueba quiere esperar.
 await v.evaluate(() => {
   window._r = {};
-  for (const f of ["estado", "carpetaElegida", "archivoAbierto", "archivoGuardado", "archivoCambiado", "archivos", "iaProbada", "dibujoListo", "estructuraLista", "copiado"]) {
+  for (const f of ["estado", "carpetaElegida", "archivoAbierto", "archivoGuardado", "archivoCambiado", "archivos", "iaProbada", "dibujoListo", "estructuraLista", "copiado", "proyectoRespuesta"]) {
     const antes = window.Esquema[f];
     window.Esquema[f] = (x) => { (window._r[f] ||= []).push(x); return antes.call(window.Esquema, x); };
   }
@@ -182,6 +183,87 @@ await enviar("copiar", { texto: "```mermaid\nflowchart LR\n    A --> B\n```\n" }
 const copiado = await esperarR("copiado");
 const portapapeles = await app.evaluate(({ clipboard }) => clipboard.readText());
 if (!copiado?.ok || !portapapeles.includes("flowchart LR")) falla("copiar no dejó el texto en el portapapeles");
+
+// Proyectos: solo órdenes conocidas, siempre sobre la carpeta actual (aunque la interfaz mande otra), y los recientes por posición.
+{
+  const pedir = async (datos) => { const n = await cuantas("proyectoRespuesta"); await enviar("proyecto", datos); return esperarR("proyectoRespuesta", n + 1, 30000); };
+  const rara = await pedir({ orden: "rm", carpeta: "/" });
+  if (rara?.ok !== false) falla("una orden desconocida llegó a bin/proyecto.py: " + JSON.stringify(rara));
+  const leido = await pedir({ orden: "leer", carpeta: CASA });
+  if (!leido?.ok || leido.encontrado.carpeta !== "proyecto-ejemplo" || leido.encontrado.git.hay) falla("leer el proyecto no usó la carpeta actual: " + JSON.stringify(leido).slice(0, 300));
+  const gen = await pedir({ orden: "generar", tarea: "inicial", idioma: "es" });
+  if (!gen?.ok || !gen.propuestas.some((x) => x.ruta === "README.md") || gen.propuestas.some((x) => x.ruta.includes(".."))) falla("generar con la IA falsa no dio propuestas válidas: " + JSON.stringify(gen).slice(0, 300));
+  const esquema = { formato: 1, nombre: "Proyecto de prueba", documentos: [], elementos: [{ id: "boton-grabar", tipo: "boton", nombre: "Grabar" }] };
+  const g = await pedir({ orden: "guardar", esquema, docs: "../fuera" });
+  if (g?.ok !== false) falla("guardar aceptó una carpeta de docs fuera del proyecto");
+  const g2 = await pedir({ orden: "guardar", esquema, carpeta: CASA });
+  if (!g2?.ok || !fs.existsSync(path.join(PROYECTO, "docs", "esquema", "esquema.json")) || fs.existsSync(path.join(CASA, "docs"))) falla("guardar no escribió esquema.json en el proyecto: " + JSON.stringify(g2));
+  const ver = await pedir({ orden: "version", mensaje: "Primera" });
+  if (!ver?.ok || ver.modo !== "copias" || !fs.readdirSync(path.join(PROYECTO, "docs", "esquema", ".versiones")).length) falla("sin git, la versión no quedó como copia: " + JSON.stringify(ver));
+  const lista = JSON.parse(fs.readFileSync(path.join(DATOS, "proyectos.json"), "utf8")).recientes;
+  if (lista[0]?.ruta !== fs.realpathSync(PROYECTO)) falla("el proyecto no quedó en los recientes: " + JSON.stringify(lista));
+  // Un reciente se abre por su posición; una posición que no existe, no. La ruta nunca viene de la interfaz.
+  const nc = await cuantas("carpetaElegida");
+  await enviar("abrirProyecto", { indice: 7, ruta: "/etc" });
+  const malo = await esperarR("carpetaElegida", nc + 1);
+  await enviar("abrirProyecto", { indice: 0 });
+  const bueno = await esperarR("carpetaElegida", nc + 2);
+  if (malo?.ok !== false || !bueno?.ok || !bueno.proyecto || bueno.carpeta?.ruta !== fs.realpathSync(PROYECTO)) falla("abrirProyecto: " + JSON.stringify([malo, bueno]).slice(0, 300));
+  else bien("proyectos: órdenes conocidas, siempre en la carpeta actual, versiones y recientes");
+  await espera(800);
+  await v.evaluate(() => window.Esquema._pruebas.abrir("docs/flujo.mmd"));
+  await espera(400);
+}
+
+// Un proyecto con git, de punta a punta desde la interfaz (Python, git y la vigilancia de verdad): documentar con la IA falsa,
+// renombrar un elemento en todas partes (un commit solo de docs/esquema), comparar y restaurar.
+const { execFileSync } = requerir("child_process");
+const REPO = path.join(CASA, "repo-git");
+fs.mkdirSync(path.join(REPO, "src"), { recursive: true });
+fs.writeFileSync(path.join(REPO, "README.md"), "# Minutero\n\nNotas de reuniones.\n");
+fs.writeFileSync(path.join(REPO, "src", "grabar.py"), "def grabar():\n    pass\n");
+const gitR = (...a) => execFileSync("git", ["-C", REPO, "-c", "user.name=Pruebas", "-c", "user.email=pruebas@users.noreply.github.com", ...a], { encoding: "utf8" });
+gitR("init", "-q", "-b", "main"); gitR("add", "-A"); gitR("commit", "-qm", "Código");
+{
+  const nc = await cuantas("carpetaElegida");
+  await enviar("config", { bienvenida: true });  // al volver a mandar el estado, no se repite la bienvenida
+  await app.evaluate((_e, p) => global.esquemaPruebas.Config.guardarCarpeta(p), fs.realpathSync(REPO));
+  await enviar("abrirProyecto", { indice: 99 });  // no existe: la carpeta se pone por config, como el selector
+  await esperarR("carpetaElegida", nc + 1);
+  await app.evaluate(() => global.esquemaPruebas.enviarEstado());
+  await espera(800);
+  await v.evaluate(() => window.Esquema._pruebas.proyectos().alCambiarCarpeta({ proyecto: true }));
+  await v.waitForSelector('[data-accion="p-generar-inicial"]', { timeout: 15000 });
+  await v.click('[data-accion="p-generar-inicial"]'); await v.waitForSelector(".p-envio details", { timeout: 15000 });
+  await v.click('[data-accion="p-enviar"]'); await v.waitForSelector(".p-prop", { timeout: 30000 });
+  await v.click('[data-accion="p-aplicar"]');
+  const log = () => gitR("log", "--format=%s");
+  for (let i = 0; i < 100 && !log().includes("Documentación inicial"); i++) await espera(150);
+  const docs = path.join(REPO, "docs", "esquema");
+  if (!log().includes("Documentación inicial") || !fs.existsSync(path.join(docs, "elementos.md")) || !fs.existsSync(path.join(docs, "flujos", "grabar.md"))) falla("documentar el proyecto no dejó los archivos y la versión: " + log());
+  await v.click('.lateral [data-p="elementos"]'); await v.click('[data-p-elemento="boton-grabar"]');
+  await v.click('[data-accion="p-renombrar"]'); await v.fill("#p-valor", "Empezar a grabar"); await v.click('[data-accion="p-ver-cambio"]');
+  await v.waitForSelector(".p-cambio-lista .p-prop"); await v.screenshot({ path: path.join(salida, "5-proyecto-renombrar.png") });
+  await v.click('[data-accion="p-aplicar-cambio"]');
+  for (let i = 0; i < 100 && !log().includes("Renombré"); i++) await espera(150);
+  const archivosCommit = gitR("show", "--name-only", "--format=", "HEAD").trim().split("\n").sort();
+  if (!fs.readFileSync(path.join(docs, "README.md"), "utf8").includes("[Empezar a grabar](elementos.md#el-boton-grabar)") || !fs.readFileSync(path.join(docs, "flujos", "grabar.md"), "utf8").includes("G[Empezar a grabar]")) falla("renombrar no cambió los archivos en el disco");
+  if (archivosCommit.some((r) => !r.startsWith("docs/esquema/"))) falla("la versión tocó archivos fuera de docs/esquema: " + archivosCommit.join(", "));
+  await v.click('.lateral [data-p="versiones"]'); await v.waitForSelector("[data-p-version]");
+  await v.click("[data-p-version] >> nth=-1"); await v.waitForSelector("[data-p-dif]", { timeout: 15000 });
+  await v.screenshot({ path: path.join(salida, "6-proyecto-versiones.png") });
+  await v.click('[data-accion="p-restaurar"]'); await v.click('[data-accion="p-restaurar-si"]');
+  for (let i = 0; i < 100 && !log().includes("Restauré"); i++) await espera(150);
+  if (!fs.readFileSync(path.join(docs, "README.md"), "utf8").includes("[Grabar](elementos.md#el-boton-grabar)") || !log().includes("Restauré")) falla("restaurar no volvió los archivos o no guardó la versión: " + log());
+  else bien("proyecto con git: documentar, renombrar en todas partes, versiones y restaurar (solo commits de docs/esquema)");
+  if (gitR("status", "--porcelain").trim()) falla("quedaron cambios sin versión después de restaurar: " + gitR("status", "--porcelain"));
+  await v.evaluate(() => window.Esquema._probar((E) => { E.panel = null; }));
+  await app.evaluate((_e, p) => global.esquemaPruebas.Config.guardarCarpeta(p), fs.realpathSync(PROYECTO));
+  await app.evaluate(() => global.esquemaPruebas.enviarEstado());
+  await espera(800);
+  await v.evaluate(() => window.Esquema._pruebas.abrir("docs/flujo.mmd"));
+  await espera(400);
+}
 
 // Menú → Ajustes (con idioma elegido) y Ver → Solo texto.
 await app.evaluate(() => global.esquemaPruebas.menu("ajustes"));

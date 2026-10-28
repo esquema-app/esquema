@@ -1,0 +1,8 @@
+{
+  "name": "pagos-banco-ejemplo",
+  "description": "Pagos ficticios de Banco Ejemplo: la carpeta de ejemplo de Esquema",
+  "private": true,
+  "scripts": {
+    "start": "python3 src/api/pagos.py"
+  }
+}

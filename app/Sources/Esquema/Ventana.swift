@@ -14,6 +14,8 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
     private(set) var guardando = 0
 
     static let maximoExportar = 50 * 1024 * 1024
+    /// Proyectos: lo que bin/proyecto.py sabe hacer (la interfaz no puede pedir otra cosa).
+    static let ordenesProyecto: Set<String> = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar"]
 
     func mostrar() {
         if ventana == nil { crear() }
@@ -125,17 +127,37 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
         Vigilante.lista = (listado["archivos"] as? [[String: Any]] ?? []).compactMap { $0["ruta"] as? String }
     }
 
-    private func elegirCarpeta() {
+    private func elegirCarpeta(proyecto: Bool = false) {
         Carpeta.elegir(en: ventana) { u in
             guard let u else { return Ventana.shared.llamar("carpetaElegida", ["ok": false]) }
-            Procesador.correrJSON("carpeta.py", ["listar", u.path]) { r in
-                guard r["ok"] as? Bool == true else {
-                    return Ventana.shared.llamar("carpetaElegida", ["ok": false, "error": Idioma.t(r["error"] as? String ?? "No pude abrir esa carpeta.")])
-                }
-                Ventana.shared.vigilar(u, r)
-                Ventana.shared.llamar("carpetaElegida", ["ok": true, "carpeta": r["carpeta"] ?? NSNull(), "archivos": r["archivos"] ?? [Any]()])
-            }
+            Ventana.shared.listarYResponder(u, proyecto: proyecto)
         }
+    }
+
+    /// Lista la carpeta, la vigila y responde carpetaElegida (con proyecto: true si viene de «Documentar un proyecto» o de un reciente).
+    private func listarYResponder(_ u: URL, proyecto: Bool) {
+        Procesador.correrJSON("carpeta.py", ["listar", u.path]) { r in
+            guard r["ok"] as? Bool == true else {
+                return Ventana.shared.llamar("carpetaElegida", ["ok": false, "error": Idioma.t(r["error"] as? String ?? "No pude abrir esa carpeta.")])
+            }
+            Ventana.shared.vigilar(u, r)
+            var x: [String: Any] = ["ok": true, "carpeta": r["carpeta"] ?? NSNull(), "archivos": r["archivos"] ?? [Any]()]
+            if proyecto { x["proyecto"] = true }
+            Ventana.shared.llamar("carpetaElegida", x)
+        }
+    }
+
+    /// Un proyecto reciente: la ruta sale de <carpeta de Esquema>/proyectos.json (lo escribe bin/proyecto.py), nunca de la interfaz.
+    private func abrirProyecto(_ indice: Int) {
+        let todos = Archivos.leerJSON(Rutas.datos.appendingPathComponent("proyectos.json"))["recientes"] as? [[String: Any]] ?? []
+        let lista = Array(todos.filter { ($0["ruta"] as? String)?.hasPrefix("/") == true && $0["nombre"] is String }.prefix(8))
+        var dir: ObjCBool = false
+        guard indice >= 0, indice < lista.count, let ruta = lista[indice]["ruta"] as? String,
+              FileManager.default.fileExists(atPath: ruta, isDirectory: &dir), dir.boolValue else {
+            return llamar("carpetaElegida", ["ok": false, "error": Idioma.t("No encontré ese proyecto. ¿Lo moviste?")])
+        }
+        let u = Carpeta.usar(URL(fileURLWithPath: ruta))
+        listarYResponder(u, proyecto: true)
     }
 
     /// Nombre sugerido para «Guardar como»: solo el nombre (sin carpetas), con la extensión del formato.
@@ -189,7 +211,23 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
             if d["idioma_ui"] != nil { Menu.instalar() }
             if Idioma.elegido { EsquemaApp.iniciarTareas() }
         case "elegirCarpeta":
-            elegirCarpeta()
+            elegirCarpeta(proyecto: d["proyecto"] as? Bool == true)
+        case "abrirProyecto":
+            abrirProyecto((d["indice"] as? NSNumber)?.intValue ?? -1)
+        case "proyecto":
+            // Solo órdenes conocidas y siempre sobre la carpeta actual; bin/proyecto.py valida el resto (rutas, docs, esquema.json, tamaños).
+            let orden = d["orden"] as? String ?? ""
+            guard Ventana.ordenesProyecto.contains(orden), let base = Carpeta.actual() else {
+                return llamar("proyectoRespuesta", ["orden": String(orden.prefix(20)), "ok": false, "error": Idioma.t("Elige una carpeta primero")])
+            }
+            var e = d
+            e.removeValue(forKey: "orden")
+            e["carpeta"] = base.path
+            Procesador.conEntrada("proyecto.py", orden, e) { r in
+                var x = r
+                x["orden"] = orden
+                Ventana.shared.llamar("proyectoRespuesta", x)
+            }
         case "abrirArchivo":
             let ruta = d["ruta"] as? String ?? ""
             guard let base = Carpeta.actual(), Carpeta.absoluta(ruta, en: base) != nil else {

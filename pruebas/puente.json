@@ -17,9 +17,18 @@
       "como": "La app lo guarda en config.json de la carpeta de Esquema (comun.carpeta_app) con solo estas claves y valores conocidos; `carpeta` nunca llega por aquí (solo la cambia elegirCarpeta, con el selector del sistema). bin/estado.py config <entrada> <salida> hace lo mismo para scripts. Al guardar idioma_ui la app rearma sus menús en ese idioma y recién ahí parte lo que corre solo (actualizaciones)."
     },
     "elegirCarpeta": {
-      "datos": {},
+      "datos": {
+        "proyecto?": true
+      },
       "responde": "carpetaElegida",
-      "como": "Selector de carpetas del sistema → guardar config.carpeta (y el marcador en Mac) → bin/carpeta.py listar → vigilar la carpeta. Si la persona cancela: {ok: false} sin error."
+      "como": "Selector de carpetas del sistema → guardar config.carpeta (y el marcador en Mac) → bin/carpeta.py listar → vigilar la carpeta. Con {proyecto: true} (Documentar un proyecto) la respuesta lleva proyecto: true. Si la persona cancela: {ok: false} sin error."
+    },
+    "abrirProyecto": {
+      "datos": {
+        "indice": "posición en estado.proyectos (los recientes)"
+      },
+      "responde": "carpetaElegida",
+      "como": "La app lee la ruta de <carpeta de Esquema>/proyectos.json (la escribe bin/proyecto.py; la interfaz nunca manda una ruta), revisa que sea una carpeta que existe, la deja como carpeta (marcador en Mac), bin/carpeta.py listar, vigila y responde carpetaElegida {…, proyecto: true}."
     },
     "abrirArchivo": {
       "datos": {
@@ -70,6 +79,15 @@
       "responde": "dibujoListo",
       "como": "bin/asistente.py dibujar <entrada> <salida>"
     },
+    "proyecto": {
+      "datos": {
+        "orden": "abrir|leer|preparar|generar|guardar|version|versiones|ver|restaurar",
+        "docs?": "carpeta de la documentación, relativa al proyecto (docs/esquema)",
+        "…": "lo de cada orden (tarea, pedido, archivos, documentos, idioma, esquema, mensaje, id)"
+      },
+      "responde": "proyectoRespuesta",
+      "como": "bin/proyecto.py <orden> <entrada {…datos, carpeta}> <salida>: la app solo acepta órdenes de la lista y agrega la carpeta actual; el script valida todo lo demás (rutas dentro del proyecto, carpeta de docs, esquema.json, tamaños). generar llama a la IA sin herramientas. La respuesta lleva {orden}."
+    },
     "exportar": {
       "datos": {
         "formato": "svg|png|md",
@@ -118,8 +136,8 @@
     }
   },
   "respuestas": {
-    "estado": "{config, ias: [{id, nombre, instalada}], version, plantillas, carpeta: {nombre, ruta} | null, archivos: [{ruta, tamano}], actualizacion: {hay, detalle?}}",
-    "carpetaElegida": "{ok, carpeta, archivos} | {ok: false, error?}",
+    "estado": "{config, ias: [{id, nombre, instalada}], version, plantillas, proyectos: [{nombre, ruta}], carpeta: {nombre, ruta} | null, archivos: [{ruta, tamano}], actualizacion: {hay, detalle?}}",
+    "carpetaElegida": "{ok, carpeta, archivos, proyecto?} | {ok: false, error?}",
     "archivoAbierto": "{ok, ruta, texto} | {ok: false, ruta, error}",
     "archivoGuardado": "{ok, ruta} | {ok: false, ruta, error}",
     "archivoCambiado": "{ruta, texto}: la app vigila la carpeta (FSEvents en Mac, fs.watch en Windows y Linux) y avisa si un archivo abierto cambió en el disco y su texto no es el último que Esquema leyó o guardó. Sin cambios sin guardar se recarga solo; con cambios, la interfaz pregunta con cuál quedarse.",
@@ -128,6 +146,7 @@
     "estructuraLista": "{ok, archivos, omitidos, manifiestos} | {ok: false, error}",
     "readmeListo": "{ok, texto} | {ok: false, error}",
     "dibujoListo": "{ok, texto} | {ok: false, error}",
+    "proyectoRespuesta": "{orden, ok, …}: abrir {existe, docs, esquema, git, cambios, pendiente, recientes} · leer {encontrado} · preparar {tarea, piezas, rechazados, bytes} · generar {tarea, propuestas, elementos, pide, nota, descartados} · guardar {esquema, recientes} · version {modo, id | sin_cambios} · versiones {modo, lista, pendiente} · ver {id, archivos} · restaurar {escritos, sobran}",
     "exportado": "{ok, ruta?} | {ok: false, error?}",
     "copiado": "{ok}",
     "actualizacionRevisada": "{hay, detalle, sinConexion}",

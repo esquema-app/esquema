@@ -54,6 +54,16 @@ enum Carpeta {
         if let ventana { panel.beginSheetModal(for: ventana, completionHandler: alTerminar) } else { panel.begin(completionHandler: alTerminar) }
     }
 
+    /// Deja una carpeta conocida como la actual sin pasar por el selector (un proyecto reciente: la ruta la leyó la app de
+    /// proyectos.json, nunca la mandó la interfaz). Igual que después del selector: marcador + config.carpeta para los scripts.
+    @discardableResult
+    static func usar(_ u: URL) -> URL {
+        let real = u.standardizedFileURL.resolvingSymlinksInPath()
+        if let marcador = try? real.bookmarkData() { UserDefaults.standard.set(marcador, forKey: claveMarcador) }
+        Config.guardarCarpeta(real.path)
+        return real
+    }
+
     /// La ruta relativa que manda la interfaz, revisada igual que `comun.ruta_en` (bin/ la vuelve a revisar): relativa, sin «..»,
     /// .md o .mmd y, siguiendo enlaces, dentro de la carpeta. Devuelve la ruta absoluta o nil.
     static func absoluta(_ valor: Any?, en base: URL) -> URL? {

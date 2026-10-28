@@ -1,0 +1,16 @@
+{
+  "titulos": {"README.md": ["Visión general", "vision"], "arquitectura.md": ["Arquitectura", "arquitectura"], "flujos/pagar-una-cuenta.md": ["Pagar una cuenta", "flujo"], "flujos/recibir-el-comprobante.md": ["Recibir el comprobante", "flujo"]},
+  "elementos": [
+    {"id": "persona", "tipo": "actor", "nombre": "Persona", "descripcion": "Quien paga sus cuentas desde la web."},
+    {"id": "pantalla-pago", "tipo": "pantalla", "nombre": "Pantalla de pago", "descripcion": "Donde la persona revisa el monto antes de pagar.", "codigo": ["src/web/pagar.js"]},
+    {"id": "boton-pagar", "tipo": "boton", "nombre": "Pagar", "descripcion": "Manda el pago a la API.", "codigo": ["src/web/pagar.js"]},
+    {"id": "api-pagos", "tipo": "servicio", "nombre": "API de pagos", "descripcion": "Valida el pedido, pide la autorización y guarda el pago.", "codigo": ["src/api/pagos.py"]},
+    {"id": "banco-ejemplo", "tipo": "servicio", "nombre": "Banco Ejemplo", "descripcion": "Autoriza cada pago con tarjeta."},
+    {"id": "base-pagos", "tipo": "dato", "nombre": "Base de pagos", "descripcion": "Cada pago con su resultado."},
+    {"id": "servicio-correo", "tipo": "servicio", "nombre": "Servicio de correo", "descripcion": "Manda el comprobante cuando el pago se aprueba.", "codigo": ["src/api/correo.py"]}
+  ],
+  "nota": "Escribí la visión general, la arquitectura y dos flujos. No encontré pruebas automáticas: si las hay, cuéntame dónde.",
+  "pide": ["src/api/pagos.py"],
+  "notaPide": "Para documentarlo bien necesito leer cómo la API procesa un pago.",
+  "flujo": {"nota": "Lo documenté leyendo src/api/pagos.py.", "elementos": []}
+}

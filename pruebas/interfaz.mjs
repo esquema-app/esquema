@@ -6,7 +6,10 @@
 // ese idioma; 6) el lienzo edita el texto: crear, renombrar, conectar arrastrando, mover (queda fijado), borrar, deshacer y rehacer;
 // 7) el texto edita el lienzo, con errores claros y autocompletar; 8) el documento muestra sus diagramas y se editan en el lugar;
 // 9) Dibújame aplica y «Quitar este cambio» lo saca; 10) README para GitHub; 11) plantillas (también las de la comunidad); 12) exportar SVG, PNG y para GitHub;
-// 13) la misma regla de plantillas que Python (pruebas/casos.json). Con CAPTURAS=carpeta guarda capturas.
+// 13) la misma regla de plantillas que Python (pruebas/casos.json); 14) proyectos: documentar un proyecto → lo que encontré →
+// lo que se envía → propuestas de la IA (simulada) → elementos conectados → enlazar desde el lienzo → renombrar en todas partes →
+// versiones → comparar → restaurar, documentar un flujo (la IA pide archivos) y los cambios del código. Con CAPTURAS=carpeta
+// guarda capturas.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -61,6 +64,7 @@ async function sinTraducir(p, vista) {
   const valores = new Set(Object.values(en));
   const malos = faltan.filter((t) => { const x = t.startsWith("@") ? t.slice(1) : t; return !esDato(x) && !en[x] && !(t.startsWith("@") && valores.has(x)); }).map((t) => t.replace(/^@/, ""));
   if (malos.length) falla(`Sin traducir en «${vista}»: ${[...new Set(malos)].map((x) => JSON.stringify(x)).join(", ")}`);
+  if (malos.length && process.env.FALTANTES) fs.appendFileSync(process.env.FALTANTES, malos.map((x) => JSON.stringify(x) + "\n").join(""));
 }
 async function desborde(p, vista) {
   const d = await p.evaluate(() => { const malos = []; for (const el of document.querySelectorAll("body *")) { if (el.closest("svg, .lienzo, .lz-herr, .lz-sel, .sugerencias, .md, .lista-envio, pre, table, .chips")) continue; const r = el.getBoundingClientRect(); if (r.width && (r.right > window.innerWidth + 1 || r.left < -1) && getComputedStyle(el).position !== "fixed" && !el.closest(".lateral:not(.abierto)")) malos.push(el.className || el.tagName); } return { scroll: document.documentElement.scrollWidth > window.innerWidth + 1, malos: malos.slice(0, 5) }; });
@@ -118,7 +122,7 @@ const VISTAS = [
   ["lateral-celular", "E=>{E.lateral=true}"],
   ["sin-carpeta", "E=>{E.lateral=false;E.carpeta=null;E.archivos=[]}"],
 ];
-for (const idioma of ["es", "en"]) for (const ancho of [1280, 390]) {
+for (const idioma of (process.env.SOLO_PROYECTOS ? [] : ["es", "en"])) for (const ancho of [1280, 390]) {
   const p = await pagina({ ancho, alto: ancho < 500 ? 844 : 800, idioma, oscuro: ancho < 500 && idioma === "en" });
   for (const [nombre, f] of VISTAS) {
     if (nombre === "lateral-celular" && ancho > 500) continue;
@@ -399,6 +403,109 @@ console.log("Plantillas de la comunidad: revisado");
   if (incl.length) falla("Plantillas incluidas que la interfaz rechaza: " + incl.join(", "));
   await p.close();
 }
+
+// ── 14) Proyectos ──
+async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
+  const p = await pagina({ ancho, alto: ancho < 500 ? 844 : 800, idioma, oscuro });
+  const etapa = async (nombre) => { await espera(p, 120); if (idioma === "en") await sinTraducir(p, "proyecto " + nombre + " " + ancho); if (ancho < 500) await desborde(p, "proyecto " + nombre + ` (${idioma})`); await captura(p, `proyecto-${nombre}-${idioma}-${ancho}`); };
+  const estado = (f) => p.evaluate((src) => { let x; window.Esquema._probar((E) => { x = new Function("E", src)(E); }); return x; }, f);
+  const texto = (ruta) => estado(`return E.docs[${JSON.stringify(ruta)}]?.texto`);
+  const D = "docs/esquema/";
+  // Documentar un proyecto: lo que encontré (sin IA)
+  if (ancho < 500) await p.click('[data-accion="abrir-lateral"]');
+  await p.click('[data-accion="nuevo"]'); await p.click('.plantilla[data-accion="p-nuevo"]');
+  await p.waitForSelector('[data-accion="p-generar-inicial"]');
+  if (!(await p.$eval(".p-panel", (x) => /Python/.test(x.textContent) && /v1\.2\.0/.test(x.textContent)))) falla("«Lo que encontré» no muestra lenguajes y git");
+  await etapa("encontrado");
+  // Lo que se envía, exacto, antes de mandarlo
+  await p.click('[data-accion="p-generar-inicial"]'); await p.waitForSelector(".p-envio details");
+  const piezas = await p.$$eval(".p-envio summary", (x) => x.map((s) => s.textContent));
+  if (!piezas.some((x) => x.includes("README.md"))) falla("Lo que se envía no muestra el README: " + piezas.join(" | "));
+  await p.click(".p-envio summary"); await etapa("envio");
+  // Propuestas: tarjetas con «Quitar este cambio»
+  await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-prop", { timeout: 5000 });
+  await etapa("propuestas");
+  await p.click('[data-p-ver="1"]'); await p.waitForSelector(".p-previa .md-diagrama svg"); await etapa("propuesta-vista");
+  await p.click('[data-p-quitar="1"]'); if (!(await p.$(".p-prop.quitada"))) falla("«Quitar este cambio» no marca la propuesta");
+  await p.click('[data-p-quitar="1"]'); if (await p.$(".p-prop.quitada")) falla("«Volver a agregar» no vuelve la propuesta");
+  await p.click('[data-accion="p-aplicar"]');
+  await p.waitForFunction(() => document.querySelectorAll(".p-doc").length >= 5, null, { timeout: 5000 });
+  await p.waitForFunction(() => !document.querySelector(".p-aviso .giro"), null, { timeout: 5000 });
+  const ini = await estado(`return { els: E.proyecto.esquema.elementos.length, docs: E.proyecto.esquema.documentos.map((d) => d.ruta), arch: E.archivos.map((a) => a.ruta) }`);
+  if (ini.els !== 7 || !ini.docs.includes("elementos.md") || !ini.arch.includes(D + "flujos/pagar-una-cuenta.md")) falla("Guardar las propuestas no deja los documentos y elementos: " + JSON.stringify(ini));
+  if (!(await texto(D + "elementos.md"))?.includes('<a id="el-boton-pagar"></a>')) falla("El glosario no tiene el ancla de cada elemento");
+  await etapa("inicio");
+  // El lienzo: un nodo enlazado muestra su elemento; uno sin enlace se enlaza (con un elemento nuevo)
+  await p.evaluate((r) => window.Esquema._pruebas.abrir(r), D + "flujos/recibir-el-comprobante.md");
+  await p.waitForFunction(() => document.querySelector("#texto")?.value.length > 0);
+  await probar(p, "E.bloque=0;E.vista='dibujo';E.lz.ajustar=true"); await espera(p, 200);
+  await probar(p, "E.elegido={tipo:'nodo',id:'Q'}"); await espera(p, 120);
+  await p.click('.lz-sel [data-accion="p-enlazar"]'); await p.waitForSelector("#menu [data-p-enlazar-nuevo]"); await etapa("enlazar");
+  await p.click("#menu [data-p-enlazar-nuevo]"); await espera(p, 300);
+  const refs = await estado(`return window.Esquema._pruebas.motor.refsDiagrama(window.Esquema._pruebas.motor.bloquesMermaid(E.docs[E.sel].texto)[0].contenido)`);
+  if (!refs.Q || !(await estado(`return E.proyecto.esquema.elementos.some((e) => e.id === ${JSON.stringify(refs.Q || "")})`))) falla("Enlazar con un elemento nuevo no deja la ref ni el elemento: " + JSON.stringify(refs));
+  await probar(p, "E.elegido={tipo:'nodo',id:'T'}"); await espera(p, 120);
+  if (!(await p.$('.lz-sel [data-p-elemento="boton-pagar"]'))) falla("Un nodo enlazado no muestra su elemento en la barra");
+  await p.click('.lz-sel [data-p-elemento="boton-pagar"]'); await p.waitForSelector(".p-ficha h2");
+  await etapa("elemento");
+  // Renombrar en todas partes: vista previa por archivo y una sola versión
+  await p.click('[data-accion="p-renombrar"]'); await p.fill("#p-valor", idioma === "en" ? "Pay now" : "Pagar ahora"); await p.click('[data-accion="p-ver-cambio"]');
+  await p.waitForSelector(".p-cambio-lista .p-prop"); await etapa("renombrar");
+  await p.click('[data-p-ver-cambio="0"]'); await p.waitForSelector(".p-dif .d-mas"); await etapa("renombrar-dif");
+  const nuevo = idioma === "en" ? "Pay now" : "Pagar ahora";
+  await p.click('[data-accion="p-aplicar-cambio"]');
+  await p.waitForFunction(() => !document.querySelector(".capa"), null, { timeout: 4000 });
+  for (const r of ["README.md", "flujos/pagar-una-cuenta.md", "flujos/recibir-el-comprobante.md"]) if (!(await texto(D + r))?.includes(`[${nuevo}](`) && !(await texto(D + r))?.includes(`T[${nuevo}]`)) falla(`Renombrar no cambió ${r}`);
+  if (!(await texto(D + "flujos/recibir-el-comprobante.md"))?.includes(`T[${nuevo}]`)) falla("Renombrar no cambió el nodo del diagrama");
+  if (!(await texto(D + "elementos.md"))?.includes(`### ${nuevo}`)) falla("Renombrar no cambió el glosario");
+  // Quitar, cambio de comportamiento con la IA y elemento nuevo: los diálogos
+  await p.click('[data-accion="p-quitar"]'); await p.waitForSelector(".p-cambio-lista"); await etapa("quitar"); await p.click('.capa [data-accion="cerrar"]');
+  await p.click('[data-accion="p-comportamiento"]'); await p.waitForSelector("#p-pedido"); await etapa("comportamiento");
+  await p.fill("#p-pedido", "pide confirmación"); await p.click('[data-accion="p-comportamiento-enviar"]'); await p.waitForSelector(".p-envio details");
+  if ((await p.$$eval(".p-envio summary", (x) => x.filter((s) => /\.md/.test(s.textContent)).length)) < 3) falla("Un cambio de comportamiento no manda los documentos que usan el elemento");
+  await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-prop"); await etapa("propuestas-cambio");
+  await p.click('[data-accion="p-descartar"]');
+  await p.click('.p-panel [data-p="elementos"]'); await p.click('[data-accion="p-elemento-nuevo"]'); await p.waitForSelector("#p-el-nombre"); await etapa("elemento-nuevo"); await p.click('.capa [data-accion="cerrar"]');
+  // Versiones, comparar y restaurar
+  await p.click(ancho < 500 ? '.barra [data-p="proyecto"]' : '.lateral [data-p="proyecto"]'); await p.waitForSelector('.p-acciones [data-p="versiones"]');
+  if (!(await p.$('[data-accion="p-deshacer"]'))) falla("Después de renombrar no se ofrece deshacer el cambio");
+  await p.click('.p-acciones [data-p="versiones"]'); await p.waitForSelector("[data-p-version]");
+  const versiones = await p.$$eval("[data-p-version]", (x) => x.map((b) => b.textContent));
+  if (versiones.length !== 2) falla("Versiones: " + versiones.join(" | "));
+  await etapa("versiones");
+  await p.click("[data-p-version]:last-of-type >> nth=-1"); await p.waitForSelector("[data-p-dif]");
+  await p.click(`[data-p-dif="flujos/recibir-el-comprobante.md"]`); await p.waitForSelector(".p-dif-svg svg");
+  if (!(await p.$(".p-dif-svg .dif-cambia"))) falla("La comparación de diagramas no marca el nodo que cambió");
+  await etapa("comparar");
+  await p.click('[data-accion="p-restaurar"]'); await p.waitForSelector('[data-accion="p-restaurar-si"]'); await etapa("restaurar");
+  await p.click('[data-accion="p-restaurar-si"]');
+  await p.waitForFunction((d) => { let t; window.Esquema._probar((E) => { t = E.docs[d]?.texto; }); return t && !t.includes("Pagar ahora") && !t.includes("Pay now"); }, D + "README.md", { timeout: 4000 });
+  await p.waitForFunction(() => document.querySelectorAll("[data-p-version]").length === 3, null, { timeout: 4000 });
+  if (!(await estado(`return E.proyecto.esquema.elementos.find((e) => e.id === "boton-pagar").nombre`))?.match(/^(Pagar|Pay)$/)) falla("Restaurar no vuelve el elemento a su nombre");
+  // Documentar un flujo: la IA pide un archivo, la persona lo aprueba y lo ve antes de mandarlo
+  await p.click('.barra [data-accion="p-flujo"]'); await p.fill("#p-pedido", idioma === "en" ? "How a payment is processed" : "Cómo se procesa un pago"); await etapa("flujo");
+  await p.click('[data-accion="p-flujo-enviar"]'); await p.waitForSelector(".p-envio"); await p.click('[data-accion="p-enviar"]');
+  await p.waitForSelector("[data-p-elegir]"); await etapa("pedir");
+  await p.click('[data-accion="p-pedir-enviar"]'); await p.waitForSelector(".p-envio details");
+  if (!(await p.$$eval(".p-envio summary", (x) => x.some((s) => s.textContent.includes("src/api/pagos.py"))))) falla("El archivo aprobado no aparece en lo que se envía");
+  await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-prop"); await p.click('[data-accion="p-aplicar"]');
+  await p.waitForFunction(() => document.querySelectorAll(".p-doc").length >= 6, null, { timeout: 4000 });
+  await p.waitForFunction(() => !document.querySelector(".p-aviso .giro"), null, { timeout: 4000 }); await espera(p, 500);
+  if (await p.$('[data-accion="p-deshacer"]')) falla("Después de restaurar y documentar otra cosa, todavía se ofrece deshacer un cambio viejo");
+  // Cambios del código desde la última versión
+  await probar(p, "E.proyecto.cambios={n:2,desde:'abc',commits:[{id:'1',fecha:'2026-10-27',mensaje:'Pagar pide confirmación',archivos:['src/web/pagar.js']},{id:'2',fecha:'2026-10-26',mensaje:'Correo más rápido',archivos:['src/api/correo.py']}]};E.proyecto.cambiosVistos=false;E.panel='proyecto'");
+  await p.waitForSelector('[data-accion="p-revisar"]'); await etapa("cambios");
+  await p.click('[data-accion="p-revisar"]'); await p.waitForSelector('[data-accion="p-revisar-ia"]');
+  const afectados = await estado("return E.proyecto.revision.documentos");
+  if (!afectados.includes(D + "flujos/recibir-el-comprobante.md") || !afectados.includes(D + "README.md")) falla("Revisar qué documentos afecta: " + afectados.join(", "));
+  await etapa("revision");
+  await p.click('[data-accion="p-revisar-ia"]'); await p.waitForSelector(".p-envio"); await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-prop"); await p.click('[data-accion="p-descartar"]');
+  await p.close();
+}
+await recorridoProyecto({ idioma: "es", ancho: 1280 });
+await recorridoProyecto({ idioma: "en", ancho: 390, oscuro: true });
+await recorridoProyecto({ idioma: "en", ancho: 1280 });
+console.log("Proyectos: revisado");
 
 // ── Capturas para la página y el README (claro y oscuro, escritorio y celular) ──
 if (CAPTURAS) {
