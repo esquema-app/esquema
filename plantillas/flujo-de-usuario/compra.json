@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "compra",
+  "categoria": "flujo-de-usuario",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Compra en línea",
+    "en": "Online checkout"
+  },
+  "descripcion": {
+    "es": "Del carro al pago y el despacho.",
+    "en": "From cart to payment and shipping."
+  },
+  "archivo": {
+    "es": "compra.mmd",
+    "en": "checkout.mmd"
+  },
+  "contenido": {
+    "es": "flowchart LR\n    A([Carro]) --> B[Datos de despacho]\n    B --> C[/Pago con tarjeta/]\n    C --> D{¿Aprobado?}\n    D -->|Sí| E[Confirmación por correo]\n    D -->|No| F[Probar otro medio]\n    F --> C\n    E --> G([Despacho])\n",
+    "en": "flowchart LR\n    A([Cart]) --> B[Shipping details]\n    B --> C[/Card payment/]\n    C --> D{Approved?}\n    D -->|Yes| E[Email confirmation]\n    D -->|No| F[Try another method]\n    F --> C\n    E --> G([Shipping])\n"
+  },
+  "autor": "Esquema"
+}

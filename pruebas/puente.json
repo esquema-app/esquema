@@ -1,0 +1,32 @@
+{
+  "descripcion": "Contrato entre la interfaz (ui/app.js) y las apps (Mac: app/Sources/Esquema/Ventana.swift; Windows y Linux: escritorio/src/main.js). La interfaz llama host.enviar(accion, datos); la app responde llamando window.Esquema.<respuesta>(json). pruebas/contrato.py revisa que esto, la interfaz y cada app digan lo mismo. Los scripts van con el Python portátil de la app; el último argumento es el JSON de salida.",
+  "acciones": {
+    "listo": { "datos": {}, "responde": "estado", "como": "bin/estado.py <salida> + bin/carpeta.py listar <config.carpeta> <salida> (si hay una carpeta guardada): {config, ias, version, plantillas, carpeta, archivos}" },
+    "config": { "datos": { "idioma_ui?": "es|en", "ia?": "claude|codex|gemini", "bienvenida?": true, "tema?": "sistema|claro|oscuro" }, "responde": null, "como": "bin/estado.py config <entrada> <salida>. Al guardar idioma_ui la app rearma sus menús en ese idioma y recién ahí parte lo que corre solo (actualizaciones)." },
+    "elegirCarpeta": { "datos": {}, "responde": "carpetaElegida", "como": "Selector de carpetas del sistema → guardar config.carpeta (y el marcador de acceso en Mac) → bin/carpeta.py listar. Si la persona cancela: {ok: false} sin error." },
+    "abrirArchivo": { "datos": { "ruta": "relativa a la carpeta" }, "responde": "archivoAbierto", "como": "bin/carpeta.py leer <entrada {carpeta, ruta}> <salida>" },
+    "guardarArchivo": { "datos": { "ruta": "relativa", "texto": "contenido", "nuevo?": true }, "responde": "archivoGuardado", "como": "bin/carpeta.py guardar <entrada {carpeta, ruta, texto, nuevo}> <salida>. De a uno por archivo, en orden." },
+    "probarIA": { "datos": { "ia": "claude|codex|gemini" }, "responde": "iaProbada", "como": "bin/ia.py probar <ia> <salida>" },
+    "estructura": { "datos": {}, "responde": "estructuraLista", "como": "bin/carpeta.py estructura <carpeta> <salida>: lo mismo que verá la IA para el README (solo nombres)." },
+    "crearReadme": { "datos": { "descripcion": "texto", "estructura": true, "idioma": "es|en", "anterior?": "README anterior", "pedido?": "qué cambiar" }, "responde": "readmeListo", "como": "bin/asistente.py readme <entrada {…datos, carpeta}> <salida>" },
+    "dibujar": { "datos": { "pedido": "texto", "tipo": "auto|flujo|secuencia|arquitectura", "actual?": "diagrama actual", "idioma": "es|en" }, "responde": "dibujoListo", "como": "bin/asistente.py dibujar <entrada> <salida>" },
+    "exportar": { "datos": { "formato": "svg|png|md", "nombre": "archivo sugerido", "texto?": "svg o markdown", "base64?": "png" }, "responde": "exportado", "como": "Panel «Guardar como» del sistema; escribe el archivo donde la persona elija. Cancelar: {ok: false} sin error." },
+    "copiar": { "datos": { "texto": "lo que va al portapapeles" }, "responde": "copiado", "como": "Portapapeles del sistema (NSPasteboard / clipboard de Electron)." },
+    "abrirEnlace": { "datos": { "url": "https://…" }, "responde": null, "como": "Solo https: se abre en el navegador; la ventana nunca navega fuera de ui/." }
+  },
+  "respuestas": {
+    "estado": "{config, ias: [{id, nombre, instalada}], version, plantillas, carpeta: {nombre, ruta} | null, archivos: [{ruta, tamano}]}",
+    "carpetaElegida": "{ok, carpeta, archivos} | {ok: false, error?}",
+    "archivoAbierto": "{ok, ruta, texto} | {ok: false, ruta, error}",
+    "archivoGuardado": "{ok, ruta} | {ok: false, ruta, error}",
+    "archivoCambiado": "{ruta, texto}: la app vigila la carpeta (FSEvents / fs.watch) y avisa si un archivo abierto cambió en el disco.",
+    "archivos": "{archivos}: la lista cambió en el disco (archivo nuevo, borrado o renombrado afuera).",
+    "iaProbada": "{ia, ok, error?}",
+    "estructuraLista": "{ok, archivos, omitidos, manifiestos} | {ok: false, error}",
+    "readmeListo": "{ok, texto} | {ok: false, error}",
+    "dibujoListo": "{ok, texto} | {ok: false, error}",
+    "exportado": "{ok, ruta?} | {ok: false, error?}",
+    "copiado": "{ok}"
+  },
+  "pendientes_en_apps": ["archivoCambiado", "archivos"]
+}

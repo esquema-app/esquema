@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "adr",
+  "categoria": "documentacion",
+  "tipo": "documento",
+  "nombre": {
+    "es": "Decisión de arquitectura (ADR)",
+    "en": "Architecture decision (ADR)"
+  },
+  "descripcion": {
+    "es": "Contexto, decisión, alternativas y consecuencias.",
+    "en": "Context, decision, alternatives and consequences."
+  },
+  "archivo": {
+    "es": "0001-decision.md",
+    "en": "0001-decision.md"
+  },
+  "contenido": {
+    "es": "# 1. Título de la decisión\n\n- **Estado:** propuesta\n- **Fecha:** AAAA-MM-DD\n\n## Contexto\n\nQué problema hay y qué nos obliga a decidir.\n\n## Decisión\n\nLo que vamos a hacer, en una o dos frases.\n\n```mermaid\nflowchart LR\n    A[Antes] --> B[Después]\n```\n\n## Alternativas que descartamos\n\n- Opción A: por qué no.\n- Opción B: por qué no.\n\n## Consecuencias\n\nLo que mejora, lo que cuesta y qué hay que vigilar.\n",
+    "en": "# 1. Decision title\n\n- **Status:** proposed\n- **Date:** YYYY-MM-DD\n\n## Context\n\nWhat the problem is and what forces us to decide.\n\n## Decision\n\nWhat we will do, in one or two sentences.\n\n```mermaid\nflowchart LR\n    A[Before] --> B[After]\n```\n\n## Alternatives we rejected\n\n- Option A: why not.\n- Option B: why not.\n\n## Consequences\n\nWhat gets better, what it costs and what to watch.\n"
+  },
+  "autor": "Esquema"
+}

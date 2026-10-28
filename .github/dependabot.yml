@@ -1,0 +1,12 @@
+# Dependabot: avisa cuando hay versiones nuevas de las actions (fijadas por SHA) y abre un pull request para revisarlas.
+# `cooldown`: espera unos días antes de proponer una versión recién publicada; si una action fue secuestrada, casi siempre se
+# descubre y se retira en ese plazo. Las alertas de seguridad no esperan. Nada se junta solo: cada PR se revisa como cualquier aporte.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+    groups:
+      actions: { patterns: ["*"] }
+    commit-message: { prefix: "Actions" }

@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "aplicacion-web",
+  "categoria": "arquitectura",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Aplicación web",
+    "en": "Web application"
+  },
+  "descripcion": {
+    "es": "Navegador, API, base de datos, caché y cola de correos, con íconos.",
+    "en": "Browser, API, database, cache and email queue, with icons."
+  },
+  "archivo": {
+    "es": "arquitectura.mmd",
+    "en": "architecture.mmd"
+  },
+  "contenido": {
+    "es": "flowchart LR\n    U([Persona]) --> W[App web]\n    W -->|HTTPS| A{{API}}\n    subgraph nube [Nube]\n        A --> S[Servicio de cuentas]\n        A --> C[Caché]\n        S --> D[(Base de datos)]\n        S -.-> Q[Cola de correos]\n    end\n    Q --> M[Servicio de correo]\n%% esquema: {\"iconos\":{\"A\":\"api\",\"C\":\"servidor\",\"M\":\"correo\",\"Q\":\"cola\",\"S\":\"servidor\",\"U\":\"persona\",\"W\":\"navegador\"}}\n",
+    "en": "flowchart LR\n    U([Person]) --> W[Web app]\n    W -->|HTTPS| A{{API}}\n    subgraph cloud [Cloud]\n        A --> S[Accounts service]\n        A --> C[Cache]\n        S --> D[(Database)]\n        S -.-> Q[Email queue]\n    end\n    Q --> M[Email service]\n%% esquema: {\"iconos\":{\"A\":\"api\",\"C\":\"servidor\",\"M\":\"correo\",\"Q\":\"cola\",\"S\":\"servidor\",\"U\":\"persona\",\"W\":\"navegador\"}}\n"
+  },
+  "autor": "Esquema"
+}

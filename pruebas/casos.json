@@ -1,0 +1,989 @@
+{
+ "flujo": [
+  {
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Sí?}\n    B -->|Sí| C[(Datos)]\n    B -- No --> D([Fin])\n",
+   "dir": "TB",
+   "nodos": {
+    "A": [
+     "rectangulo",
+     "Inicio"
+    ],
+    "B": [
+     "rombo",
+     "¿Sí?"
+    ],
+    "C": [
+     "cilindro",
+     "Datos"
+    ],
+    "D": [
+     "estadio",
+     "Fin"
+    ]
+   },
+   "aristas": [
+    [
+     "A",
+     "B",
+     null,
+     "normal"
+    ],
+    [
+     "B",
+     "C",
+     "Sí",
+     "normal"
+    ],
+    [
+     "B",
+     "D",
+     "No",
+     "normal"
+    ]
+   ]
+  },
+  {
+   "texto": "graph LR\nA-->B;B-.->C\nC==>|grueso|D\nD~~~E",
+   "dir": "LR",
+   "nodos": {
+    "A": [
+     "rectangulo",
+     "A"
+    ],
+    "E": [
+     "rectangulo",
+     "E"
+    ]
+   },
+   "aristas": [
+    [
+     "A",
+     "B",
+     null,
+     "normal"
+    ],
+    [
+     "B",
+     "C",
+     null,
+     "punteada"
+    ],
+    [
+     "C",
+     "D",
+     "grueso",
+     "gruesa"
+    ],
+    [
+     "D",
+     "E",
+     null,
+     "invisible"
+    ]
+   ]
+  },
+  {
+   "texto": "flowchart TB\n    a & b --> c & d",
+   "dir": "TB",
+   "nodos": {
+    "a": [
+     "rectangulo",
+     "a"
+    ]
+   },
+   "aristas": [
+    [
+     "a",
+     "c",
+     null,
+     "normal"
+    ],
+    [
+     "a",
+     "d",
+     null,
+     "normal"
+    ],
+    [
+     "b",
+     "c",
+     null,
+     "normal"
+    ],
+    [
+     "b",
+     "d",
+     null,
+     "normal"
+    ]
+   ]
+  },
+  {
+   "texto": "flowchart TD\n    A[\"Con (paréntesis) y #quot;comillas#quot;\"] --> B[Dos<br>líneas]",
+   "dir": "TB",
+   "nodos": {
+    "A": [
+     "rectangulo",
+     "Con (paréntesis) y \"comillas\""
+    ],
+    "B": [
+     "rectangulo",
+     "Dos\nlíneas"
+    ]
+   },
+   "aristas": [
+    [
+     "A",
+     "B",
+     null,
+     "normal"
+    ]
+   ]
+  },
+  {
+   "texto": "flowchart TD\n    A@{ shape: cyl, label: \"Base\" } --> B@{ shape: doc, label: \"Informe\" }",
+   "dir": "TB",
+   "nodos": {
+    "A": [
+     "cilindro",
+     "Base"
+    ],
+    "B": [
+     "documento",
+     "Informe"
+    ]
+   },
+   "aristas": [
+    [
+     "A",
+     "B",
+     null,
+     "normal"
+    ]
+   ]
+  },
+  {
+   "texto": "flowchart TD\n    node-1 --> node-2\n    box --x xa\n    c --o d",
+   "dir": "TB",
+   "nodos": {
+    "node-1": [
+     "rectangulo",
+     "node-1"
+    ],
+    "xa": [
+     "rectangulo",
+     "xa"
+    ]
+   },
+   "aristas": [
+    [
+     "node-1",
+     "node-2",
+     null,
+     "normal"
+    ],
+    [
+     "box",
+     "xa",
+     null,
+     "normal"
+    ],
+    [
+     "c",
+     "d",
+     null,
+     "normal"
+    ]
+   ]
+  }
+ ],
+ "errores": [
+  {
+   "texto": "flowchart TD\n    A[Pagar --> B",
+   "linea": 2,
+   "plantilla": "Falta cerrar «{c}» en «{x}».",
+   "sugerencia": "A[Pagar --> B]"
+  },
+  {
+   "texto": "flowchart TD\n    A -> B",
+   "linea": 2,
+   "plantilla": "«{x}» no es una flecha de Mermaid. ¿Quisiste decir «{s}»?",
+   "sugerencia": "A --> B"
+  },
+  {
+   "texto": "flowchart TD\n    A -->",
+   "linea": 2,
+   "plantilla": "La flecha que sale de «{n}» no llega a ningún nodo."
+  },
+  {
+   "texto": "graph XX\n    A --> B",
+   "linea": 1,
+   "plantilla": "«{x}» no es una dirección: usa TD, LR, BT o RL."
+  },
+  {
+   "texto": "flowchart TD\n    subgraph x\n    A --> B",
+   "linea": 2,
+   "plantilla": "Falta «end» para cerrar el grupo «{x}» de la línea {n}."
+  },
+  {
+   "texto": "flowchart TD\n    A --> B\n    end",
+   "linea": 3,
+   "plantilla": "Sobra este «end»: no hay ningún «subgraph» abierto."
+  },
+  {
+   "texto": "flowchart TD\n    A[\"sin cerrar] --> B",
+   "linea": 2,
+   "plantilla": "Falta cerrar las comillas en «{x}»."
+  },
+  {
+   "texto": "flowchart TD\n    A --> end",
+   "linea": 2,
+   "plantilla": "«end» es una palabra reservada de Mermaid y no puede ser el nombre de un nodo."
+  },
+  {
+   "texto": "sequenceDiagram\n    A->>B hola",
+   "linea": 2,
+   "plantilla": "Al mensaje le falta «:» y su texto."
+  },
+  {
+   "texto": "sequenceDiagram\n    loop Siempre\n    A->>B: x",
+   "linea": 2,
+   "plantilla": "Falta «end» para cerrar «{x}» de la línea {n}."
+  },
+  {
+   "texto": "sequenceDiagram\n    else nada",
+   "linea": 2,
+   "plantilla": "«{x}» solo va dentro de un «{b}»."
+  },
+  {
+   "texto": "sequenceDiagram\n    hola mundo",
+   "linea": 2,
+   "plantilla": "No entiendo «{x}». Un mensaje se escribe «A->>B: texto»."
+  },
+  {
+   "texto": "classDiagram\n    A <|-- B",
+   "linea": 1,
+   "plantilla": "Esquema todavía no dibuja «{x}». Lo dejo tal cual: GitHub sí lo muestra.",
+   "aviso": true
+  },
+  {
+   "texto": "diagrama raro",
+   "linea": 1,
+   "plantilla": "No reconozco «{x}». Empieza con «flowchart TD» o «sequenceDiagram»."
+  }
+ ],
+ "ediciones": [
+  {
+   "op": "renombrarNodo",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "A",
+    "Empieza (aquí)"
+   ],
+   "esperado": "flowchart TD\n    A[\"Empieza (aquí)\"] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n"
+  },
+  {
+   "op": "renombrarNodo",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "D",
+    "Cuatro"
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D[Cuatro] & E\n"
+  },
+  {
+   "op": "cambiarForma",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "A",
+    "estadio",
+    null
+   ],
+   "esperado": "flowchart TD\n    A([Inicio]) --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n"
+  },
+  {
+   "op": "cambiarForma",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "C",
+    "cilindro",
+    "base-de-datos"
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n%% esquema: {\"iconos\":{\"C\":\"base-de-datos\"}}\n"
+  },
+  {
+   "op": "conectar",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "E",
+    "A"
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n    E --> A\n"
+  },
+  {
+   "op": "conectar",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "E",
+    "A",
+    "otra vez"
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n    E -->|otra vez| A\n"
+  },
+  {
+   "op": "borrarNodo",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "B"
+   ],
+   "esperado": "flowchart TD\n    A[Inicio]\n    C[(Base)]\n    %% comentario\n    C --> D & E\n"
+  },
+  {
+   "op": "borrarNodo",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "D"
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> E\n"
+  },
+  {
+   "op": "borrarArista",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    0
+   ],
+   "esperado": "flowchart TD\n    A[Inicio]\n    B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n"
+  },
+  {
+   "op": "borrarArista",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    3
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D\n"
+  },
+  {
+   "op": "renombrarArista",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    1,
+    "Claro"
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Claro| C[(Base)]\n    %% comentario\n    C --> D & E\n"
+  },
+  {
+   "op": "renombrarArista",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    0,
+    "va"
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] -->|va| B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n"
+  },
+  {
+   "op": "renombrarArista",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    1,
+    ""
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B --> C[(Base)]\n    %% comentario\n    C --> D & E\n"
+  },
+  {
+   "op": "fijar",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "A",
+    10.4,
+    20.6
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n%% esquema: {\"pos\":{\"A\":[10,21]}}\n"
+  },
+  {
+   "op": "desfijar",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n%% esquema: {\"pos\":{\"A\":[10,21]}}\n",
+   "args": [
+    "A"
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n"
+  },
+  {
+   "op": "cambiarDireccion",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "LR"
+   ],
+   "esperado": "flowchart LR\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n"
+  },
+  {
+   "op": "estiloAristas",
+   "texto": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n",
+   "args": [
+    "ortogonal"
+   ],
+   "esperado": "flowchart TD\n    A[Inicio] --> B{¿Pagar?}\n    B -->|Sí| C[(Base)]\n    %% comentario\n    C --> D & E\n%% esquema: {\"aristas\":\"ortogonal\"}\n"
+  }
+ ],
+ "ediciones_secuencia": [
+  {
+   "op": "renombrarParticipante",
+   "texto": "sequenceDiagram\n    participant A as Ana\n    participant B\n    A->>B: Hola\n    Note right of B: Piensa\n    B-->>A: Chao\n",
+   "args": [
+    "A",
+    "Ana Pérez"
+   ],
+   "esperado": "sequenceDiagram\n    participant A as Ana Pérez\n    participant B\n    A->>B: Hola\n    Note right of B: Piensa\n    B-->>A: Chao\n"
+  },
+  {
+   "op": "renombrarParticipante",
+   "texto": "sequenceDiagram\n    participant A as Ana\n    participant B\n    A->>B: Hola\n    Note right of B: Piensa\n    B-->>A: Chao\n",
+   "args": [
+    "B",
+    "Bruno"
+   ],
+   "esperado": "sequenceDiagram\n    participant A as Ana\n    participant B as Bruno\n    A->>B: Hola\n    Note right of B: Piensa\n    B-->>A: Chao\n"
+  },
+  {
+   "op": "cambiarTextoEvento",
+   "texto": "sequenceDiagram\n    participant A as Ana\n    participant B\n    A->>B: Hola\n    Note right of B: Piensa\n    B-->>A: Chao\n",
+   "args": [
+    3,
+    "Hola; ¿cómo estás?"
+   ],
+   "esperado": "sequenceDiagram\n    participant A as Ana\n    participant B\n    A->>B: Hola#59; ¿cómo estás?\n    Note right of B: Piensa\n    B-->>A: Chao\n"
+  },
+  {
+   "op": "cambiarTextoEvento",
+   "texto": "sequenceDiagram\n    participant A as Ana\n    participant B\n    A->>B: Hola\n    Note right of B: Piensa\n    B-->>A: Chao\n",
+   "args": [
+    4,
+    "Lo pensó"
+   ],
+   "esperado": "sequenceDiagram\n    participant A as Ana\n    participant B\n    A->>B: Hola\n    Note right of B: Lo pensó\n    B-->>A: Chao\n"
+  },
+  {
+   "op": "borrarLinea",
+   "texto": "sequenceDiagram\n    participant A as Ana\n    participant B\n    A->>B: Hola\n    Note right of B: Piensa\n    B-->>A: Chao\n",
+   "args": [
+    4
+   ],
+   "esperado": "sequenceDiagram\n    participant A as Ana\n    participant B\n    A->>B: Hola\n    B-->>A: Chao\n"
+  }
+ ],
+ "secuencia": [
+  {
+   "texto": "sequenceDiagram\n    participant A as Ana\n    participant B\n    A->>B: Hola\n    Note right of B: Piensa\n    B-->>A: Chao\n",
+   "participantes": [
+    [
+     "A",
+     "Ana",
+     false
+    ],
+    [
+     "B",
+     "B",
+     false
+    ]
+   ],
+   "mensajes": [
+    [
+     "A",
+     "B",
+     "Hola",
+     "continua",
+     "llena"
+    ],
+    [
+     "B",
+     "A",
+     "Chao",
+     "punteada",
+     "llena"
+    ]
+   ]
+  },
+  {
+   "texto": "sequenceDiagram\n    actor U\n    U-)S: async\n    S--xU: falla\n    U<<->>S: doble",
+   "participantes": [
+    [
+     "U",
+     "U",
+     true
+    ],
+    [
+     "S",
+     "S",
+     false
+    ]
+   ],
+   "mensajes": [
+    [
+     "U",
+     "S",
+     "async",
+     "continua",
+     "async"
+    ],
+    [
+     "S",
+     "U",
+     "falla",
+     "punteada",
+     "cruz"
+    ],
+    [
+     "U",
+     "S",
+     "doble",
+     "continua",
+     "llena"
+    ]
+   ]
+  }
+ ],
+ "markdown": [
+  {
+   "md": "<script>alert(1)</script>",
+   "no_contiene": [
+    "<script"
+   ]
+  },
+  {
+   "md": "<img src=x onerror=alert(1)>",
+   "no_contiene": [
+    "<img",
+    "onerror"
+   ]
+  },
+  {
+   "md": "[clic](javascript:alert(1))",
+   "no_contiene": [
+    "href=\"javascript"
+   ]
+  },
+  {
+   "md": "[ok](https://ejemplo.cl) y [doc](docs/a.md)",
+   "contiene": [
+    "href=\"https://ejemplo.cl\"",
+    "href=\"docs/a.md\""
+   ]
+  },
+  {
+   "md": "<details><summary>Más</summary>texto</details>",
+   "contiene": [
+    "<details>",
+    "<summary>"
+   ]
+  },
+  {
+   "md": "<p align=\"center\" onclick=\"x()\">Hola</p>",
+   "no_contiene": [
+    "onclick",
+    "<p align"
+   ],
+   "contiene": [
+    "Hola"
+   ]
+  },
+  {
+   "md": "![logo](https://ejemplo.cl/logo.png)",
+   "no_contiene": [
+    "<img"
+   ],
+   "contiene": [
+    "md-img"
+   ]
+  },
+  {
+   "md": "```mermaid\nflowchart TD\nA-->B\n```\n\ntexto\n\n```mermaid\nsequenceDiagram\nA->>B: x\n```",
+   "contiene": [
+    "data-bloque=\"0\"",
+    "data-bloque=\"1\""
+   ]
+  },
+  {
+   "md": "| a | b |\n|---|:-:|\n| 1 | `x|y` |",
+   "contiene": [
+    "<table>",
+    "text-align:center"
+   ]
+  },
+  {
+   "md": "- [x] hecho\n- [ ] falta\n  - sub",
+   "contiene": [
+    "checked",
+    "<ul><li>"
+   ]
+  },
+  {
+   "md": "**negrita** _cursiva_ ~~no~~ `<b>`",
+   "contiene": [
+    "<strong>negrita</strong>",
+    "<em>cursiva</em>",
+    "<del>no</del>",
+    "<code>&lt;b&gt;</code>"
+   ]
+  }
+ ],
+ "plantillas": [
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": true
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    },
+    "autor": "Ana Pérez",
+    "etiquetas": [
+     "web"
+    ]
+   },
+   "valida": true
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    },
+    "script": "alert(1)"
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "Con Espacios",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "../salir",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "otra",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "documento",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "../x.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "x.html"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "en": "Sin español"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": "texto suelto"
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 2,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": true,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Prueba"
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  },
+  {
+   "plantilla": {
+    "formato": 1,
+    "id": "prueba",
+    "categoria": "arquitectura",
+    "tipo": "diagrama",
+    "nombre": {
+     "es": "Bien",
+     "<b>": "mal"
+    },
+    "descripcion": {
+     "es": "Una prueba."
+    },
+    "archivo": {
+     "es": "prueba.mmd"
+    },
+    "contenido": {
+     "es": "flowchart TD\n    A --> B\n"
+    }
+   },
+   "valida": false
+  }
+ ],
+ "limpiar_diagrama": [
+  {
+   "respuesta": "Aquí va:\n```mermaid\nflowchart TD\n    A --> B\n```\nListo.",
+   "esperado": "flowchart TD\n    A --> B\n"
+  },
+  {
+   "respuesta": "flowchart LR\n    A --> B",
+   "esperado": "flowchart LR\n    A --> B\n"
+  },
+  {
+   "respuesta": "```mermaid\n%%{init: {\"theme\":\"dark\"}}%%\nflowchart TD\n    A --> B\n    click A \"https://x.cl\"\n```",
+   "esperado": "flowchart TD\n    A --> B\n"
+  },
+  {
+   "respuesta": "```mermaid\nclassDiagram\n    A <|-- B\n```",
+   "esperado": null
+  },
+  {
+   "respuesta": "No puedo hacer eso.",
+   "esperado": null
+  }
+ ]
+}

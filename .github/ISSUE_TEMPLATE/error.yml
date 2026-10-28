@@ -1,0 +1,30 @@
+name: 🐞 Algo falla / Something's broken
+description: Cuéntanos qué pasó. Solo con diagramas ficticios. / Tell us what happened, with fictional diagrams only.
+labels: [error]
+body:
+  - type: textarea
+    id: que
+    attributes:
+      label: ¿Qué pasó? / What happened?
+      description: Qué hiciste, qué esperabas y qué pasó en cambio.
+    validations: { required: true }
+  - type: textarea
+    id: diagrama
+    attributes:
+      label: El texto del diagrama (con datos inventados) / The diagram text (made-up data)
+      render: text
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Sistema / System
+      options: [Mac, Windows, Linux, Vista previa en el navegador / Browser preview]
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Esquema / Esquema version
+      description: Ajustes → Acerca de.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Algo más (capturas, pasos para repetirlo) / Anything else

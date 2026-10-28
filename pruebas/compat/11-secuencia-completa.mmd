@@ -1,0 +1,40 @@
+sequenceDiagram
+    autonumber
+    actor A as Ana
+    participant W as Web
+    participant S as Servidor
+    A->>W: Abre
+    W->>+S: GET /
+    loop Cada 5 segundos
+        S->>S: Revisa
+    end
+    alt Hay datos
+        S-->>W: 200
+    else No hay
+        S--xW: 404
+    end
+    opt Con caché
+        W-)W: Guarda
+    end
+    par Correo
+        S->>A: Aviso
+    and Celular
+        S->>A: Notificación
+    end
+    critical Pago
+        S->>S: Cobra
+    option Falla
+        S->>A: Error
+    end
+    break Sin red
+        W-->>A: Sin conexión
+    end
+    rect rgb(200, 220, 255)
+        S-->>-W: Listo
+    end
+    Note right of A: Lo ve al tiro
+    Note over W,S: Cifrado
+    activate W
+    W-->W: Pinta
+    deactivate W
+    A<<->>W: Conversan

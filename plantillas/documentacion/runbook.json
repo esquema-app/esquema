@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "runbook",
+  "categoria": "documentacion",
+  "tipo": "documento",
+  "nombre": {
+    "es": "Runbook de incidentes",
+    "en": "Incident runbook"
+  },
+  "descripcion": {
+    "es": "Qué hacer cuando algo falla: señales, pasos y a quién avisar.",
+    "en": "What to do when something fails: signals, steps and who to tell."
+  },
+  "archivo": {
+    "es": "runbook.md",
+    "en": "runbook.md"
+  },
+  "contenido": {
+    "es": "# Runbook: el servicio no responde\n\n## Señales\n\n- Alerta «API sin respuesta» por más de 5 minutos.\n- Personas reportan errores al pagar.\n\n## Qué hacer\n\n```mermaid\nflowchart TD\n    A([Llega la alerta]) --> B{¿Responde /salud?}\n    B -->|No| C[Reinicia el servicio]\n    B -->|Sí| D[Revisa la base de datos]\n    C --> E{¿Volvió?}\n    E -->|No| F[Avisa a la persona de turno]\n    E -->|Sí| G([Escribe qué pasó])\n    D --> G\n```\n\n## A quién avisar\n\n| Rol | Cómo |\n|---|---|\n| Persona de turno | Canal #incidentes |\n| Responsable del servicio | Correo del equipo |\n",
+    "en": "# Runbook: the service is down\n\n## Signals\n\n- \"API not responding\" alert for more than 5 minutes.\n- People report errors when paying.\n\n## What to do\n\n```mermaid\nflowchart TD\n    A([Alert arrives]) --> B{Does /health respond?}\n    B -->|No| C[Restart the service]\n    B -->|Yes| D[Check the database]\n    C --> E{Back up?}\n    E -->|No| F[Tell the on-call person]\n    E -->|Yes| G([Write down what happened])\n    D --> G\n```\n\n## Who to tell\n\n| Role | How |\n|---|---|\n| On-call person | #incidents channel |\n| Service owner | Team email |\n"
+  },
+  "autor": "Esquema"
+}

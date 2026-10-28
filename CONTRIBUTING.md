@@ -1,0 +1,54 @@
+# Cómo aportar a Esquema
+
+Esquema es gratis y abierto, y lo hacemos entre todos. Hay lugar para cualquiera, programes o no. *(English below.)*
+
+## Sin programar
+- **Crea una plantilla:** un diagrama o un documento que te sirve a ti (arquitectura, secuencia de una API, flujo de usuario,
+  proceso de negocio, README, ADR, runbook…). Es un JSON corto con el texto en Mermaid o Markdown (formato en
+  [`plantillas/README.md`](plantillas/README.md)). Se comparte en el
+  [catálogo de la comunidad](https://github.com/esquema-app/esquema-catalogo) *(en preparación)*.
+- **Pruébalo con tus diagramas** y cuéntanos qué no se ve bien: un diagrama de Mermaid que Esquema no lea o dibuje distinto es un
+  aporte enorme (con datos ficticios). Los issues con la etiqueta [`probar`](https://github.com/esquema-app/esquema/labels/probar) piden justo eso.
+- **Conversa:** dudas, ideas o lo que documentaste con Esquema → [Discussions](https://github.com/esquema-app/esquema/discussions).
+- **Cuéntanos qué falla o qué te gustaría** en [issues](https://github.com/esquema-app/esquema/issues/new/choose).
+- **Traducciones:** revisa o mejora `ui/idiomas/en.json`, o propón otro idioma.
+
+## Programando (con o sin IA)
+1. Lee [`AGENTS.md`](AGENTS.md): cómo funciona, reglas y cómo se conectan las piezas. Sirve igual para personas y para tu IA.
+2. Haz un fork, una rama y tu cambio. La sección «Desarrollo» del [README](README.md#desarrollo) explica cómo correrlo.
+3. Corre `bash pruebas/correr.sh` (lo mismo que revisa GitHub en cada cambio).
+4. Abre un pull request contando qué cambia para quien usa Esquema y cómo lo probaste.
+
+Reglas que importan: código, comentarios y textos en español (todo texto nuevo de la interfaz con su traducción en
+`ui/idiomas/en.json`); **nunca subas documentos reales ni datos personales**; el motor y la interfaz sin dependencias; Python solo con
+biblioteca estándar; lo que Esquema escribe tiene que seguir siendo Mermaid que GitHub muestra (lo propio va en `%% esquema:`).
+
+Los aportes entran con la licencia del proyecto, [AGPL-3.0](LICENSE).
+
+## Cómo revisamos
+Todo entra por pull request y lo junta alguien que mantiene el proyecto: nadie puede subir cambios directo. Revisamos:
+- **Siempre:** que las pruebas de GitHub pasen, que no haya datos personales y que el cambio haga lo que dice. Si es tu primer
+  aporte, GitHub espera a que aprobemos correr las pruebas (es normal).
+- **Motor:** que la compatibilidad con Mermaid siga (los ejemplos de `pruebas/compat/` se leen y se escriben igual), que no baje el
+  rendimiento (`node pruebas/motor.mjs` y, si toca el acomodo, `herramientas/comparar_mermaid.mjs`) y que todo texto se escape.
+- **Interfaz:** que funcione con teclado, a 390 px y en claro y oscuro, y que los textos tengan traducción.
+- **Plantillas:** que pasen `python3 bin/plantillas.py validar`, que el nombre y la descripción digan lo que son y que no traigan datos
+  de nadie.
+- **Traducciones:** que una persona que hable el idioma revise el texto.
+
+Si algo falta te lo pedimos con un comentario; casi nunca cerramos un aporte sin conversar.
+
+**¿Encontraste una falla de seguridad?** No abras un issue: repórtala en privado como explica [SECURITY.md](SECURITY.md).
+
+Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
+
+---
+
+## Contributing (English)
+- **No code needed:** create a template (a short JSON file with Mermaid or Markdown text; format in [`plantillas/README.md`](plantillas/README.md)),
+  try Esquema with your diagrams and tell us what looks wrong (label `probar`, fictional data only), chat in
+  [Discussions](https://github.com/esquema-app/esquema/discussions), report bugs or ideas, and help with translations.
+- **Code (with or without AI):** read [`AGENTS.md`](AGENTS.md), fork, branch, run `bash pruebas/correr.sh` and open a pull request.
+  Code and comments are in Spanish; UI text needs its English entry in `ui/idiomas/en.json`; never commit real documents or personal data.
+- **Review:** everything goes through a pull request and a maintainer merges it. Contributions are licensed under AGPL-3.0.
+- **Security issues:** don't open a public issue; report them privately as explained in [SECURITY.md](SECURITY.md).

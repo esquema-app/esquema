@@ -1,0 +1,287 @@
+{
+ "config": {
+  "ia": "claude"
+ },
+ "ias": [
+  {
+   "id": "claude",
+   "nombre": "Claude",
+   "instalada": true
+  },
+  {
+   "id": "codex",
+   "nombre": "ChatGPT (Codex)",
+   "instalada": true
+  },
+  {
+   "id": "gemini",
+   "nombre": "Gemini",
+   "instalada": false
+  }
+ ],
+ "version": "0.1.0",
+ "carpeta": {
+  "nombre": "proyecto-ejemplo",
+  "ruta": "~/Proyectos/proyecto-ejemplo"
+ },
+ "archivos": [
+  {
+   "ruta": "README.md",
+   "texto": "# Pagos de Banco Ejemplo\n\nServicio ficticio de pagos que usa la demo de Esquema. Lo mantiene Ana Pérez, junto a Matías Soto.\n\n> [!NOTE]\n> Todo en esta carpeta es inventado: sirve para probar Esquema sin tocar tus archivos.\n\n## Cómo funciona\n\nUna persona paga desde la app; la API lo registra y avisa por correo.\n\n```mermaid\nflowchart LR\n    P([Persona]) --> W[App web]\n    W -->|HTTPS| A{{API de pagos}}\n    A --> D[(Base de datos)]\n    A -.->|pago aprobado| Q[Cola de correos]\n    Q --> C[Servicio de correo]\n%% esquema: {\"iconos\":{\"A\":\"api\",\"C\":\"correo\",\"P\":\"persona\",\"Q\":\"cola\",\"W\":\"navegador\"}}\n```\n\n## Un pago, paso a paso\n\n```mermaid\nsequenceDiagram\n    actor P as Ana Pérez\n    participant W as App web\n    participant A as API\n    participant B as Banco Ejemplo\n    P->>W: Paga $12.990\n    W->>+A: POST /pagos\n    A->>B: Autoriza la tarjeta\n    B-->>A: Aprobado\n    A-->>-W: 201 Creado\n    W-->>P: ¡Listo!\n```\n\n## Documentos\n\n- [Arquitectura](docs/arquitectura.mmd)\n- [Flujo de un pago](docs/pago.mmd)\n- [Decisión: usar una cola para los correos](docs/decisiones/0001-usar-cola.md)\n\n## Licencia\n\nAGPL-3.0\n"
+  },
+  {
+   "ruta": "docs/arquitectura.mmd",
+   "texto": "flowchart TD\n    P([Persona]) --> W[App web]\n    M([Celular]) --> G{{Puerta de enlace}}\n    W --> G\n    subgraph nube [Nube de Banco Ejemplo]\n        G --> A[API de pagos]\n        G --> U[API de usuarios]\n        A --> D[(Pagos)]\n        U --> E[(Usuarios)]\n        A -.-> Q[Cola de correos]\n    end\n    Q --> C[Servicio de correo]\n    A -->|autoriza| B[Banco Ejemplo]\n%% esquema: {\"iconos\":{\"A\":\"servidor\",\"B\":\"nube\",\"C\":\"correo\",\"G\":\"balanceador\",\"M\":\"movil\",\"P\":\"persona\",\"Q\":\"cola\",\"U\":\"servidor\",\"W\":\"navegador\"}}\n"
+  },
+  {
+   "ruta": "docs/pago.mmd",
+   "texto": "flowchart TD\n    A([Elige qué pagar]) --> B[Revisa el monto]\n    B --> C{¿Tiene saldo?}\n    C -->|Sí| D[Confirma con su huella]\n    C -->|No| E[Ve otras formas de pago]\n    E --> B\n    D --> F[[Banco Ejemplo autoriza]]\n    F --> G{¿Aprobado?}\n    G -->|Sí| H([Recibe el comprobante])\n    G -->|No| E\n"
+  },
+  {
+   "ruta": "docs/decisiones/0001-usar-cola.md",
+   "texto": "# 1. Usar una cola para los correos\n\n- **Estado:** aceptada\n- **Fecha:** 2026-03-12\n- **Quién:** Matías Soto\n\n## Contexto\n\nCuando el servicio de correo se demora, la API de pagos también se demora y algunas personas pagan dos veces.\n\n## Decisión\n\nLa API deja el aviso en una cola y sigue; el servicio de correo lo envía cuando puede.\n\n```mermaid\nsequenceDiagram\n    participant A as API de pagos\n    participant Q as Cola\n    participant C as Correo\n    A-)Q: Pago aprobado\n    Note right of A: La API responde sin esperar\n    Q->>C: Enviar comprobante\n    C-->>Q: Enviado\n```\n\n## Consecuencias\n\n- Los pagos responden en menos de un segundo aunque el correo falle.\n- Hay que vigilar que la cola no crezca: alerta si pasa de 1.000 avisos.\n"
+  }
+ ],
+ "plantillas": [
+  {
+   "formato": 1,
+   "id": "aplicacion-web",
+   "categoria": "arquitectura",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Aplicación web",
+    "en": "Web application"
+   },
+   "descripcion": {
+    "es": "Navegador, API, base de datos, caché y cola de correos, con íconos.",
+    "en": "Browser, API, database, cache and email queue, with icons."
+   },
+   "archivo": {
+    "es": "arquitectura.mmd",
+    "en": "architecture.mmd"
+   },
+   "contenido": {
+    "es": "flowchart LR\n    U([Persona]) --> W[App web]\n    W -->|HTTPS| A{{API}}\n    subgraph nube [Nube]\n        A --> S[Servicio de cuentas]\n        A --> C[Caché]\n        S --> D[(Base de datos)]\n        S -.-> Q[Cola de correos]\n    end\n    Q --> M[Servicio de correo]\n%% esquema: {\"iconos\":{\"A\":\"api\",\"C\":\"servidor\",\"M\":\"correo\",\"Q\":\"cola\",\"S\":\"servidor\",\"U\":\"persona\",\"W\":\"navegador\"}}\n",
+    "en": "flowchart LR\n    U([Person]) --> W[Web app]\n    W -->|HTTPS| A{{API}}\n    subgraph cloud [Cloud]\n        A --> S[Accounts service]\n        A --> C[Cache]\n        S --> D[(Database)]\n        S -.-> Q[Email queue]\n    end\n    Q --> M[Email service]\n%% esquema: {\"iconos\":{\"A\":\"api\",\"C\":\"servidor\",\"M\":\"correo\",\"Q\":\"cola\",\"S\":\"servidor\",\"U\":\"persona\",\"W\":\"navegador\"}}\n"
+   },
+   "autor": "Esquema"
+  },
+  {
+   "formato": 1,
+   "id": "microservicios",
+   "categoria": "arquitectura",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Microservicios",
+    "en": "Microservices"
+   },
+   "descripcion": {
+    "es": "Puerta de enlace, servicios con su propia base y eventos entre ellos.",
+    "en": "Gateway, services with their own database and events between them."
+   },
+   "archivo": {
+    "es": "microservicios.mmd",
+    "en": "microservices.mmd"
+   },
+   "contenido": {
+    "es": "flowchart TD\n    C([Celular]) --> G{{Puerta de enlace}}\n    B([Navegador]) --> G\n    G --> P[Pagos]\n    G --> U[Usuarios]\n    G --> N[Notificaciones]\n    P --> PD[(Pagos BD)]\n    U --> UD[(Usuarios BD)]\n    P -.->|pago aprobado| E[[Bus de eventos]]\n    E -.-> N\n%% esquema: {\"iconos\":{\"B\":\"navegador\",\"C\":\"movil\",\"E\":\"cola\",\"G\":\"balanceador\",\"N\":\"correo\",\"P\":\"servidor\",\"U\":\"servidor\"}}\n",
+    "en": "flowchart TD\n    C([Phone]) --> G{{Gateway}}\n    B([Browser]) --> G\n    G --> P[Payments]\n    G --> U[Users]\n    G --> N[Notifications]\n    P --> PD[(Payments DB)]\n    U --> UD[(Users DB)]\n    P -.->|payment approved| E[[Event bus]]\n    E -.-> N\n%% esquema: {\"iconos\":{\"B\":\"navegador\",\"C\":\"movil\",\"E\":\"cola\",\"G\":\"balanceador\",\"N\":\"correo\",\"P\":\"servidor\",\"U\":\"servidor\"}}\n"
+   },
+   "autor": "Esquema"
+  },
+  {
+   "formato": 1,
+   "id": "adr",
+   "categoria": "documentacion",
+   "tipo": "documento",
+   "nombre": {
+    "es": "Decisión de arquitectura (ADR)",
+    "en": "Architecture decision (ADR)"
+   },
+   "descripcion": {
+    "es": "Contexto, decisión, alternativas y consecuencias.",
+    "en": "Context, decision, alternatives and consequences."
+   },
+   "archivo": {
+    "es": "0001-decision.md",
+    "en": "0001-decision.md"
+   },
+   "contenido": {
+    "es": "# 1. Título de la decisión\n\n- **Estado:** propuesta\n- **Fecha:** AAAA-MM-DD\n\n## Contexto\n\nQué problema hay y qué nos obliga a decidir.\n\n## Decisión\n\nLo que vamos a hacer, en una o dos frases.\n\n```mermaid\nflowchart LR\n    A[Antes] --> B[Después]\n```\n\n## Alternativas que descartamos\n\n- Opción A: por qué no.\n- Opción B: por qué no.\n\n## Consecuencias\n\nLo que mejora, lo que cuesta y qué hay que vigilar.\n",
+    "en": "# 1. Decision title\n\n- **Status:** proposed\n- **Date:** YYYY-MM-DD\n\n## Context\n\nWhat the problem is and what forces us to decide.\n\n## Decision\n\nWhat we will do, in one or two sentences.\n\n```mermaid\nflowchart LR\n    A[Before] --> B[After]\n```\n\n## Alternatives we rejected\n\n- Option A: why not.\n- Option B: why not.\n\n## Consequences\n\nWhat gets better, what it costs and what to watch.\n"
+   },
+   "autor": "Esquema"
+  },
+  {
+   "formato": 1,
+   "id": "readme",
+   "categoria": "documentacion",
+   "tipo": "documento",
+   "nombre": {
+    "es": "README de proyecto",
+    "en": "Project README"
+   },
+   "descripcion": {
+    "es": "Qué es, cómo funciona (con diagrama), cómo empezar y cómo aportar.",
+    "en": "What it is, how it works (with a diagram), how to start and contribute."
+   },
+   "archivo": {
+    "es": "README.md",
+    "en": "README.md"
+   },
+   "contenido": {
+    "es": "# Nombre del proyecto\n\nUna frase que diga qué hace y para quién.\n\n## Cómo funciona\n\n```mermaid\nflowchart LR\n    P([Persona]) --> A[App]\n    A --> D[(Datos)]\n```\n\n## Para empezar\n\n1. Clona el repositorio.\n2. Instala lo necesario.\n3. Corre las pruebas.\n\n## Cómo aportar\n\nAbre un issue o un pull request. Lee `CONTRIBUTING.md`.\n\n## Licencia\n\nIndica la licencia aquí.\n",
+    "en": "# Project name\n\nOne sentence on what it does and for whom.\n\n## How it works\n\n```mermaid\nflowchart LR\n    P([Person]) --> A[App]\n    A --> D[(Data)]\n```\n\n## Getting started\n\n1. Clone the repository.\n2. Install what you need.\n3. Run the tests.\n\n## Contributing\n\nOpen an issue or a pull request. Read `CONTRIBUTING.md`.\n\n## License\n\nState the license here.\n"
+   },
+   "autor": "Esquema"
+  },
+  {
+   "formato": 1,
+   "id": "runbook",
+   "categoria": "documentacion",
+   "tipo": "documento",
+   "nombre": {
+    "es": "Runbook de incidentes",
+    "en": "Incident runbook"
+   },
+   "descripcion": {
+    "es": "Qué hacer cuando algo falla: señales, pasos y a quién avisar.",
+    "en": "What to do when something fails: signals, steps and who to tell."
+   },
+   "archivo": {
+    "es": "runbook.md",
+    "en": "runbook.md"
+   },
+   "contenido": {
+    "es": "# Runbook: el servicio no responde\n\n## Señales\n\n- Alerta «API sin respuesta» por más de 5 minutos.\n- Personas reportan errores al pagar.\n\n## Qué hacer\n\n```mermaid\nflowchart TD\n    A([Llega la alerta]) --> B{¿Responde /salud?}\n    B -->|No| C[Reinicia el servicio]\n    B -->|Sí| D[Revisa la base de datos]\n    C --> E{¿Volvió?}\n    E -->|No| F[Avisa a la persona de turno]\n    E -->|Sí| G([Escribe qué pasó])\n    D --> G\n```\n\n## A quién avisar\n\n| Rol | Cómo |\n|---|---|\n| Persona de turno | Canal #incidentes |\n| Responsable del servicio | Correo del equipo |\n",
+    "en": "# Runbook: the service is down\n\n## Signals\n\n- \"API not responding\" alert for more than 5 minutes.\n- People report errors when paying.\n\n## What to do\n\n```mermaid\nflowchart TD\n    A([Alert arrives]) --> B{Does /health respond?}\n    B -->|No| C[Restart the service]\n    B -->|Yes| D[Check the database]\n    C --> E{Back up?}\n    E -->|No| F[Tell the on-call person]\n    E -->|Yes| G([Write down what happened])\n    D --> G\n```\n\n## Who to tell\n\n| Role | How |\n|---|---|\n| On-call person | #incidents channel |\n| Service owner | Team email |\n"
+   },
+   "autor": "Esquema"
+  },
+  {
+   "formato": 1,
+   "id": "compra",
+   "categoria": "flujo-de-usuario",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Compra en línea",
+    "en": "Online checkout"
+   },
+   "descripcion": {
+    "es": "Del carro al pago y el despacho.",
+    "en": "From cart to payment and shipping."
+   },
+   "archivo": {
+    "es": "compra.mmd",
+    "en": "checkout.mmd"
+   },
+   "contenido": {
+    "es": "flowchart LR\n    A([Carro]) --> B[Datos de despacho]\n    B --> C[/Pago con tarjeta/]\n    C --> D{¿Aprobado?}\n    D -->|Sí| E[Confirmación por correo]\n    D -->|No| F[Probar otro medio]\n    F --> C\n    E --> G([Despacho])\n",
+    "en": "flowchart LR\n    A([Cart]) --> B[Shipping details]\n    B --> C[/Card payment/]\n    C --> D{Approved?}\n    D -->|Yes| E[Email confirmation]\n    D -->|No| F[Try another method]\n    F --> C\n    E --> G([Shipping])\n"
+   },
+   "autor": "Esquema"
+  },
+  {
+   "formato": 1,
+   "id": "registro",
+   "categoria": "flujo-de-usuario",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Registro",
+    "en": "Sign up"
+   },
+   "descripcion": {
+    "es": "Crear cuenta, verificar el correo y primer uso.",
+    "en": "Create an account, verify the email and first run."
+   },
+   "archivo": {
+    "es": "registro.mmd",
+    "en": "sign-up.mmd"
+   },
+   "contenido": {
+    "es": "flowchart TD\n    A([Abre la app]) --> B[Escribe su correo]\n    B --> C{¿Correo válido?}\n    C -->|No| B\n    C -->|Sí| D[Le llega un código]\n    D --> E{¿Código correcto?}\n    E -->|No| D\n    E -->|Sí| F[Elige su idioma]\n    F --> G([Empieza a usarla])\n",
+    "en": "flowchart TD\n    A([Opens the app]) --> B[Types their email]\n    B --> C{Valid email?}\n    C -->|No| B\n    C -->|Yes| D[Receives a code]\n    D --> E{Correct code?}\n    E -->|No| D\n    E -->|Yes| F[Chooses a language]\n    F --> G([Starts using it])\n"
+   },
+   "autor": "Esquema"
+  },
+  {
+   "formato": 1,
+   "id": "aprobacion",
+   "categoria": "proceso",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Aprobación de un gasto",
+    "en": "Expense approval"
+   },
+   "descripcion": {
+    "es": "Proceso de negocio con carriles por área (estilo BPMN).",
+    "en": "Business process with lanes per team (BPMN style)."
+   },
+   "archivo": {
+    "es": "aprobacion.mmd",
+    "en": "approval.mmd"
+   },
+   "contenido": {
+    "es": "flowchart LR\n    subgraph equipo [Equipo]\n        I((Inicio)) --> S[Envía la boleta]\n    end\n    subgraph jefatura [Jefatura]\n        S --> R{¿Aprueba?}\n    end\n    subgraph finanzas [Finanzas]\n        R -->|Sí| P[Paga el reembolso]\n        P --> F(((Fin)))\n    end\n    R -->|No| S\n",
+    "en": "flowchart LR\n    subgraph team [Team]\n        I((Start)) --> S[Submits the receipt]\n    end\n    subgraph lead [Team lead]\n        S --> R{Approve?}\n    end\n    subgraph finance [Finance]\n        R -->|Yes| P[Pays the refund]\n        P --> F(((End)))\n    end\n    R -->|No| S\n"
+   },
+   "autor": "Esquema"
+  },
+  {
+   "formato": 1,
+   "id": "api-rest",
+   "categoria": "secuencia",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Llamada a una API",
+    "en": "API call"
+   },
+   "descripcion": {
+    "es": "Cliente, API y base de datos, con caché y error.",
+    "en": "Client, API and database, with cache and error."
+   },
+   "archivo": {
+    "es": "secuencia-api.mmd",
+    "en": "api-sequence.mmd"
+   },
+   "contenido": {
+    "es": "sequenceDiagram\n    autonumber\n    participant C as Cliente\n    participant A as API\n    participant K as Caché\n    participant D as Base de datos\n    C->>+A: GET /pedidos/42\n    A->>K: Buscar pedido 42\n    alt Está en caché\n        K-->>A: Pedido\n    else No está\n        A->>D: SELECT pedido 42\n        D-->>A: Pedido\n        A-)K: Guardar 5 minutos\n    end\n    A-->>-C: 200 OK\n",
+    "en": "sequenceDiagram\n    autonumber\n    participant C as Client\n    participant A as API\n    participant K as Cache\n    participant D as Database\n    C->>+A: GET /orders/42\n    A->>K: Look up order 42\n    alt In cache\n        K-->>A: Order\n    else Not cached\n        A->>D: SELECT order 42\n        D-->>A: Order\n        A-)K: Store for 5 minutes\n    end\n    A-->>-C: 200 OK\n"
+   },
+   "autor": "Esquema"
+  },
+  {
+   "formato": 1,
+   "id": "inicio-de-sesion",
+   "categoria": "secuencia",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Inicio de sesión",
+    "en": "Sign in"
+   },
+   "descripcion": {
+    "es": "Persona, app y proveedor de identidad (OAuth con código).",
+    "en": "Person, app and identity provider (OAuth code flow)."
+   },
+   "archivo": {
+    "es": "inicio-de-sesion.mmd",
+    "en": "sign-in.mmd"
+   },
+   "contenido": {
+    "es": "sequenceDiagram\n    actor P as Persona\n    participant App\n    participant ID as Proveedor de identidad\n    P->>App: Toca «Entrar»\n    App->>ID: Redirige con client_id\n    ID->>P: Pide usuario y clave\n    P->>ID: Los escribe\n    ID-->>App: Código de un solo uso\n    App->>ID: Cambia el código por un token\n    ID-->>App: Token\n    Note over App,ID: El token nunca se guarda en texto plano\n    App-->>P: ¡Bienvenida!\n",
+    "en": "sequenceDiagram\n    actor P as Person\n    participant App\n    participant ID as Identity provider\n    P->>App: Taps \"Sign in\"\n    App->>ID: Redirect with client_id\n    ID->>P: Asks for user and password\n    P->>ID: Types them\n    ID-->>App: One-time code\n    App->>ID: Exchange code for a token\n    ID-->>App: Token\n    Note over App,ID: The token is never stored in plain text\n    App-->>P: Welcome!\n"
+   },
+   "autor": "Esquema"
+  }
+ ],
+ "estructura": {
+  "archivos": [
+   "README.md",
+   "docs/arquitectura.mmd",
+   "docs/pago.mmd",
+   "docs/decisiones/0001-usar-cola.md"
+  ],
+  "omitidos": 0,
+  "manifiestos": {}
+ }
+}

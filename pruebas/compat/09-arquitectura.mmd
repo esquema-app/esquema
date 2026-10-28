@@ -1,0 +1,9 @@
+flowchart LR
+    U([Persona]) --> W[App web]
+    W -->|HTTPS| A{{API}}
+    subgraph nube [Nube]
+        A --> S[Servicio]
+        S --> D[(Base de datos)]
+        S -.-> Q[Cola]
+    end
+%% esquema: {"iconos":{"A":"api","Q":"cola","S":"servidor","U":"persona","W":"navegador"},"pos":{"Q":[420,180]}}

@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "microservicios",
+  "categoria": "arquitectura",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Microservicios",
+    "en": "Microservices"
+  },
+  "descripcion": {
+    "es": "Puerta de enlace, servicios con su propia base y eventos entre ellos.",
+    "en": "Gateway, services with their own database and events between them."
+  },
+  "archivo": {
+    "es": "microservicios.mmd",
+    "en": "microservices.mmd"
+  },
+  "contenido": {
+    "es": "flowchart TD\n    C([Celular]) --> G{{Puerta de enlace}}\n    B([Navegador]) --> G\n    G --> P[Pagos]\n    G --> U[Usuarios]\n    G --> N[Notificaciones]\n    P --> PD[(Pagos BD)]\n    U --> UD[(Usuarios BD)]\n    P -.->|pago aprobado| E[[Bus de eventos]]\n    E -.-> N\n%% esquema: {\"iconos\":{\"B\":\"navegador\",\"C\":\"movil\",\"E\":\"cola\",\"G\":\"balanceador\",\"N\":\"correo\",\"P\":\"servidor\",\"U\":\"servidor\"}}\n",
+    "en": "flowchart TD\n    C([Phone]) --> G{{Gateway}}\n    B([Browser]) --> G\n    G --> P[Payments]\n    G --> U[Users]\n    G --> N[Notifications]\n    P --> PD[(Payments DB)]\n    U --> UD[(Users DB)]\n    P -.->|payment approved| E[[Event bus]]\n    E -.-> N\n%% esquema: {\"iconos\":{\"B\":\"navegador\",\"C\":\"movil\",\"E\":\"cola\",\"G\":\"balanceador\",\"N\":\"correo\",\"P\":\"servidor\",\"U\":\"servidor\"}}\n"
+  },
+  "autor": "Esquema"
+}

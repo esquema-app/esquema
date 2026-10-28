@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Contrato entre la interfaz (ui/app.js) y las apps, escrito en pruebas/puente.json.
+
+Revisa: 1) cada host.enviar("x") de la interfaz está en puente.json y simulado en simular() (la vista previa del navegador);
+2) cada acción de puente.json la usa la interfaz; 3) cada respuesta de puente.json existe en window.Esquema; 4) los scripts que
+nombra el contrato existen en bin/; 5) cuando existan, la app de Mac (Ventana.swift) y la de Windows/Linux (escritorio/src/main.js,
+objeto ACCIONES) atienden todas las acciones y solo llaman funciones que la interfaz tiene; 6) la CSP de ui/index.html."""
+import json
+import os
+import re
+import sys
+
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def leer(r):
+    ruta = os.path.join(RAIZ, r)
+    if not os.path.exists(ruta):
+        return None
+    with open(ruta, encoding="utf-8") as f:
+        return f.read()
+
+
+ui = leer("ui/app.js")
+puente = json.loads(leer("pruebas/puente.json"))
+problemas = []
+acciones = set(re.findall(r'host\.enviar\("(\w+)"', ui))
+contrato = set(puente["acciones"])
+problemas += [f'La interfaz manda "{a}" y no está en pruebas/puente.json' for a in sorted(acciones - contrato)]
+problemas += [f'puente.json tiene "{a}" y la interfaz no lo usa' for a in sorted(contrato - acciones)]
+simulado = ui.split("function simular(", 1)[1].split("\n  }\n", 1)[0]
+casos_web = set(re.findall(r'case "(\w+)"', simulado))
+problemas += [f'La vista previa (simular) no responde "{a}"' for a in sorted(acciones - casos_web)]
+cuerpo = ui.split("window.Esquema = {", 1)[1].split("\n  };", 1)[0]
+funciones_ui = set(re.findall(r"^\s{4}(?:async\s+)?(\w+)\(", cuerpo, re.M))
+problemas += [f'window.Esquema no tiene la respuesta "{r}"' for r in sorted(set(puente["respuestas"]) - funciones_ui)]
+for a, d in puente["acciones"].items():
+    if d["responde"] and d["responde"] not in puente["respuestas"]:
+        problemas.append(f'"{a}" responde "{d["responde"]}", que no está en respuestas')
+    for s in re.findall(r"bin/(\w+\.py)", d["como"]):
+        if not os.path.exists(os.path.join(RAIZ, "bin", s)):
+            problemas.append(f'"{a}" usa bin/{s}, que no existe')
+mac = leer("app/Sources/Esquema/Ventana.swift")
+if mac is not None:
+    casos_mac = set(re.findall(r'"(\w+)"', " ".join(re.findall(r"case ([^:]+):", mac))))
+    problemas += [f'Mac (Ventana.swift) no atiende "{a}"' for a in sorted(acciones - casos_mac)]
+    swift = "".join(leer(os.path.join("app/Sources/Esquema", n)) for n in os.listdir(os.path.join(RAIZ, "app/Sources/Esquema")) if n.endswith(".swift"))
+    problemas += [f"Mac llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(set(re.findall(r'llamar\("(\w+)"', swift)) - funciones_ui)]
+escritorio = leer("escritorio/src/main.js")
+if escritorio:
+    casos_e = set(re.findall(r"^\s{2}(?:async\s+)?(\w+)\s*\(", escritorio.split("const ACCIONES = {", 1)[1].split("\n};", 1)[0], re.M))
+    problemas += [f'Windows/Linux (ACCIONES) no atiende "{a}"' for a in sorted(acciones - casos_e)]
+    problemas += [f"Windows/Linux llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(set(re.findall(r'llamar\("(\w+)"', escritorio)) - funciones_ui)]
+html = leer("ui/index.html")
+csp = re.search(r'Content-Security-Policy" content="([^"]+)"', html)
+if not csp or "script-src 'self'" not in csp.group(1) or "'unsafe-eval'" in csp.group(1) or "object-src 'none'" not in csp.group(1):
+    problemas.append("ui/index.html: la CSP tiene que tener script-src 'self' (sin unsafe-eval) y object-src 'none'")
+if re.search(r"<script>|\son\w+=", html) or re.search(r"\son(click|load|error|input)=", ui):
+    problemas.append("Nada de scripts ni manejadores en línea (la CSP los bloquea)")
+if problemas:
+    print("✗ Contrato roto:\n  - " + "\n  - ".join(problemas))
+    sys.exit(1)
+print(f"✓ Contrato: {len(acciones)} acciones y {len(funciones_ui)} funciones en orden" + ("" if mac or escritorio else " (las apps nativas llegan en la fase siguiente)"))

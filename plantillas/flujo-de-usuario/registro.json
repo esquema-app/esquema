@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "registro",
+  "categoria": "flujo-de-usuario",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Registro",
+    "en": "Sign up"
+  },
+  "descripcion": {
+    "es": "Crear cuenta, verificar el correo y primer uso.",
+    "en": "Create an account, verify the email and first run."
+  },
+  "archivo": {
+    "es": "registro.mmd",
+    "en": "sign-up.mmd"
+  },
+  "contenido": {
+    "es": "flowchart TD\n    A([Abre la app]) --> B[Escribe su correo]\n    B --> C{¿Correo válido?}\n    C -->|No| B\n    C -->|Sí| D[Le llega un código]\n    D --> E{¿Código correcto?}\n    E -->|No| D\n    E -->|Sí| F[Elige su idioma]\n    F --> G([Empieza a usarla])\n",
+    "en": "flowchart TD\n    A([Opens the app]) --> B[Types their email]\n    B --> C{Valid email?}\n    C -->|No| B\n    C -->|Yes| D[Receives a code]\n    D --> E{Correct code?}\n    E -->|No| D\n    E -->|Yes| F[Chooses a language]\n    F --> G([Starts using it])\n"
+  },
+  "autor": "Esquema"
+}

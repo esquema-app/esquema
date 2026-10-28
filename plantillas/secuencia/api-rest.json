@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "api-rest",
+  "categoria": "secuencia",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Llamada a una API",
+    "en": "API call"
+  },
+  "descripcion": {
+    "es": "Cliente, API y base de datos, con caché y error.",
+    "en": "Client, API and database, with cache and error."
+  },
+  "archivo": {
+    "es": "secuencia-api.mmd",
+    "en": "api-sequence.mmd"
+  },
+  "contenido": {
+    "es": "sequenceDiagram\n    autonumber\n    participant C as Cliente\n    participant A as API\n    participant K as Caché\n    participant D as Base de datos\n    C->>+A: GET /pedidos/42\n    A->>K: Buscar pedido 42\n    alt Está en caché\n        K-->>A: Pedido\n    else No está\n        A->>D: SELECT pedido 42\n        D-->>A: Pedido\n        A-)K: Guardar 5 minutos\n    end\n    A-->>-C: 200 OK\n",
+    "en": "sequenceDiagram\n    autonumber\n    participant C as Client\n    participant A as API\n    participant K as Cache\n    participant D as Database\n    C->>+A: GET /orders/42\n    A->>K: Look up order 42\n    alt In cache\n        K-->>A: Order\n    else Not cached\n        A->>D: SELECT order 42\n        D-->>A: Order\n        A-)K: Store for 5 minutes\n    end\n    A-->>-C: 200 OK\n"
+  },
+  "autor": "Esquema"
+}

@@ -1,0 +1,14 @@
+flowchart TD
+    P([Persona]) --> W[App web]
+    M([Celular]) --> G{{Puerta de enlace}}
+    W --> G
+    subgraph nube [Nube de Banco Ejemplo]
+        G --> A[API de pagos]
+        G --> U[API de usuarios]
+        A --> D[(Pagos)]
+        U --> E[(Usuarios)]
+        A -.-> Q[Cola de correos]
+    end
+    Q --> C[Servicio de correo]
+    A -->|autoriza| B[Banco Ejemplo]
+%% esquema: {"iconos":{"A":"servidor","B":"nube","C":"correo","G":"balanceador","M":"movil","P":"persona","Q":"cola","U":"servidor","W":"navegador"}}

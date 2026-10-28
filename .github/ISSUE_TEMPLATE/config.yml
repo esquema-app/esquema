@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 🔒 Reportar una falla de seguridad (en privado)
+    url: https://github.com/esquema-app/esquema/security/advisories/new
+    about: No la publiques en un issue así la arreglamos antes. / Please report vulnerabilities privately.
+  - name: 💬 Conversar, preguntar o mostrar lo que documentaste
+    url: https://github.com/esquema-app/esquema/discussions
+    about: Dudas de uso, ideas a medio cocinar y tus diagramas. / Questions, rough ideas and what you made.

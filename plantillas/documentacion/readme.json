@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "readme",
+  "categoria": "documentacion",
+  "tipo": "documento",
+  "nombre": {
+    "es": "README de proyecto",
+    "en": "Project README"
+  },
+  "descripcion": {
+    "es": "Qué es, cómo funciona (con diagrama), cómo empezar y cómo aportar.",
+    "en": "What it is, how it works (with a diagram), how to start and contribute."
+  },
+  "archivo": {
+    "es": "README.md",
+    "en": "README.md"
+  },
+  "contenido": {
+    "es": "# Nombre del proyecto\n\nUna frase que diga qué hace y para quién.\n\n## Cómo funciona\n\n```mermaid\nflowchart LR\n    P([Persona]) --> A[App]\n    A --> D[(Datos)]\n```\n\n## Para empezar\n\n1. Clona el repositorio.\n2. Instala lo necesario.\n3. Corre las pruebas.\n\n## Cómo aportar\n\nAbre un issue o un pull request. Lee `CONTRIBUTING.md`.\n\n## Licencia\n\nIndica la licencia aquí.\n",
+    "en": "# Project name\n\nOne sentence on what it does and for whom.\n\n## How it works\n\n```mermaid\nflowchart LR\n    P([Person]) --> A[App]\n    A --> D[(Data)]\n```\n\n## Getting started\n\n1. Clone the repository.\n2. Install what you need.\n3. Run the tests.\n\n## Contributing\n\nOpen an issue or a pull request. Read `CONTRIBUTING.md`.\n\n## License\n\nState the license here.\n"
+  },
+  "autor": "Esquema"
+}

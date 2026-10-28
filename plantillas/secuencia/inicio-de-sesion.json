@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "inicio-de-sesion",
+  "categoria": "secuencia",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Inicio de sesión",
+    "en": "Sign in"
+  },
+  "descripcion": {
+    "es": "Persona, app y proveedor de identidad (OAuth con código).",
+    "en": "Person, app and identity provider (OAuth code flow)."
+  },
+  "archivo": {
+    "es": "inicio-de-sesion.mmd",
+    "en": "sign-in.mmd"
+  },
+  "contenido": {
+    "es": "sequenceDiagram\n    actor P as Persona\n    participant App\n    participant ID as Proveedor de identidad\n    P->>App: Toca «Entrar»\n    App->>ID: Redirige con client_id\n    ID->>P: Pide usuario y clave\n    P->>ID: Los escribe\n    ID-->>App: Código de un solo uso\n    App->>ID: Cambia el código por un token\n    ID-->>App: Token\n    Note over App,ID: El token nunca se guarda en texto plano\n    App-->>P: ¡Bienvenida!\n",
+    "en": "sequenceDiagram\n    actor P as Person\n    participant App\n    participant ID as Identity provider\n    P->>App: Taps \"Sign in\"\n    App->>ID: Redirect with client_id\n    ID->>P: Asks for user and password\n    P->>ID: Types them\n    ID-->>App: One-time code\n    App->>ID: Exchange code for a token\n    ID-->>App: Token\n    Note over App,ID: The token is never stored in plain text\n    App-->>P: Welcome!\n"
+  },
+  "autor": "Esquema"
+}

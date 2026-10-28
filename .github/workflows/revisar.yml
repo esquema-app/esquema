@@ -1,0 +1,43 @@
+# Revisión automática de cada cambio (y de cada pull request): si algo falla, se ve antes de que llegue a alguien.
+# Sintaxis, contrato del puente, privacidad básica, motor (compatibilidad con Mermaid, acomodo, rendimiento), Python e interfaz
+# (español e inglés, celular, claro y oscuro, contraste, CSP) con capturas para revisar a ojo.
+name: Revisar
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: revisar-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  revisar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version: 22 }
+      - name: Sintaxis
+        run: bash pruebas/correr.sh sintaxis
+      - name: Contrato interfaz ↔ apps
+        run: python3 pruebas/contrato.py
+      - name: Privacidad (correos personales y rutas de usuario)
+        run: bash herramientas/revisar_privacidad.sh --generico
+      - name: Motor (compatibilidad con Mermaid, acomodo, rendimiento)
+        run: node pruebas/motor.mjs
+      - name: Python
+        run: python3 pruebas/test_python.py
+      - name: Interfaz
+        run: |
+          npm i --no-save --ignore-scripts --prefix "$RUNNER_TEMP/pw" playwright@1.56.1
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+          mkdir -p capturas
+          PLAYWRIGHT="$RUNNER_TEMP/pw/node_modules/playwright" CAPTURAS=capturas node pruebas/interfaz.mjs
+      - name: Capturas para revisar a ojo
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with: { name: capturas, path: capturas, retention-days: 14, if-no-files-found: ignore }

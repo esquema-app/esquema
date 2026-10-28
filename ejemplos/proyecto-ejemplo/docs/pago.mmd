@@ -1,0 +1,10 @@
+flowchart TD
+    A([Elige qué pagar]) --> B[Revisa el monto]
+    B --> C{¿Tiene saldo?}
+    C -->|Sí| D[Confirma con su huella]
+    C -->|No| E[Ve otras formas de pago]
+    E --> B
+    D --> F[[Banco Ejemplo autoriza]]
+    F --> G{¿Aprobado?}
+    G -->|Sí| H([Recibe el comprobante])
+    G -->|No| E

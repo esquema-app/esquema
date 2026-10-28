@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "aprobacion",
+  "categoria": "proceso",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Aprobación de un gasto",
+    "en": "Expense approval"
+  },
+  "descripcion": {
+    "es": "Proceso de negocio con carriles por área (estilo BPMN).",
+    "en": "Business process with lanes per team (BPMN style)."
+  },
+  "archivo": {
+    "es": "aprobacion.mmd",
+    "en": "approval.mmd"
+  },
+  "contenido": {
+    "es": "flowchart LR\n    subgraph equipo [Equipo]\n        I((Inicio)) --> S[Envía la boleta]\n    end\n    subgraph jefatura [Jefatura]\n        S --> R{¿Aprueba?}\n    end\n    subgraph finanzas [Finanzas]\n        R -->|Sí| P[Paga el reembolso]\n        P --> F(((Fin)))\n    end\n    R -->|No| S\n",
+    "en": "flowchart LR\n    subgraph team [Team]\n        I((Start)) --> S[Submits the receipt]\n    end\n    subgraph lead [Team lead]\n        S --> R{Approve?}\n    end\n    subgraph finance [Finance]\n        R -->|Yes| P[Pays the refund]\n        P --> F(((End)))\n    end\n    R -->|No| S\n"
+  },
+  "autor": "Esquema"
+}
