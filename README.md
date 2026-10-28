@@ -64,11 +64,43 @@ Esquema (117 KB sin minificar), medido con [`herramientas/comparar_mermaid.mjs`]
 
 «Al editar» es lo que pasa en cada tecla: si el cambio no mueve nada, no se vuelve a acomodar y solo se reemplaza lo que cambió.
 
+## Instalar
+
+Esquema es gratis y no pide cuenta. Cada instalador baja la última versión publicada en GitHub, **verifica su huella SHA-256** y la
+instala solo para tu usuario (sin contraseña de administrador). Tus documentos quedan en tu carpeta y nunca se tocan; la
+configuración va en `~/Library/Application Support/Esquema` (Mac), `%APPDATA%\Esquema` (Windows) o `~/.config/esquema` (Linux).
+
+**Mac** (Apple Silicon, macOS 15 o posterior), en la Terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/esquema-app/esquema/main/instalar.sh | bash
+```
+
+**Windows** (10 u 11, 64 bits), en PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/esquema-app/esquema/main/instalar.ps1 | iex
+```
+
+**Linux** (x86_64): el mismo comando de Mac (instala en `~/.local/share/Esquema` con su lanzador `esquema`), o baja de
+[Releases](https://github.com/esquema-app/esquema/releases) el `Esquema-Linux.AppImage` o el `Esquema-Linux.deb`
+(`sudo apt install ./Esquema-Linux.deb`; el .deb no se actualiza solo: baja el nuevo).
+
+> **App sin firmar.** Esquema no paga los certificados de Apple ni de Microsoft, así que el sistema puede avisar la primera vez.
+> Con los instaladores de arriba no pasa en Mac (quitan la cuarentena después de verificar la huella). Si bajaste el `.zip` a
+> mano: clic derecho en Esquema.app → **Abrir** → **Abrir**. En Windows, si aparece «Windows protegió tu PC»: **Más información** →
+> **Ejecutar de todas formas**. El código de cada versión está en este repo y cada descarga tiene su `.sha256` en el Release.
+
+Las versiones nuevas se avisan **dentro de la app** (Ajustes → Actualizaciones): se bajan solo desde los Releases de este repo, se
+verifica su huella y la app se cierra y vuelve a abrir sola, sin perder lo que estabas escribiendo.
+
 ## Estado
 
-Esta es la **primera fase: el núcleo web** (motor, interfaz, plantillas, IA y pruebas), que ya corre en el navegador con una carpeta
-de ejemplo ficticia. Las apps de **Mac, Windows y Linux** vienen en la fase siguiente, con la misma interfaz. Lo planificado (BPMN,
-estados, ER, gantt, mapa mental, catálogo de plantillas de la comunidad) está en [AGENTS.md](AGENTS.md#lo-que-viene-fase-siguiente-y-planificado).
+El núcleo (motor, interfaz, plantillas, IA y pruebas) corre en el navegador con una carpeta de ejemplo ficticia y en las apps de
+**Mac** (nativa, SwiftPM + WKWebView) y **Windows y Linux** (Electron), con la misma interfaz. Las apps vigilan tu carpeta: si
+cambias un archivo en otro editor (VS Code, `git pull`…), Esquema lo recarga; si tenías cambios sin guardar, te pregunta con cuál
+versión quedarte. Lo planificado (BPMN, estados, ER, gantt, mapa mental, catálogo de plantillas de la comunidad) está en
+[AGENTS.md](AGENTS.md#lo-que-viene-planificado).
 
 ## Desarrollo
 
@@ -76,6 +108,8 @@ estados, ER, gantt, mapa mental, catálogo de plantillas de la comunidad) está 
 cd ui && python3 -m http.server 8765      # http://localhost:8765 (?idioma=en, ?bienvenida, ?vacio)
 bash pruebas/correr.sh                    # todas las pruebas (la interfaz necesita Playwright)
 node herramientas/comparar_mermaid.mjs    # rendimiento y compatibilidad contra Mermaid real (lo instala aparte)
+bash build.sh                             # Mac: compila e instala en ~/Applications/Esquema.app
+cd escritorio && npm ci && node node_modules/electron/install.js && npx electron .   # Windows y Linux, sin empaquetar
 ```
 
 Lee [AGENTS.md](AGENTS.md) (sirve igual para personas y para tu IA) y [CONTRIBUTING.md](CONTRIBUTING.md). Las fallas de seguridad
@@ -106,5 +140,17 @@ already renders (Markdown with ```` ```mermaid ```` blocks and `.mmd` files), pl
   or “Copy for GitHub”. Own architecture icons, light and dark, Spanish and English; the first thing it asks is your language.
 
 Your files stay yours: plain `.md`/`.mmd` in the folder you choose. Esquema-only data (pinned positions, icons) lives in a
-`%% esquema: {...}` comment that Mermaid ignores. This is phase one, the web core; the Mac, Windows and Linux apps come next.
-Run it with `cd ui && python3 -m http.server 8765`, test with `bash pruebas/correr.sh`. Licensed under [AGPL-3.0](LICENSE).
+`%% esquema: {...}` comment that Mermaid ignores. The apps watch your folder: if you edit a file in another editor, Esquema reloads it
+(and asks which version to keep if you had unsaved changes).
+
+**Install** (free, no account; each installer downloads the latest GitHub Release, checks its SHA-256 and installs for your user only):
+
+- Mac (Apple Silicon, macOS 15+) and Linux (x86_64): `curl -fsSL https://raw.githubusercontent.com/esquema-app/esquema/main/instalar.sh | bash`
+- Windows 10/11 (PowerShell): `irm https://raw.githubusercontent.com/esquema-app/esquema/main/instalar.ps1 | iex`
+- Linux also: `Esquema-Linux.AppImage` or `Esquema-Linux.deb` from [Releases](https://github.com/esquema-app/esquema/releases).
+
+The apps are **not signed** (no Apple/Microsoft certificates). The Mac installer removes the quarantine after checking the hash; if you
+downloaded the zip by hand, right-click Esquema.app → **Open**. On Windows, “Windows protected your PC” → **More info** → **Run anyway**.
+Updates are offered inside the app (Settings → Updates), only from this repo's Releases and verified by hash.
+
+Run the web preview with `cd ui && python3 -m http.server 8765`, test with `bash pruebas/correr.sh`. Licensed under [AGPL-3.0](LICENSE).

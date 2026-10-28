@@ -1,6 +1,9 @@
 # Revisión automática de cada cambio (y de cada pull request): si algo falla, se ve antes de que llegue a alguien.
-# Sintaxis, contrato del puente, privacidad básica, motor (compatibilidad con Mermaid, acomodo, rendimiento), Python e interfaz
-# (español e inglés, celular, claro y oscuro, contraste, CSP) con capturas para revisar a ojo.
+# - revisar: sintaxis, contrato del puente (interfaz, Mac y Windows/Linux, con su seguridad), privacidad básica, motor (compatibilidad
+#   con Mermaid, acomodo, rendimiento), Python e interfaz (español e inglés, celular, claro y oscuro, contraste, CSP) con capturas.
+# - mac: que la app de Mac compile (solo si cambió algo de Swift o del empaquetado).
+# - escritorio: la app de Windows y Linux (Electron) abierta de verdad en Linux con una pantalla virtual: puente, vigilancia de la
+#   carpeta, IA falsa, navegación y protocolo. Dependencias exactas del package-lock.json, sin scripts de instalación.
 name: Revisar
 on:
   push:
@@ -41,3 +44,46 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with: { name: capturas, path: capturas, retention-days: 14, if-no-files-found: ignore }
+
+  mac:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false, fetch-depth: 0 }
+      - name: ¿Cambió algo de la app de Mac?
+        id: cambio
+        env: { ANTES: "${{ github.event.before }}", EVENTO: "${{ github.event_name }}" }
+        run: |
+          if [ "$EVENTO" != "push" ] || ! git cat-file -e "$ANTES" 2>/dev/null || git diff --name-only "$ANTES" HEAD | grep -qE '^(app/|herramientas/empaquetar\.sh|build\.sh)'; then echo "si=1" >> "$GITHUB_OUTPUT"; fi
+      - name: Compilar
+        if: steps.cambio.outputs.si == '1'
+        run: cd app && swift build -c release
+
+  escritorio:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version: 22 }
+      # Exactamente lo del package-lock.json y sin scripts de instalación (.npmrc: ignore-scripts); Electron baja su binario aparte.
+      - name: Dependencias
+        working-directory: escritorio
+        run: |
+          npm ci
+          npm audit --audit-level=high
+          node node_modules/electron/install.js
+      - name: Vigilancia de la carpeta
+        run: node escritorio/pruebas/vigilante.mjs
+      - name: La app abierta en Linux (pantalla virtual)
+        run: |
+          sudo apt-get update && sudo apt-get install -y xvfb
+          npm i --no-save --ignore-scripts --prefix "$RUNNER_TEMP/pw" playwright@1.56.1
+          mkdir -p capturas-escritorio
+          NODE_PATH="$RUNNER_TEMP/pw/node_modules" xvfb-run -a node escritorio/pruebas/arranque.mjs "$PWD/capturas-escritorio"
+      - name: Capturas de la app de escritorio
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with: { name: capturas-escritorio, path: capturas-escritorio, retention-days: 14, if-no-files-found: ignore }

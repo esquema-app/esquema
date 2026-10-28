@@ -1,4 +1,5 @@
-# Dependabot: avisa cuando hay versiones nuevas de las actions (fijadas por SHA) y abre un pull request para revisarlas.
+# Dependabot: avisa cuando hay versiones nuevas de las actions (fijadas por SHA) y de los paquetes de npm de la app de escritorio
+# (escritorio/: Electron y electron-builder, con versión exacta) y abre un pull request para revisarlas.
 # `cooldown`: espera unos días antes de proponer una versión recién publicada; si una action fue secuestrada, casi siempre se
 # descubre y se retira en ese plazo. Las alertas de seguridad no esperan. Nada se junta solo: cada PR se revisa como cualquier aporte.
 version: 2
@@ -10,3 +11,11 @@ updates:
     groups:
       actions: { patterns: ["*"] }
     commit-message: { prefix: "Actions" }
+  - package-ecosystem: npm
+    directory: /escritorio
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7, semver-major-days: 30 }
+    open-pull-requests-limit: 5
+    groups:
+      escritorio: { patterns: ["*"] }
+    commit-message: { prefix: "Dependencias" }

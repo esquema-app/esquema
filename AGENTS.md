@@ -8,7 +8,7 @@ dos formas que se mantienen al día: escribiendo el texto (con autocompletar y e
 conectar arrastrando, renombrar, mover, borrar, deshacer). Dibuja con un **motor propio** sin dependencias, decenas de veces más rápido
 que Mermaid. Los documentos son Markdown con diagramas incrustados que se editan en el lugar. La IA del usuario (Claude Code, Codex o
 Gemini, con su propia cuenta) dibuja lo que se le pide («Dibújame») y escribe el README para GitHub; cada cambio suyo se puede quitar.
-Interfaz web única (`ui/`); app de Mac, Windows y Linux en la fase siguiente.
+Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y en la de Windows y Linux (`escritorio/`, Electron).
 
 **Principios que no se negocian**
 1. **Los archivos son de la persona.** Viven en la carpeta que elige, en formato abierto: `.md` con bloques ```` ```mermaid ```` y
@@ -35,7 +35,10 @@ Interfaz web única (`ui/`); app de Mac, Windows y Linux en la fase siguiente.
 | `plantillas/` | Plantillas incluidas (`<categoria>/<id>.json`) y `README.md` con el formato. |
 | `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo) y scripts para construir encima del formato (`listar_diagramas.py`). |
 | `pruebas/` | `correr.sh` (todo), `motor.mjs` (motor en Node), `interfaz.mjs` (Playwright), `test_python.py`, `contrato.py` + `puente.json` (contrato del puente), `casos.json` (casos compartidos), `compat/` (ejemplos Mermaid que se leen y se escriben igual; `variantes/`: formas no canónicas), `ia_falsa.py`. |
-| `herramientas/` | `revisar_privacidad.sh`, `generar_demo.py`, `comparar_mermaid.mjs` (rendimiento y compatibilidad contra Mermaid real, instalado aparte). |
+| `herramientas/` | `revisar_privacidad.sh`, `generar_demo.py`, `comparar_mermaid.mjs` (rendimiento y compatibilidad contra Mermaid real, instalado aparte), `empaquetar.sh` (arma `dist/Esquema.app` + zip + `.sha256`, en un Mac), `generar_icono.mjs` (íconos de las apps desde `ui/favicon.svg`). |
+| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (arranque, menús), `Ventana.swift` (WKWebView + puente: un `case` por acción), `Carpeta.swift` (elegir la carpeta con marcador, rutas, `Vigilante` con FSEvents), `Servicios.swift` (rutas, config, idioma, `Procesador`, `EnOrden`), `Actualizaciones.swift`; `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
+| `escritorio/` | App de Windows y Linux (Electron): `src/main.js` (ventana, puente `ACCIONES`, menú, protocolo `esquema://ui/`), `src/preload.js`, `src/rutas.js`, `src/servicios.js`, `src/vigilante.js` (`fs.watch`), `src/actualizaciones.js`; `herramientas/` (Python portátil, instalador NSIS), `pruebas/` (`arranque.mjs` con Xvfb, `vigilante.mjs`), `iconos/`. Ver «Windows y Linux». |
+| `build.sh`, `instalar.sh`, `instalar.ps1` | Compilar e instalar en el Mac de desarrollo; instaladores de un comando (Mac/Linux y Windows) que verifican la huella. |
 | `docs/` | Capturas (`docs/img/`) y, más adelante, la página pública. |
 
 ## Formato de los archivos
@@ -45,7 +48,8 @@ Interfaz web única (`ui/`); app de Mac, Windows y Linux en la fase siguiente.
   "pos": {"id": [x, y]}}`. Una sola línea JSON, claves ordenadas (diffs chicos). `pos` son centros fijados a mano en coordenadas del
   acomodo; `iconos`, de `M.ICONOS`. Se valida campo por campo (`M.leerMeta`); lo desconocido se descarta. Sin `pos`, todo se acomoda solo.
 - Nada más se guarda: ni base de datos, ni archivos ocultos en la carpeta de la persona. La config de la app va en la carpeta de
-  Esquema del sistema (`comun.carpeta_app()`: `~/Library/Application Support/Esquema`, `%APPDATA%\Esquema` o `~/.config/esquema`).
+  Esquema del sistema (`comun.carpeta_app()`: `~/Library/Application Support/Esquema`, `%APPDATA%\Esquema` o `~/.config/esquema`,
+  0700; las apps se la pasan a los scripts en `ESQUEMA_DATOS`): `config.json` (`idioma_ui`, `ia`, `tema`, `bienvenida`, `carpeta`).
 
 ## Subconjunto de Mermaid
 Lo que Esquema lee, dibuja y escribe (probado en `pruebas/compat/` contra Mermaid real con `herramientas/comparar_mermaid.mjs`):
@@ -131,25 +135,97 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
 - **Diseño:** base neutra, un color de acción (azul tinta `--acento`), rojo solo para errores, verde solo para «lista». Claro/oscuro
   (sistema o elegido). A 760 px o menos: lista de archivos como cajón, una vista a la vez (Texto | Dibujo), herramientas de 44 px,
   diálogos desde abajo. `pruebas/interfaz.mjs` revisa contraste AA, desborde a 390 px, CSP y textos sin traducir.
+- **Archivo cambiado afuera** (`archivoCambiado`): sin cambios sin guardar se recarga solo (se puede deshacer); con cambios, diálogo
+  «¿Con cuál versión te quedas?» («Usar la del disco» / «Quedarme con la mía», que se guarda encima). Si el texto es el mismo, nada.
+- **Menús de la app** (`window.Esquema.menu({accion})`): guardar, deshacer, rehacer, acercar, alejar, ajustar, texto, ambos, dibujo,
+  nuevo, ajustes. Nada antes del idioma; en la bienvenida no se abren otros diálogos.
+- **Actualizaciones** (Ajustes → Actualizaciones, `filaActualizacion`): buscar, «Hay una versión nueva» con sus notas, «Actualizar
+  ahora» (guarda todo antes) y el avance por pasos. Un aviso corto la primera vez que el estado trae una versión nueva.
 - **Primer uso:** lo primero es el idioma (`pasoIdioma`, título bilingüe fijo, el del sistema sugerido y enfocado; nada más se muestra
   ni se pide antes); al elegir se guarda por `config` igual que en Ajustes y sigue la bienvenida traducida: hola → carpeta → IA.
 
 ## Puente interfaz ↔ app (contrato en `pruebas/puente.json`)
 La UI llama `host.enviar(accion, datos)` y la app responde con `window.Esquema.<funcion>(json)`. En el navegador responde `simular()`
 con `ui/demo.json` (la carpeta vive en memoria). Acciones: `listo, config, elegirCarpeta, abrirArchivo, guardarArchivo, probarIA,
-estructura, crearReadme, dibujar, exportar, copiar, abrirEnlace`. Respuestas: `estado, carpetaElegida, archivoAbierto,
-archivoGuardado, archivoCambiado, archivos, iaProbada, estructuraLista, readmeListo, dibujoListo, exportado, copiado`.
-`puente.json` dice qué script corre cada acción. `pruebas/contrato.py` revisa que interfaz, contrato y simulación coincidan, que
-existan los scripts y, cuando existan, que `app/Sources/Esquema/Ventana.swift` (un `case` por acción) y `escritorio/src/main.js`
-(objeto `ACCIONES`) atiendan todo y solo llamen funciones que la interfaz tiene. Una acción nueva va en `ui/app.js`, `simular()`,
-`puente.json` y en las apps.
+estructura, crearReadme, dibujar, exportar, copiar, abrirEnlace, buscarActualizacion, actualizar`. Respuestas: `estado,
+carpetaElegida, archivoAbierto, archivoGuardado, archivoCambiado, archivos, iaProbada, estructuraLista, readmeListo, dibujoListo,
+exportado, copiado, actualizacionRevisada, actualizacionProgreso` y `menu` (los menús nativos). `puente.json` dice qué script corre
+cada acción. `pruebas/contrato.py` revisa que interfaz, contrato y simulación coincidan, que existan los scripts, que
+`app/Sources/Esquema/Ventana.swift` (un `case` por acción) y `escritorio/src/main.js` (objeto `ACCIONES`) atiendan todo, manden
+todas las respuestas y solo llamen funciones que la interfaz tiene, y la seguridad de las dos apps (abajo). Una acción nueva va en
+`ui/app.js`, `simular()`, `puente.json`, `Ventana.swift` y `ACCIONES`.
 
-## Lo que viene (fase siguiente y planificado)
-**Apps (siguiente fase, skill «app-escritorio-multiplataforma»):** Mac (SwiftPM, WKWebView, puente con `case` por acción, Python
-portátil verificado por SHA-256, `NSOpenPanel` para la carpeta con marcador de seguridad, `FSEvents` → `archivoCambiado`/`archivos`,
-`NSSavePanel` para exportar, `NSPasteboard`) y Electron para Windows/Linux (`ACCIONES`, `dialog`, `fs.watch`, `clipboard`). La ventana
-solo carga `ui/`, el puente solo atiende al marco principal, y nada se pide ni se muestra antes del idioma. Actualizaciones dentro de
-la app. Persistir `cambiosIA` en la carpeta de Esquema (no en la de la persona).
+**Lo que las apps nunca hacen con lo que manda la interfaz:** armar comandos (todo va en un JSON de entrada), aceptar rutas absolutas
+o con `..` (cada ruta se revisa como `comun.ruta_en` antes de llamar a bin/, que la vuelve a revisar), cambiar `carpeta` por
+`config` (solo la cambia el selector del sistema), guardar claves o valores desconocidos en `config.json`, abrir algo que no sea https.
+
+## App de Mac (`app/`)
+- SwiftPM, macOS 15, Apple Silicon. Ventana normal con un `WKWebView` que carga `ui/` desde la app (`Contents/Resources/esquema`,
+  con `bin/` y `plantillas/`) y Python portátil verificado por SHA-256 (`herramientas/empaquetar.sh`; misma versión y huella que
+  Corta/Alcancía/Graba/Minuta). Firma ad hoc con requisito por identificador `app.esquema.mac` (el permiso de la carpeta sobrevive a
+  cada actualización). `ui/demo.json` no va en la app.
+- **Puente:** `WKScriptMessageHandler` «esquema», solo para el marco principal con origen `file`; `decidePolicyFor` solo deja navegar
+  dentro de `ui/` y abre https en el navegador. `window.ESQUEMA_HOST = "mac"`.
+- **Carpeta:** `NSOpenPanel` → marcador (`bookmarkData`, en `UserDefaults`, la sigue aunque la muevan; la app no está en sandbox,
+  así que no hace falta un marcador «security-scoped») + `config.carpeta` para los scripts.
+- **Vigilar la carpeta** (`Vigilante`, FSEvents con eventos por archivo): solo cuenta un `.md`/`.mmd` o una carpeta, fuera de `.git`,
+  `node_modules` y las demás pesadas; espera 0,35 s de calma, relee los archivos abiertos (`conocidos`: el último texto que Esquema
+  leyó o guardó; un guardado propio queda como conocido **antes** de escribirse, así no se avisa) → `archivoCambiado`, y vuelve a
+  listar con `carpeta.py listar` → `archivos` si la lista cambió.
+- **Guardar:** de a uno y en orden (`EnOrden`), atómico (`comun.escribir_atomico`). Al salir (⌘Q, o el actualizador) la interfaz
+  guarda lo pendiente y la app espera los guardados (hasta 3 s); cerrar la ventana también guarda.
+- **Exportar:** `NSSavePanel` (SVG, PNG desde base64, Markdown), escritura atómica. **Copiar:** `NSPasteboard`.
+- **Menús** (en el idioma elegido, se rearman al cambiarlo): Esquema (Acerca de, Ajustes ⌘,, Salir), Archivo (Nuevo ⌘N, Abrir
+  carpeta ⌘O, Mostrar la carpeta en el Finder, Guardar ⌘S, Cerrar ventana), Edición (Deshacer ⌘Z y Rehacer ⇧⌘Z de Esquema; cortar,
+  copiar, pegar y seleccionar todo del sistema), Ver (Acercar ⌘+, Alejar ⌘−, Ajustar ⌘0, Solo texto ⌘1, Texto y dibujo ⌘2, Solo
+  dibujo ⌘3, Pantalla completa), Ventana.
+- **IA:** la corre `bin/ia.py` (sin herramientas ni MCP); la app no llama a ninguna IA por su cuenta.
+- **Arranque:** menús y ventana de inmediato (en el idioma del sistema hasta que la persona elija); lo que corre solo
+  (actualizaciones al abrir y cada 6 h) parte en `EsquemaApp.iniciarTareas()` recién con `Idioma.elegido`. Un aviso automático solo
+  llega a la interfaz si hay versión nueva (nunca se vuelve a mandar el estado: no interrumpe la bienvenida).
+- **Actualizaciones:** `Esquema-macOS.zip` + `.sha256` solo desde `https://github.com/esquema-app/esquema/releases/download/…`
+  (`esDescargaNuestra`), con `curl --proto '=https'`; un guion (todo lo variable con `comillas()`) espera a que la app se cierre, la
+  reemplaza (deja `.anterior` si falla) y la abre. Instalación de desarrollo (`build.sh` deja la ruta del checkout en
+  `~/Library/Application Support/Esquema/desarrollo`): `git pull --ff-only` + `empaquetar.sh`. Nunca con un guardado o la IA en curso.
+- Desarrollo: checkout en `~/Developer/esquema`; `bash build.sh` (se niega si la IA está respondiendo) instala en
+  `~/Applications/Esquema.app`. Compilar solo: `cd app && swift build -c release`. **Swift solo compila en un Mac** (o en el job `mac`).
+
+## Windows y Linux (`escritorio/`)
+- Electron (versión exacta, **44.9.1 o más nueva**: trae el arreglo de certificados eMudhra), `package-lock.json`, `.npmrc` con
+  `ignore-scripts=true` (el binario de Electron se baja con `node node_modules/electron/install.js`). Dependabot propone las
+  actualizaciones con `cooldown`.
+- **Ventana:** `contextIsolation`, `sandbox`, sin `nodeIntegration` ni `webview`; la interfaz se sirve por `esquema://ui/…` (solo
+  archivos de `ui/`); `will-navigate`, `will-redirect` y `setWindowOpenHandler` no dejan salir de ahí (https → navegador); todos los
+  permisos del navegador se niegan. `preload.js` solo expone `ESQUEMA_HOST` y `esquemaEscritorio.enviar`; `ipcMain` solo atiende al
+  marco principal de la ventana propia con origen `esquema://ui/`. Lo de Chromium va en `<carpeta de Esquema>/electron`.
+- **Igual que en Mac:** mismas acciones (`ACCIONES`), mismos scripts con el Python portátil (`herramientas/preparar.sh`, huella fija),
+  misma config validada, guardados en orden, guardar al cerrar (cerrar la ventana cierra la app), menú (Archivo, Edición, Ver,
+  Ayuda; deshacer/rehacer con `registerAccelerator: false` porque el atajo lo atiende la interfaz), exportar con `dialog`, copiar
+  con `clipboard`.
+- **Vigilar la carpeta** (`src/vigilante.js`, sin Electron, probado con `pruebas/vigilante.mjs`): Windows con `fs.watch` recursivo;
+  Linux con un `fs.watch` por carpeta (inotify), sin entrar a `.git`, `node_modules`, etc. (las de `comun.SIEMPRE_FUERA`), hasta
+  3.000 carpetas y 8 niveles, resincronizadas en cada revisión. Misma lógica de `conocidos` que en Mac.
+- **Empaquetar** (desde Linux, sin Wine): `npx electron-builder --linux AppImage tar.gz deb`; `npx electron-builder --win dir &&
+  bash herramientas/instalador-windows.sh` (NSIS propio por usuario en `%LOCALAPPDATA%\Programs\Esquema`, `/S` silencioso; al
+  actualizar primero le pide cerrar a la app para que guarde). Linux con `instalar.sh` en `~/.local/share/Esquema` + lanzador
+  `~/.local/bin/esquema` (agrega `--no-sandbox` si el sistema restringe user namespaces), o AppImage, o .deb (no se actualiza solo).
+- **Actualizaciones** (`src/actualizaciones.js`): instalador de Windows, AppImage o tar.gz según cómo se instaló, solo desde los
+  Releases de este repo y verificados con su `.sha256`; sin empaquetar no busca.
+- **Pruebas:** `pruebas/arranque.mjs` abre la app de verdad con Xvfb (HOME temporal, carpeta e IA ficticias): idioma primero,
+  config, abrir/guardar, cambio de afuera, conflicto, archivo nuevo, rutas fuera de la carpeta, IA sin herramientas, menú,
+  navegación y protocolo; con `ELECTRON=dist/linux-unpacked/esquema APP=1` prueba la empaquetada. **Windows no se puede probar
+  aquí:** pídelo a la comunidad con un issue `probar`.
+
+## Publicar una versión
+1. Sube la versión en `app/Info.plist` y `escritorio/package.json` (iguales; el contrato lo revisa) y haz push a `main`.
+2. `publicar.yml` corre las pruebas rápidas, compila Mac (macos-15), Linux y Windows (ubuntu, con la app de Linux empaquetada
+   abierta en Xvfb) y crea el Release `vX.Y.Z` con nombres fijos: `Esquema-macOS.zip`, `Esquema-Windows.exe`,
+   `Esquema-Linux.AppImage`, `Esquema-Linux.tar.gz`, `Esquema-Linux.deb`, cada uno con su `.sha256`. Si la versión ya existe, nada.
+3. Las apps lo ven al abrir o cada 6 h (aviso dentro de la app, nunca una alerta del sistema).
+
+## Lo que viene (planificado)
+**Apps:** persistir `cambiosIA` en la carpeta de Esquema (no en la de la persona); abrir un `.md`/`.mmd` suelto desde el Finder o el
+explorador; varias carpetas recientes; firma y notarización si algún día hay certificados.
 
 **Tipos de diagrama** (siempre con la sintaxis de Mermaid; lo propio en `%% esquema:`):
 - **Arquitectura** (hecho, primer paso): flowchart con formas clásicas + `"iconos"`; grupos = subgrafos (nube, red, servicio). No se
