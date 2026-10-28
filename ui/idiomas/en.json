@@ -630,6 +630,8 @@
   "Completar lo que falta": "Complete what's missing",
   "Documentar otro flujo": "Document another flow",
   "Completa la documentación. Falta:": "Complete the documentation. Missing:",
-  "Completar la documentación": "Complete the documentation"
+  "Completar la documentación": "Complete the documentation",
+  "Hacer la documentación completa": "Write the full documentation",
+  "Este proyecto todavía no tiene documentación. Tu IA puede leerlo entero y escribir la visión general, la arquitectura y los flujos principales, aparte de tu código.": "This project has no documentation yet. Your AI can read all of it and write the overview, the architecture and the main flows, kept apart from your code."
  }
 }

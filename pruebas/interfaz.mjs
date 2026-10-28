@@ -327,8 +327,12 @@ console.log("Dibújame: revisado");
 // ── 9b) Inicio de la carpeta, árbol y «Crear diagrama» ──
 {
   const p = await pagina();
-  await p.click('[data-accion="inicio"]');
+  // Toda carpeta se ve como proyecto: su «Código» y su «Documentación»; sin documentación, esta lleva al inicio, que invita a hacerla.
+  await p.click('.lateral [data-p-docs]');
   await espera(p);
+  if (!(await p.$('.inicio-docs [data-accion="p-documentar"]'))) falla("Sin documentación, el inicio no invita a hacerla completa");
+  if (!(await p.$('.lateral [data-p-docs] ~ [role="group"] [data-accion="p-documentar"], .lateral [data-accion="p-documentar"]'))) falla("La carpeta «Documentación» vacía no invita a hacerla");
+  await p.click('.lateral [data-arbol="#codigo"]'); await espera(p);
   const tarjetas = await p.$$eval(".tarjeta-inicio", (l) => l.map((x) => x.dataset.accion));
   if (tarjetas.join() !== "crear-diagrama,p-documentar,p-flujo,nuevo") falla("El inicio no ofrece las cuatro acciones: " + tarjetas.join());
   // El árbol: «docs» se cierra y se abre; lo de adentro desaparece y vuelve.
@@ -347,7 +351,7 @@ console.log("Dibújame: revisado");
   if (sel !== "diagramas/secuencia-pago-app-banco.mmd") falla("«Crear diagrama» no creó el archivo esperado: " + sel);
   if (!/^sequenceDiagram/.test(await textoDoc(p))) falla("«Crear diagrama» no hizo un diagrama de secuencia");
   // Con el código: el mismo camino de los proyectos, primero «lo que se envía».
-  await p.click('[data-accion="inicio"]');
+  await p.click('.lateral [data-p-docs]');
   await p.click('[data-accion="crear-diagrama"]');
   await p.fill("#pedido-dibujo", "el flujo de pagar con tarjeta");
   await p.click('[data-accion="enviar-dibujo"]');

@@ -188,10 +188,10 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
   para un nodo nuevo; en un `.md`, dentro de los bloques mermaid.
 - **Documento:** texto | vista con los diagramas dibujados (`resultadoBloque` con caché); «Editar» abre el bloque en el lienzo en el
   lugar (el texto sigue siendo el del documento); los enlaces nunca navegan (https → navegador; relativos → abre ese archivo).
-- **Lateral de un proyecto** (`P.lateralHTML`, cuando hay `E.proyecto` o `E.vinculo`): «Proyectos» con una carpeta por proyecto; el
+- **Lateral de un proyecto** (`P.lateralHTML`: toda carpeta abierta se ve como proyecto): «Proyectos» con una carpeta por proyecto; el
   abierto trae **Código** (los `.md`/`.mmd` del repo: `E.codigoDocs` en uno vinculado, o lo que queda fuera de `docsDir()` en uno de
-  antes) y **Documentación** (Elementos, Versiones y sus documentos). Tocar «Documentación» (`data-p-docs`) abre su panel: vacía, la
-  invitación a documentar todo («Lo que encontré»); con algo, **Lo que falta** (`loQueFalta`: visión, arquitectura, flujos,
+  antes; todo, si aún no tiene documentación) y **Documentación** (Elementos, Versiones y sus documentos). Tocar «Documentación»
+  (`data-p-docs`) abre su panel: vacía (`P.sinDocumentacion()`), el inicio de la carpeta con «Hacer la documentación completa»; con algo, **Lo que falta** (`loQueFalta`: visión, arquitectura, flujos,
   elementos, elementos que ningún documento nombra y commits nuevos) con «Completar lo que falta» (tarea `completar`, con el pedido
   armado por `pedidoCompletar`: la IA escribe solo lo que falta). Claves de `E.abiertas`: `#p`, `#codigo`, `#docs`.
 - **Lateral e inicio:** la carpeta como árbol (`arbolDe`/`arbolHTML`; `E.abiertas` guarda lo que la persona abrió o cerró y, si no

@@ -341,7 +341,11 @@
     /** Los .md/.mmd del repo del código de un proyecto vinculado se abren con este prefijo (no están en la carpeta abierta). */
     const CODIGO = "@codigo/";
     const esCodigo = (r) => typeof r === "string" && r.startsWith(CODIGO);
-    const esProyecto = () => !!(E.proyecto || E.vinculo);
+    /** Toda carpeta abierta se muestra como proyecto: su código y su documentación (aunque todavía no tenga). */
+    const esProyecto = () => !!E.carpeta;
+    const sinDocumentacion = () => !E.proyecto && !vinculado();
+    /** Si un archivo abierto está en la carpeta «Código» del lateral. */
+    const esDeCodigo = (r) => !!r && (esCodigo(r) || (!vinculado() && (sinDocumentacion() || !r.startsWith(docsDir() + "/"))));
     function leerCodigo(ruta) { enviar("codigo_leer", { ruta: ruta.slice(CODIGO.length) }); }
     function guardarCodigo(ruta, texto) { enviar("codigo_guardar", { ruta: ruta.slice(CODIGO.length), texto }); }
     /** Los documentos del código y de la documentación, cada uno como su propio árbol. */
@@ -350,6 +354,7 @@
         const cod = (E.codigoDocs?.archivos || []).map((a) => ({ ...a, ruta: CODIGO + a.ruta }));
         return { codigo: arbolDe(cod).carpetas.get(CODIGO.slice(0, -1)) || arbolDe([]), nCodigo: cod.length, docs: arbolDe(E.archivos), nDocs: E.archivos.length };
       }
+      if (sinDocumentacion()) return { codigo: arbolDe(E.archivos), nCodigo: E.archivos.length, docs: arbolDe([]), nDocs: 0 };
       const d = docsDir(), dentro = (r) => r.startsWith(d + "/");
       const enDocs = E.archivos.filter((a) => dentro(a.ruta)), fuera = E.archivos.filter((a) => !dentro(a.ruta));
       let raiz = arbolDe(enDocs);
@@ -371,8 +376,9 @@
         const [abD, filaD] = carpeta("#docs", 1, "carpeta", `<span>Documentación</span>`, `<small data-sin-traducir>${partes.nDocs || esc(tr("vacía"))}</small>`, `data-p-docs aria-current="${p === "proyecto"}"`);
         const extras = E.proyecto ? `<button class="archivo" style="--n:2" data-p="elementos" aria-current="${p === "elementos"}">${ic("elemento")}<span>Elementos</span><small data-sin-traducir>${x.elementos.length}</small></button>
           <button class="archivo" style="--n:2" data-p="versiones" aria-current="${p === "versiones"}">${ic("historia")}<span>Versiones</span>${E.proyecto.pendiente ? `<small>Sin guardar</small>` : ""}</button>` : "";
+        const docs = partes.nDocs ? arbolHTML(partes.docs, 2) : `<button class="archivo" style="--n:2" data-accion="p-documentar">${ic("chispa")}<span>Hacer la documentación completa</span></button>`;
         html += `<div role="group">${filaC}${abC ? `<div role="group">${arbolHTML(partes.codigo, 2) || `<p class="vacio" style="--n:2">El código no tiene documentos .md ni diagramas.</p>`}</div>` : ""}
-          ${filaD}${abD ? `<div role="group">${extras}${arbolHTML(partes.docs, 2)}</div>` : ""}</div>`;
+          ${filaD}${abD ? `<div role="group">${extras}${docs}</div>` : ""}</div>`;
       }
       const actual = E.carpeta?.ruta;
       const otros = E.recientes.map((r, i) => [r, i]).filter(([r]) => r.ruta !== actual);
@@ -771,8 +777,9 @@
       }
       if (d.pDocs !== undefined) {
         // La carpeta «Documentación»: abre lo que tiene y lo que le falta (o, vacía, la invitación a documentar todo).
-        E.abiertas["#docs"] = E.panel === "proyecto" && !E.sel ? !(E.abiertas["#docs"] ?? true) : true;
-        E.panel = "proyecto"; E.sel = null; E.lateral = false; api.pintar(); return true;
+        E.abiertas["#docs"] = (E.panel === "proyecto" || (sinDocumentacion() && !E.panel)) && !E.sel ? !(E.abiertas["#docs"] ?? true) : true;
+        // Sin documentación todavía: el inicio de la carpeta, que invita a hacerla completa.
+        E.panel = sinDocumentacion() ? null : "proyecto"; E.sel = null; E.lateral = false; api.pintar(); return true;
       }
       if (d.pReciente !== undefined) { E.lateral = false; pj.pedido = true; host.enviar("abrirProyecto", { indice: Number(d.pReciente) }); return true; }
       if (d.pElemento !== undefined && !d.accion) { E.lateral = false; E.menu = null; pj.elemento = d.pElemento; pj.editar = null; E.panel = "elementos"; api.pintar(); return true; }
@@ -940,7 +947,7 @@
     function hayDialogo() { return !!(pj.dialogo || pj.generando); }
     function cerrarDialogo() { pj.dialogo = null; if (pj.generando) { pj.generando = null; } }
 
-    return { lateralHTML, recientesHTML, esProyecto, esCodigo, leerCodigo, guardarCodigo, barraHTML, areaHTML, dialogoHTML, menuElementosHTML, botonElemento, clic, respuesta, despuesDePintar, enlace, pedirIA,
+    return { lateralHTML, recientesHTML, esProyecto, sinDocumentacion, esDeCodigo, esCodigo, leerCodigo, guardarCodigo, barraHTML, areaHTML, dialogoHTML, menuElementosHTML, botonElemento, clic, respuesta, despuesDePintar, enlace, pedirIA,
       alCambiarCarpeta, alAbrirArchivo, alGuardarArchivo, alCambiarArchivos, hayDialogo, cerrarDialogo, simular,
       _: { armarPropuestas, docsProyecto, cargarDocs, loQueFalta, pedidoCompletar } };
 

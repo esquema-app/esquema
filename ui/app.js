@@ -275,7 +275,7 @@
     if (ruta in E.abiertas) return E.abiertas[ruta];
     // Las carpetas del proyecto en el lateral: el proyecto y su documentación abiertos; el código, cerrado salvo que tenga lo abierto.
     if (ruta === "#p" || ruta === "#docs") return true;
-    if (ruta === "#codigo") return P.esCodigo(E.sel);
+    if (ruta === "#codigo") return P.esDeCodigo(E.sel);
     if (P.esCodigo(ruta)) return !!E.sel && E.sel.startsWith(ruta + "/");
     const dentro = (r) => r && (r === ruta || r.startsWith(ruta + "/"));
     return E.archivos.length <= 20 || (E.sel && dentro(carpetaDe(E.sel))) || (E.proyecto && dentro(E.proyecto.docs));
@@ -349,6 +349,7 @@
   /** Inicio de una carpeta: lo que se puede hacer, en palabras de quien la usa. Los proyectos lo muestran en su panel. */
   function inicioHTML() {
     return `<div class="inicio"><div class="inicio-cab"><span class="p-icono">${ic("carpeta")}</span><div><h2 data-sin-traducir>${esc(E.carpeta.nombre)}</h2><p>¿Qué quieres hacer?</p></div></div>
+      ${P.sinDocumentacion() ? `<div class="p-aviso inicio-docs"><span>Este proyecto todavía no tiene documentación. Tu IA puede leerlo entero y escribir la visión general, la arquitectura y los flujos principales, aparte de tu código.</span><button class="boton principal" data-accion="p-documentar">${ic("chispa")} Hacer la documentación completa</button></div>` : ""}
       ${accionesInicioHTML()}
       <p class="inicio-mas"><button class="boton plano" data-accion="readme">${ic("github")} README para GitHub</button></p></div>`;
   }
