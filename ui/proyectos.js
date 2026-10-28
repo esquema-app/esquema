@@ -350,6 +350,7 @@
       const docs = x.documentos.slice().sort((a, b) => (a.tipo === "glosario") - (b.tipo === "glosario") || TIPOS_ORDEN.indexOf(a.tipo) - TIPOS_ORDEN.indexOf(b.tipo) || a.ruta.localeCompare(b.ruta));
       const rev = E.proyecto.revision;
       return `<div class="p-cab"><span class="p-icono">${ic("proyecto")}</span><div><h2 data-sin-traducir>${esc(x.nombre)}</h2>${frase("{d} documentos · {e} elementos · en {c}", { d: x.documentos.length, e: x.elementos.length, c: docsDir() + "/" }, "p")}</div></div>
+        ${api.accionesInicioHTML()}
         ${pj.espera ? `<div class="p-aviso"><span class="giro"></span> Guardando la versión…</div>` : ""}
         ${u ? `<div class="p-aviso"><span data-sin-traducir>${esc(u.mensaje)}</span>${u.puede ? `<button class="boton" data-accion="p-deshacer">${ic("deshacer")} Deshacer este cambio</button>` : ""}</div>` : ""}
         ${c?.n && !E.proyecto.cambiosVistos ? `<section class="p-tarjeta p-cambios">
@@ -362,7 +363,6 @@
           <div class="p-lista">${docs.map((d) => `<button class="p-doc" data-abrir="${esc(completa(d.ruta))}"><span class="p-tipo">${ic(d.tipo === "glosario" ? "elemento" : /\.mmd$/.test(d.ruta) ? "diagrama" : "doc")}</span><span class="p-txt"><b data-sin-traducir>${esc(d.titulo)}</b><small data-sin-traducir>${esc(d.ruta)}</small></span></button>`).join("") || `<p class="p-ayuda">Todavía no hay documentos.</p>`}</div>
         </section>
         <div class="p-acciones izq">
-          <button class="boton principal" data-accion="p-flujo">${ic("chispa")} Documentar un flujo</button>
           <button class="boton" data-p="elementos">${ic("elemento")} Elementos</button>
           <button class="boton" data-p="versiones">${ic("historia")} Versiones</button>
         </div>`;
@@ -491,7 +491,7 @@
       if (!d) return "";
       if (d.tipo === "error") return capa("t-pj", `<h2 id="t-pj">No resultó</h2><p data-sin-traducir>${esc(tr(d.texto))}</p><div class="pie-dialogo"><button class="boton principal" data-accion="cerrar" data-autofoco>Entendido</button></div>`);
       if (d.tipo === "envio") return capa("t-pj", envioHTML(d), "ancho");
-      if (d.tipo === "flujo") return capa("t-pj", `<h2 id="t-pj">Documentar un flujo</h2><p>Cuéntale a tu IA qué flujo quieres documentar. Si necesita leer archivos del código, te pregunta antes.</p>
+      if (d.tipo === "flujo") return capa("t-pj", `<h2 id="t-pj">Documentar un flujo</h2><p>Cuéntale a tu IA qué quieres documentar: «el flujo de…» o «la secuencia de…». Si necesita leer archivos del código, te pregunta antes.</p>
         <textarea id="p-pedido" placeholder="Por ejemplo: cómo se graba una reunión, desde que tocas Grabar hasta que queda guardada" data-autofoco data-sin-traducir>${esc(d.pedido || "")}</textarea>
         ${d.error ? `<p class="mal-txt">${esc(tr(d.error))}</p>` : ""}
         <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-flujo-enviar">${ic("chispa")} Seguir</button></div>`);
@@ -519,7 +519,7 @@
       return "";
     }
     function envioHTML(d) {
-      const titulo = { inicial: "Documentar el proyecto", flujo: "Documentar un flujo", cambio: "Actualizar los documentos", revisar: "Poner al día la documentación" }[d.tarea];
+      const titulo = d.datos?.forma === "diagrama" ? "Crear diagrama" : { inicial: "Documentar el proyecto", flujo: "Documentar un flujo", cambio: "Actualizar los documentos", revisar: "Poner al día la documentación" }[d.tarea];
       if (d.cargando) return `<h2 id="t-pj">${titulo}</h2><div class="esperando"><span class="giro"></span> Preparando lo que se envía…</div>`;
       if (d.error) return `<h2 id="t-pj">${titulo}</h2><p class="mal-txt" data-sin-traducir>${esc(tr(d.error))}</p><div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cerrar</button></div>`;
       const motivos = { ruta: "ruta no válida", fuera: "no existe, es un secreto o está ignorado", binario: "no es texto", tope: "pasa del tope de tamaño" };
@@ -631,6 +631,11 @@
           E.nuevo = null; E.lateral = false;
           if (E.proyecto) { pj.dialogo = { tipo: "flujo", pedido: "" }; api.pintar(); return true; }
           pj.pedido = true; host.enviar("elegirCarpeta", { proyecto: true }); return true;
+        case "p-documentar":
+          E.nuevo = null; E.lateral = false; E.sel = null;
+          if (E.proyecto) { pedirIA("inicial", { docs: docsDir() }); return true; }
+          if (!E.carpeta) { pj.pedido = true; host.enviar("elegirCarpeta", { proyecto: true }); return true; }
+          E.panel = "proyecto"; E.encontrado = { cargando: true, docs: docsDir() }; enviar("leer"); api.pintar(); return true;
         case "p-generar-inicial": {
           const docs = ($("#p-docs")?.value || "docs/esquema").trim().replace(/^\/+|\/+$/g, "");
           if (!/^[\w][\w.-]*(\/[\w][\w.-]*){0,3}$/.test(docs)) { toast("Esa carpeta para la documentación no sirve. Usa algo como docs/esquema."); return true; }
@@ -639,11 +644,11 @@
         }
         case "p-enviar": enviarIA(); return true;
         case "p-cancelar": pj.generando = null; toast("Cancelé: si tu IA responde, no aplico nada"); api.pintar(); return true;
-        case "p-flujo": pj.dialogo = { tipo: "flujo", pedido: "" }; api.pintar(); return true;
+        case "p-flujo": E.nuevo = null; E.lateral = false; pj.dialogo = { tipo: "flujo", pedido: "" }; api.pintar(); return true;
         case "p-flujo-enviar": {
           const pedido = ($("#p-pedido")?.value || "").trim();
           if (!pedido) { pj.dialogo.error = "Cuéntame qué quieres documentar."; api.pintar(); return true; }
-          pedirIA("flujo", { pedido }); return true;
+          pedirIA("flujo", { pedido, tipo: api.tipoDelPedido(pedido) }); return true;
         }
         case "p-pedir-enviar": { const x = pj.dialogo; pedirIA(x.tarea, { ...x.datos, archivos: x.elegidas }); return true; }
         case "p-descartar": E.propuestas = null; E.panel = E.proyecto ? "proyecto" : E.encontrado ? "proyecto" : null; toast("No guardé nada"); api.pintar(); return true;
@@ -753,7 +758,7 @@
     function hayDialogo() { return !!(pj.dialogo || pj.generando); }
     function cerrarDialogo() { pj.dialogo = null; if (pj.generando) { pj.generando = null; } }
 
-    return { lateralHTML, recientesHTML, barraHTML, areaHTML, dialogoHTML, menuElementosHTML, botonElemento, clic, respuesta, despuesDePintar, enlace,
+    return { lateralHTML, recientesHTML, barraHTML, areaHTML, dialogoHTML, menuElementosHTML, botonElemento, clic, respuesta, despuesDePintar, enlace, pedirIA,
       alCambiarCarpeta, alAbrirArchivo, alGuardarArchivo, alCambiarArchivos, hayDialogo, cerrarDialogo, simular,
       _: { armarPropuestas, docsProyecto, cargarDocs } };
 
@@ -819,7 +824,7 @@
         if (!(d.archivos || []).length) return { ok: true, tarea: "flujo", docs, propuestas: [], elementos: [], pide: g.pide, nota: g.notaPide };
         const nombre = M.idElemento(d.pedido).split("-").slice(0, 5).join("-");
         const texto = g.flujo.texto.split("{titulo}").join(d.pedido.replace(/[\n#]/g, " ").slice(0, 80));
-        return { ok: true, tarea: "flujo", docs, propuestas: [{ ruta: `flujos/${nombre}.md`, titulo: d.pedido.slice(0, 80), tipo: "flujo", texto }], elementos: g.flujo.elementos, pide: [], nota: g.flujo.nota };
+        return { ok: true, tarea: "flujo", docs, propuestas: [{ ruta: `${d.forma === "diagrama" ? "diagramas" : "flujos"}/${nombre}.md`, titulo: d.pedido.slice(0, 80), tipo: "flujo", texto }], elementos: g.flujo.elementos, pide: [], nota: g.flujo.nota };
       }
       // cambio o revisar: agrega lo pedido como una nota al comienzo de cada documento.
       const propuestas = (d.documentos || []).filter((r) => memoria[docs + "/" + r] != null).map((r) => {

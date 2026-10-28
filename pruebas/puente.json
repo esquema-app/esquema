@@ -83,7 +83,7 @@
       "datos": {
         "orden": "abrir|leer|preparar|generar|guardar|version|versiones|ver|restaurar",
         "docs?": "carpeta de la documentación, relativa al proyecto (docs/esquema)",
-        "…": "lo de cada orden (tarea, pedido, archivos, documentos, idioma, esquema, mensaje, id)"
+        "…": "lo de cada orden (tarea, pedido, tipo auto|flujo|secuencia|arquitectura, forma documento|diagrama, archivos, documentos, idioma, esquema, mensaje, id)"
       },
       "responde": "proyectoRespuesta",
       "como": "bin/proyecto.py <orden> <entrada {…datos, carpeta}> <salida>: la app solo acepta órdenes de la lista y agrega la carpeta actual; el script valida todo lo demás (rutas dentro del proyecto, carpeta de docs, esquema.json, tamaños). generar llama a la IA sin herramientas. La respuesta lleva {orden}."

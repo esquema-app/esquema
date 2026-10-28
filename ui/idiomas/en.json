@@ -559,6 +559,25 @@
   "¿Hiciste una buena? Compártela con la comunidad": "Made a good one? Share it with the community",
   "¿Restaurar esta versión?": "Restore this version?",
   "Últimos cambios": "Latest changes",
-  "… {n} líneas iguales": "… {n} unchanged lines"
+  "… {n} líneas iguales": "… {n} unchanged lines",
+  "Antes de enviar te muestro exactamente qué va. Queda en la documentación del proyecto ({x}).": "Before sending, I show you exactly what goes. It stays in the project documentation ({x}).",
+  "Crear diagrama": "Create a diagram",
+  "Cuéntale a tu IA qué quieres documentar: «el flujo de…» o «la secuencia de…». Si necesita leer archivos del código, te pregunta antes.": "Tell your AI what you want to document: “the flow of…” or “the sequence of…”. If it needs to read code files, it asks you first.",
+  "Desde una plantilla o en blanco: README, decisión, guía…": "From a template or blank: README, decision, guide…",
+  "Dile a tu IA qué quieres ver: «el flujo de…», «la secuencia de…» o «la arquitectura de…».": "Tell your AI what you want to see: “the flow of…”, “the sequence of…” or “the architecture of…”.",
+  "Documentación completa": "Full documentation",
+  "El flujo de iniciar sesión": "The flow of signing in",
+  "Escribir un documento": "Write a document",
+  "Inicio": "Home",
+  "La arquitectura del proyecto": "The architecture of the project",
+  "La secuencia de guardar un cambio, de la pantalla a la base de datos": "The sequence of saving a change, from the screen to the database",
+  "Por ejemplo: la secuencia de un pago, desde la app hasta el banco": "For example: the sequence of a payment, from the app to the bank",
+  "Puedes cerrar esto y seguir trabajando: el diagrama aparece cuando tu IA responda.": "You can close this and keep working: the diagram shows up when your AI answers.",
+  "Pídele a tu IA «el flujo de…», «la secuencia de…» o «la arquitectura de…». Puede leer tu código.": "Ask your AI for “the flow of…”, “the sequence of…” or “the architecture of…”. It can read your code.",
+  "Que lea el código de esta carpeta": "Let it read the code in this folder",
+  "Tu IA la vuelve a escribir desde el código. Revisas cada cambio antes de guardarlo.": "Your AI rewrites it from the code. You review every change before saving it.",
+  "Tu IA lee el proyecto y escribe la visión general, la arquitectura y los flujos principales.": "Your AI reads the project and writes the overview, the architecture and the main flows.",
+  "Un flujo explicado paso a paso, con su diagrama. Tú apruebas qué archivos lee.": "A flow explained step by step, with its diagram. You approve which files it reads.",
+  "¿Qué quieres hacer?": "What would you like to do?"
  }
 }

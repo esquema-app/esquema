@@ -6,7 +6,7 @@
 set -eo pipefail
 cd "$(dirname "$0")/.."
 echo "Sintaxis"
-for f in ui/app.js ui/motor/*.js docs/pagina.js; do node --check "$f"; done
+for f in ui/app.js ui/proyectos.js ui/motor/*.js docs/pagina.js; do node --check "$f"; done
 for f in pruebas/*.mjs herramientas/*.mjs escritorio/src/*.js escritorio/pruebas/*.mjs; do node --check "$f"; done
 python3 -m py_compile bin/*.py pruebas/*.py herramientas/*.py ejemplos/*.py
 python3 -c "import json, glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('ui/idiomas/*.json') + glob.glob('plantillas/*/*.json') + glob.glob('ejemplos/catalogo-ejemplo/plantillas/*/*.json') + ['ui/demo.json', 'pruebas/casos.json', 'pruebas/puente.json']]"

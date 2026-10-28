@@ -20,6 +20,18 @@ import ia
 
 IDIOMAS = {"es": "español (de Chile, neutro)", "en": "English"}
 
+TIPOS_DIAGRAMA = {"flujo": "un diagrama de flujo", "secuencia": "un diagrama de secuencia",
+                  "arquitectura": "un diagrama de arquitectura (un flujo con íconos y grupos)"}
+SEGUN_PEDIDO = ("el tipo de diagrama que mejor lo muestre. Si la persona pide «el flujo de…» o «el proceso de…», un diagrama de flujo; "
+                "«la secuencia de…» o «cómo se comunican…», uno de secuencia; «la arquitectura de…» o «los componentes de…», uno de "
+                "arquitectura")
+
+
+def tipo_diagrama(tipo):
+    """La frase del prompt para el tipo pedido; «auto» (o algo desconocido) deja que la IA lo deduzca del pedido."""
+    return TIPOS_DIAGRAMA.get(tipo, SEGUN_PEDIDO)
+
+
 SUBCONJUNTO = """Usa solo este subconjunto de Mermaid (Esquema lo dibuja y GitHub también):
 - Flujo: primera línea «flowchart TD» o «flowchart LR». Nodos: A[Texto] proceso, A(Texto) redondeado, A([Texto]) inicio o fin,
   A{Texto} decisión, A[(Texto)] base de datos, A[[Texto]] subproceso, A{{Texto}} hexágono, A[/Texto/] entrada o salida,
@@ -99,7 +111,7 @@ def prompt_readme(e):
 
 def prompt_dibujar(e):
     idioma = IDIOMAS.get(e.get("idioma"), IDIOMAS["es"])
-    tipo = {"flujo": "un diagrama de flujo", "secuencia": "un diagrama de secuencia", "arquitectura": "un diagrama de arquitectura (un flujo con íconos y grupos)"}.get(e.get("tipo"), "el tipo de diagrama que mejor lo muestre (flujo, secuencia o arquitectura)")
+    tipo = tipo_diagrama(e.get("tipo"))
     partes = [f"Dibuja {tipo} en Mermaid. Los textos del diagrama, en {idioma}.",
               "Responde SOLO con el código, dentro de un bloque ```mermaid, sin explicaciones. Entre 3 y 25 nodos o mensajes: claro antes que completo.",
               SUBCONJUNTO]

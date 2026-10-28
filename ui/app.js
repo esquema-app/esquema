@@ -23,13 +23,14 @@
     nuevo: null,            // {fuente: "app" | "comunidad", categoria, busqueda, elegida, nombre}
     catalogo: null,         // plantillas de la comunidad: {estado: "cargando" | "listo" | "error", plantillas, error, bajando: {id: true}}
     readme: null,           // {paso: "pedir" | "escribiendo" | "listo" | "error", descripcion, estructura, envio, texto, pedido, error}
-    dibujar: null,          // {pedido, tipo, cambiar, enviando, error, propuesta}
+    dibujar: null,          // {pedido, tipo, cambiar, nuevo, codigo, enviando, error}; nuevo: «Crear diagrama» desde el inicio (archivo nuevo)
     cambiosIA: [],          // [{id, ruta, pedido, resumen, antes, despues, estado}]
     tarjetaIA: null,        // id del último cambio de la IA (la tarjeta del lienzo)
     confirmar: null,        // {titulo, texto, si, no, accion, alNo?}
     actualizacion: { hay: false }, // {hay, detalle}: versión nueva (la revisa la app al abrir y cada 6 horas)
     revisando: null,        // Ajustes → Actualizaciones: null | "buscando" | "al-dia" | "sin-conexion" | {paso, texto, pct}
     lateral: false,         // en celular: la lista de archivos abierta
+    abiertas: {},           // árbol de la carpeta: ruta de una subcarpeta → abierta (true) o cerrada (false); sin valor, decide arbolAbierta()
     sugerencias: [],
     // Proyectos (ui/proyectos.js): la documentación de un repo en docs/esquema/, con elementos conectados y versiones.
     proyecto: null,         // {docs, esquema, git, cambios} si la carpeta tiene docs/esquema/esquema.json
@@ -116,7 +117,7 @@
     volver: "M10 3 5 8l5 5", ajustes: "M8 10.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4",
     persona: "M8 7.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 14.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5", github: "M5.5 2.5 1.5 8l4 5.5M10.5 2.5l4 5.5-4 5.5",
     proyecto: "M2 4.5 8 1.5l6 3v7l-6 3-6-3zM2 4.5l6 3 6-3M8 7.5v7", elemento: "M8 1.5 14.5 8 8 14.5 1.5 8z", historia: "M8 14.5a6.5 6.5 0 1 0-6.2-8.5M1.5 2.5v3.5H5M8 4.5V8l2.5 2",
-    flecha: "M3 8h10M9 4l4 4-4 4",
+    flecha: "M3 8h10M9 4l4 4-4 4", inicio: "M2 7.5 8 2.5l6 5M3.5 6.5v7.5h9V6.5M6.5 14v-4h3v4", abajo: "M4 6l4 4 4-4", derecha: "M6 4l4 4-4 4",
   };
   const ic = (n) => `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
 
@@ -214,7 +215,7 @@
     pintar: () => pintar(), abrir: (r) => abrir(r), cambiarTextoDe: (r, t, op) => cambiarTextoDe(r, t, op), guardarTodo: () => guardarTodo(),
     textoLienzo: () => textoLienzo(), ponerTextoLienzo: (t, op) => ponerTextoLienzo(t, op), resultadoBloque: (t, p) => resultadoBloque(t, p),
     abrirMenu: (tipo, b) => abrirMenu(tipo, b), pintarMenu: () => pintarMenu(), esDiagrama: (r) => esDiagrama(r), porRuta,
-    registrarCambioIA: (c) => { E.cambiosIA.push(c); },
+    registrarCambioIA: (c) => { E.cambiosIA.push(c); }, accionesInicioHTML: () => accionesInicioHTML(), tipoDelPedido: (x) => tipoDelPedido(x),
   });
 
   // ───────────── Pintar ─────────────
@@ -255,18 +256,44 @@
     if (origen === "texto") calcularSugerencias(); else pintarSugerencias([]);
   }
 
+  /** La carpeta como árbol: {ruta, carpetas: Map(nombre → nodo), archivos: [], total} (total: documentos y diagramas adentro). */
+  function arbolDe(archivos) {
+    const raiz = { ruta: "", carpetas: new Map(), archivos: [], total: 0 };
+    for (const a of archivos) {
+      let n = raiz; n.total++;
+      for (const parte of a.ruta.split("/").slice(0, -1)) {
+        if (!n.carpetas.has(parte)) n.carpetas.set(parte, { ruta: n.ruta ? n.ruta + "/" + parte : parte, carpetas: new Map(), archivos: [], total: 0 });
+        n = n.carpetas.get(parte); n.total++;
+      }
+      n.archivos.push(a);
+    }
+    return raiz;
+  }
+  /** Si nadie la abrió o cerró: abierta si hay pocos archivos, si tiene el archivo abierto o si es (o lleva a) la documentación del proyecto. */
+  function arbolAbierta(ruta) {
+    if (ruta in E.abiertas) return E.abiertas[ruta];
+    const dentro = (r) => r && (r === ruta || r.startsWith(ruta + "/"));
+    return E.archivos.length <= 20 || (E.sel && dentro(carpetaDe(E.sel))) || (E.proyecto && dentro(E.proyecto.docs));
+  }
+  function arbolHTML(n, nivel) {
+    const archivo = (a) => `<button class="archivo" style="--n:${nivel}" data-abrir="${esc(a.ruta)}" aria-current="${a.ruta === E.sel && !E.panel}" title="${esc(a.ruta)}" data-sin-traducir>${ic(esDiagrama(a.ruta) ? "diagrama" : "doc")}<span>${esc(nombreDe(a.ruta))}</span></button>`;
+    const carpeta = (c, nombre) => {
+      const ab = arbolAbierta(c.ruta), docs = E.proyecto && c.ruta === E.proyecto.docs;
+      return `<button class="archivo carpeta-arbol" style="--n:${nivel}" data-arbol="${esc(c.ruta)}" aria-expanded="${ab}" title="${esc(c.ruta)}" data-sin-traducir>${ic(ab ? "abajo" : "derecha")}${ic("carpeta")}<span>${esc(nombre)}</span><small>${docs ? esc(tr("Documentación")) : c.total}</small></button>${ab ? `<div role="group">${arbolHTML(c, nivel + 1)}</div>` : ""}`;
+    };
+    return n.archivos.map(archivo).join("") + [...n.carpetas].sort(([a], [b]) => a.localeCompare(b)).map(([nombre, c]) => carpeta(c, nombre)).join("");
+  }
   function lateral() {
-    const docs = E.archivos.filter((a) => esDocumento(a.ruta)), diags = E.archivos.filter((a) => esDiagrama(a.ruta));
-    const fila = (a) => `<button class="archivo" data-abrir="${esc(a.ruta)}" aria-current="${a.ruta === E.sel && !E.panel}" title="${esc(a.ruta)}" data-sin-traducir>${ic(esDiagrama(a.ruta) ? "diagrama" : "doc")}<span>${esc(nombreDe(a.ruta))}</span>${carpetaDe(a.ruta) ? `<small>${esc(carpetaDe(a.ruta))}</small>` : ""}</button>`;
+    const inicio = E.carpeta && !E.proyecto ? `<button class="archivo" data-accion="inicio" aria-current="${!E.sel && !E.panel}">${ic("inicio")}<span>Inicio</span></button>` : "";
     return `<aside class="lateral${E.lateral ? " abierto" : ""}" aria-label="Archivos">
       <div class="marca"><img src="favicon.svg" alt=""><b>Esquema</b></div>
       <button class="carpeta" data-accion="elegir-carpeta" title="Cambiar de carpeta">${ic("carpeta")}<span data-sin-traducir>${esc(E.carpeta?.nombre || "")}</span></button>
       <button class="boton principal nuevo" data-accion="nuevo">${ic("mas")} Nuevo</button>
       <nav class="lista">
+        ${inicio}
         ${P.lateralHTML()}
-        ${docs.length ? `<h3>Documentos</h3>${docs.map(fila).join("")}` : ""}
-        ${diags.length ? `<h3>Diagramas</h3>${diags.map(fila).join("")}` : ""}
-        ${!docs.length && !diags.length && E.carpeta ? `<p class="vacio">Esta carpeta todavía no tiene documentos ni diagramas.</p>` : ""}
+        ${E.archivos.length ? `<h3>Archivos</h3><div class="arbol">${arbolHTML(arbolDe(E.archivos), 0)}</div>` : ""}
+        ${!E.archivos.length && E.carpeta ? `<p class="vacio">Esta carpeta todavía no tiene documentos ni diagramas.</p>` : ""}
         ${P.recientesHTML()}
       </nav>
       <div class="pie-lateral"><button class="boton plano" data-accion="ajustes">${ic("ajustes")} Ajustes</button></div>
@@ -301,7 +328,7 @@
     if (!E.carpeta) return `<div class="vacio"><div><h2>Elige una carpeta</h2><p>Tus documentos y diagramas viven en una carpeta de tu computador, en archivos .md y .mmd que GitHub muestra tal cual.</p><div class="acciones"><button class="boton principal" data-accion="elegir-carpeta">${ic("carpeta")} Elegir carpeta</button><button class="boton" data-accion="p-nuevo">${ic("proyecto")} Documentar un proyecto</button></div></div></div>`;
     if (E.panel) return P.areaHTML();
     const d = doc();
-    if (!E.sel || !d) return `<div class="vacio"><div><h2>Empieza un documento o un diagrama</h2><p>Escríbelo como texto o dibújalo en el lienzo: los dos se mantienen al día.</p><div class="acciones"><button class="boton principal" data-accion="nuevo">${ic("mas")} Nuevo</button><button class="boton" data-accion="readme">${ic("github")} README para GitHub</button>${E.proyecto ? "" : `<button class="boton" data-accion="p-nuevo">${ic("proyecto")} Documentar un proyecto</button>`}</div></div></div>`;
+    if (!E.sel || !d) return inicioHTML();
     if (d.texto == null) return `<div class="vacio"><div class="esperando"><span class="giro"></span> Abriendo…</div></div>`;
     const vista = movil() && E.vista === "ambos" ? "dibujo" : E.vista;
     const derecha = esDiagrama(E.sel) ? `<section class="panel-dibujo">${lienzoHTML()}</section>`
@@ -313,6 +340,36 @@
         <div class="problemas" id="problemas"></div>
         <div class="sugerencias" id="sugerencias" aria-label="Sugerencias"></div>
       </section>${derecha}</div>`;
+  }
+
+  /** Inicio de una carpeta: lo que se puede hacer, en palabras de quien la usa. Los proyectos lo muestran en su panel. */
+  function inicioHTML() {
+    return `<div class="inicio"><div class="inicio-cab"><span class="p-icono">${ic("carpeta")}</span><div><h2 data-sin-traducir>${esc(E.carpeta.nombre)}</h2><p>¿Qué quieres hacer?</p></div></div>
+      ${accionesInicioHTML()}
+      <p class="inicio-mas"><button class="boton plano" data-accion="readme">${ic("github")} README para GitHub</button></p></div>`;
+  }
+  function accionesInicioHTML() {
+    const tarjeta = (accion, icono, titulo, texto) => `<button class="tarjeta-inicio" data-accion="${accion}"><span class="ti-icono">${ic(icono)}</span><span class="ti-txt"><b>${titulo}</b><small>${texto}</small></span></button>`;
+    return `<div class="acciones-inicio">
+      ${tarjeta("crear-diagrama", "chispa", "Crear diagrama", "Pídele a tu IA «el flujo de…», «la secuencia de…» o «la arquitectura de…». Puede leer tu código.")}
+      ${tarjeta("p-documentar", "proyecto", "Documentación completa", E.proyecto ? "Tu IA la vuelve a escribir desde el código. Revisas cada cambio antes de guardarlo." : "Tu IA lee el proyecto y escribe la visión general, la arquitectura y los flujos principales.")}
+      ${tarjeta("p-flujo", "diagrama", "Documentar un flujo", "Un flujo explicado paso a paso, con su diagrama. Tú apruebas qué archivos lee.")}
+      ${tarjeta("nuevo", "doc", "Escribir un documento", "Desde una plantilla o en blanco: README, decisión, guía…")}
+    </div>`;
+  }
+  /** «el flujo de…» → flujo, «la secuencia de…» → secuencia, «la arquitectura de…» → arquitectura; si no se nota, «auto». */
+  function tipoDelPedido(texto) {
+    const t = String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (/\b(secuencia|sequence|como se comunican|how .* talk)\b/.test(t)) return "secuencia";
+    if (/\b(arquitectura|architecture|componentes|components)\b/.test(t)) return "arquitectura";
+    if (/\b(flujo|flow|proceso|process|pasos|steps)\b/.test(t)) return "flujo";
+    return "auto";
+  }
+  /** Nombre de archivo a partir de lo que se pidió: «El flujo de compra» → «el-flujo-de-compra». */
+  const PALABRAS_VACIAS = new Set("el la los las un una unos unas de del al a en y o con por para entre desde hasta que su sus mi mis the a an of to in and or with for from my".split(" "));
+  function nombreDesde(texto, otro) {
+    const palabras = String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w && !PALABRAS_VACIAS.has(w));
+    return palabras.slice(0, 6).join("-").slice(0, 50).replace(/-+$/, "") || otro;
   }
 
   // ───────────── Editor de texto: números de línea, problemas, sugerencias ─────────────
@@ -987,15 +1044,18 @@
 
   // Dibújame: la IA propone un diagrama; se valida con el motor antes de aplicarlo y queda como un cambio que se puede quitar.
   const EJEMPLOS_DIBUJO = ["El registro de una persona: correo, verificación y bienvenida", "Arquitectura: app web, API, base de datos y cola de correos", "Secuencia de un pago con tarjeta entre app, API y banco"];
+  const EJEMPLOS_PROYECTO = ["El flujo de iniciar sesión", "La secuencia de guardar un cambio, de la pantalla a la base de datos", "La arquitectura del proyecto"];
   function dialogoDibujar() {
-    const d = E.dibujar, hayDiagrama = !!textoLienzo().trim();
-    if (d.enviando) return `<h2 id="t-dj">Dibújame</h2><div class="esperando"><span class="giro"></span>${frase("{ia} está dibujando…", { ia: nombreIA() })}</div><div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button></div>`;
-    return `<h2 id="t-dj">Dibújame</h2>
-      <p>Cuéntale a tu IA qué quieres ver. Revisa el resultado en el lienzo: si no te gusta, lo quitas con un toque.</p>
-      <textarea id="pedido-dibujo" placeholder="Por ejemplo: el flujo de compra de una tienda, con pago y despacho" data-autofoco data-sin-traducir>${esc(d.pedido || "")}</textarea>
-      <div class="chips" style="margin-top:8px">${EJEMPLOS_DIBUJO.map((x, i) => `<button class="chip" data-ejemplo-dibujo="${i}">${x}</button>`).join("")}</div>
+    const d = E.dibujar, hayDiagrama = !d.nuevo && !!textoLienzo().trim(), titulo = d.nuevo ? "Crear diagrama" : "Dibújame";
+    const ejemplos = d.nuevo ? EJEMPLOS_PROYECTO : EJEMPLOS_DIBUJO;
+    if (d.enviando) return `<h2 id="t-dj">${titulo}</h2><div class="esperando"><span class="giro"></span>${frase("{ia} está dibujando…", { ia: nombreIA() })}</div><p class="p-ayuda">Puedes cerrar esto y seguir trabajando: el diagrama aparece cuando tu IA responda.</p><div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cerrar</button></div>`;
+    return `<h2 id="t-dj">${titulo}</h2>
+      <p>${d.nuevo ? "Dile a tu IA qué quieres ver: «el flujo de…», «la secuencia de…» o «la arquitectura de…»." : "Cuéntale a tu IA qué quieres ver. Revisa el resultado en el lienzo: si no te gusta, lo quitas con un toque."}</p>
+      <textarea id="pedido-dibujo" placeholder="${d.nuevo ? "Por ejemplo: la secuencia de un pago, desde la app hasta el banco" : "Por ejemplo: el flujo de compra de una tienda, con pago y despacho"}" data-autofoco data-sin-traducir>${esc(d.pedido || "")}</textarea>
+      <div class="chips" style="margin-top:8px">${ejemplos.map((x, i) => `<button class="chip" data-ejemplo-dibujo="${i}">${x}</button>`).join("")}</div>
       <label>Tipo</label><div class="chips">${[["auto", "Que elija"], ["flujo", "Flujo"], ["secuencia", "Secuencia"], ["arquitectura", "Arquitectura"]].map(([v, n]) => `<button class="chip" data-tipo-dibujo="${v}" aria-pressed="${(d.tipo || "auto") === v}">${n}</button>`).join("")}</div>
       ${hayDiagrama ? `<label class="marcar"><input type="checkbox" id="cambiar-actual" ${d.cambiar ? "checked" : ""}> <span>Cambiar el diagrama que tengo abierto<small>${esDocumento(E.sel) ? "Si no, agrega uno nuevo al documento." : "Si no, crea uno nuevo."}</small></span></label>` : ""}
+      ${d.nuevo ? `<label class="marcar"><input type="checkbox" id="usar-codigo" ${d.codigo ? "checked" : ""}> <span>Que lea el código de esta carpeta${frase("Antes de enviar te muestro exactamente qué va. Queda en la documentación del proyecto ({x}).", { x: (E.proyecto?.docs || "docs/esquema") + "/diagramas/" }, "small")}</span></label>` : ""}
       ${d.error ? `<p class="mal-txt" data-sin-traducir>${d.error}</p>` : ""}
       ${cambiosDelArchivo()}
       <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="enviar-dibujo">${ic("chispa")} Dibujar</button></div>`;
@@ -1024,19 +1084,28 @@
     const d = E.dibujar;
     d.pedido = ($("#pedido-dibujo")?.value || "").trim();
     d.cambiar = !!$("#cambiar-actual")?.checked;
+    d.codigo = !!$("#usar-codigo")?.checked;
     if (!d.pedido) { d.error = tr("Escribe qué quieres que dibuje."); return pintar(); }
+    const tipo = d.tipo && d.tipo !== "auto" ? d.tipo : tipoDelPedido(d.pedido);
+    // Con el código: el mismo camino que «Documentar un flujo» (ver lo que se envía, la IA puede pedir archivos, propuestas que se revisan).
+    if (d.nuevo && d.codigo) { E.dibujar = null; P.pedirIA("flujo", { pedido: d.pedido, tipo, forma: "diagrama" }); return; }
     d.enviando = true; d.error = null;
-    host.enviar("dibujar", { pedido: d.pedido, tipo: d.tipo || "auto", actual: d.cambiar ? textoLienzo() : "", idioma: E.idioma });
+    host.enviar("dibujar", { pedido: d.pedido, tipo, actual: d.cambiar ? textoLienzo() : "", idioma: E.idioma });
     pintar();
   }
   function aplicarDibujo(texto) {
     const d = E.dibujar, dc = doc();
-    if (!dc) return;
     const r = M.dibujar(texto);
     if (r.errores?.length || !(r.tipo === "flujo" || r.tipo === "secuencia")) {
       d.enviando = false;
       d.error = r.errores?.length ? T("La propuesta tenía un error (línea {n}: {x}). No la apliqué; pídelo otra vez con más detalle.", { n: r.errores[0].linea, x: M.frase(r.errores[0]) }) : T("La respuesta no era un diagrama que Esquema sepa dibujar. No apliqué nada.");
       return pintar();
+    }
+    // Sin archivo abierto (o desde «Crear diagrama»): un diagrama nuevo con el nombre de lo que se pidió.
+    if (d.nuevo || !dc) {
+      E.dibujar = null;
+      const ruta = nombreLibre("diagramas/" + nombreDesde(d.pedido, "diagrama") + ".mmd");
+      crearArchivo(ruta, texto); registrarCambioIA(d.pedido, "", texto, ruta, ""); return;
     }
     const antesDoc = dc.texto;
     const antesDiagrama = d.cambiar ? textoLienzo() : "";
@@ -1179,8 +1248,9 @@
       E.catalogo.bajando[p.id] = true; host.enviar("descargarPlantilla", { id: p.id }); return pintar();
     }
     if (d.plantilla) return elegirPlantilla(d.plantilla);
-    if (d.ejemploDibujo) { E.dibujar.pedido = tr(EJEMPLOS_DIBUJO[Number(d.ejemploDibujo)]); E.dibujar.cambiar = !!$("#cambiar-actual")?.checked; return pintar(); }
-    if (d.tipoDibujo) { E.dibujar.pedido = $("#pedido-dibujo")?.value || ""; E.dibujar.cambiar = !!$("#cambiar-actual")?.checked; E.dibujar.tipo = d.tipoDibujo; return pintar(); }
+    if (d.ejemploDibujo) { const x = E.dibujar; x.pedido = tr((x.nuevo ? EJEMPLOS_PROYECTO : EJEMPLOS_DIBUJO)[Number(d.ejemploDibujo)]); x.cambiar = !!$("#cambiar-actual")?.checked; x.codigo = !!$("#usar-codigo")?.checked; x.tipo = tipoDelPedido(x.pedido); return pintar(); }
+    if (d.tipoDibujo) { const x = E.dibujar; x.pedido = $("#pedido-dibujo")?.value || ""; x.cambiar = !!$("#cambiar-actual")?.checked; x.codigo = !!$("#usar-codigo")?.checked; x.tipo = d.tipoDibujo; x.tipoManual = d.tipoDibujo !== "auto"; return pintar(); }
+    if (d.arbol !== undefined) { E.abiertas[d.arbol] = !arbolAbierta(d.arbol); return pintar(); }
     if (d.quitarIa) { E.dibujar = null; return quitarCambioIA(d.quitarIa); }
     if (d.irLinea) return irALinea(Number(d.irLinea));
     if (d.sugerencia) return usarSugerencia(Number(d.sugerencia));
@@ -1207,6 +1277,8 @@
       case "readme-escribir": return pedirReadme(false);
       case "readme-cambios": return pedirReadme(true);
       case "readme-guardar": return guardarReadme();
+      case "crear-diagrama": E.nuevo = null; E.lateral = false; E.dibujar = { pedido: "", tipo: "auto", nuevo: true, codigo: true }; return pintar();
+      case "inicio": E.sel = null; E.bloque = null; E.panel = null; E.lateral = false; return pintar();
       case "dibujame": E.dibujar = { pedido: "", tipo: "auto", cambiar: !!textoLienzo().trim() && (esDiagrama(E.sel) || E.bloque != null) }; return pintar();
       case "dibujame-busqueda": { const q = E.nuevo?.busqueda || ""; E.nuevo = null; if (!E.sel) { toast("Abre o crea un archivo primero"); return pintar(); } E.dibujar = { pedido: q, tipo: "auto", cambiar: false }; return pintar(); }
       case "enviar-dibujo": return enviarDibujo();
@@ -1217,7 +1289,7 @@
       case "confirmar-no": { const c = E.confirmar; E.confirmar = null; c?.alNo?.(); return pintar(); }
       case "buscar-actualizacion": E.revisando = "buscando"; host.enviar("buscarActualizacion"); return pintar();
       case "actualizar": guardarTodo(); E.revisando = { paso: "0", texto: tr("Preparando…") }; host.enviar("actualizar"); return pintar();
-      case "bv-fin": E.bv = null; E.config.bienvenida = true; host.enviar("config", { bienvenida: true }); if (!E.sel && E.archivos.length) return abrir(primerArchivo()); return pintar();
+      case "bv-fin": E.bv = null; E.config.bienvenida = true; host.enviar("config", { bienvenida: true }); return pintar();
       case "deshacer": return deshacer();
       case "rehacer": return rehacer();
       case "volver-doc": E.bloque = null; E.elegido = null; if (movil()) E.vista = "dibujo"; return pintar();
@@ -1237,7 +1309,9 @@
       case "minimapa": E.lz.mini = !E.lz.mini; return pintar();
     }
   });
+  let pendienteDibujo = null;  // «Dibújame» que se cerró mientras la IA dibujaba: se aplica igual cuando responda
   function cerrarDialogo() {
+    if (E.dibujar?.enviando) pendienteDibujo = { ...E.dibujar, ruta: E.sel, bloque: E.bloque, enviando: false };
     if (E.bv !== null && E.bv !== 0) { E.bv = null; E.config.bienvenida = true; host.enviar("config", { bienvenida: true }); }
     E.ajustes = false; E.nuevo = null; E.readme = null; E.dibujar = null; E.confirmar = null; E.menu = null;
     P.cerrarDialogo();
@@ -1261,6 +1335,12 @@
     if (/^http:\/\//.test(url)) return host.enviar("abrirEnlace", { url });
   }
   document.addEventListener("input", (e) => {
+    // «la secuencia de…» marca Secuencia mientras se escribe (si la persona no eligió el tipo a mano).
+    if (e.target.id === "pedido-dibujo" && E.dibujar && !E.dibujar.tipoManual) {
+      const tipo = tipoDelPedido(e.target.value);
+      E.dibujar.tipo = tipo;
+      document.querySelectorAll("[data-tipo-dibujo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tipoDibujo === tipo)));
+    }
     if (e.target.id === "texto") { cambiarTexto(e.target.value, { origen: "texto", agrupar: true }); return; }
     if (e.target.id === "buscar-plantilla") {
       E.nuevo.busqueda = e.target.value;
@@ -1353,11 +1433,9 @@
     },
     carpetaElegida(r) {
       if (!r.ok) { if (r.error) toast(r.error); return; }
-      E.carpeta = r.carpeta; E.archivos = (r.archivos || []).slice().sort(porRuta); E.docs = {}; E.sel = null; E.cambiosIA = [];
+      E.carpeta = r.carpeta; E.archivos = (r.archivos || []).slice().sort(porRuta); E.docs = {}; E.sel = null; E.cambiosIA = []; E.abiertas = {};
       P.alCambiarCarpeta(r);
-      if (r.proyecto) return pintar();
-      if (E.bv === null && E.archivos.length) return abrir(primerArchivo());
-      pintar();
+      pintar();  // una carpeta recién elegida abre en su inicio: qué se puede hacer con ella
     },
     archivoAbierto(r) {
       const d = E.docs[r.ruta];
@@ -1428,8 +1506,20 @@
       pintar(); pintarPreviaReadme();
     },
     dibujoListo(r) {
+      // Un «Dibújame» que se cerró mientras la IA dibujaba se aplica igual; si hay otro diálogo abierto (sin enviar), se respeta.
+      const otro = pendienteDibujo && E.dibujar && !E.dibujar.enviando ? E.dibujar : null;
+      if (pendienteDibujo && (!E.dibujar || otro)) {
+        const x = pendienteDibujo;
+        // Si ya no está abierto lo que iba a cambiar, el dibujo queda en un archivo nuevo (nunca encima de otro).
+        E.dibujar = { ...x, oculto: true, nuevo: x.nuevo || E.sel !== x.ruta || E.bloque !== x.bloque };
+      }
+      pendienteDibujo = null;
       if (!E.dibujar) return;
-      if (!r.ok) { E.dibujar.enviando = false; E.dibujar.error = esc(r.error || tr("Tu IA no respondió.")); return pintar(); }
+      if (otro) { const restaurar = () => { if (!E.dibujar) { E.dibujar = otro; pintar(); } }; setTimeout(restaurar, 0); }
+      if (!r.ok) {
+        if (E.dibujar.oculto) { E.dibujar = null; toast(r.error || tr("Tu IA no respondió."), true); return pintar(); }
+        E.dibujar.enviando = false; E.dibujar.error = esc(r.error || tr("Tu IA no respondió.")); return pintar();
+      }
       aplicarDibujo(r.texto);
     },
     exportado(r) { if (r.ok) toast(r.ruta ? Tp("Guardado en {x}", { x: r.ruta }) : tr("Listo"), true); else if (r.error) toast(r.error); },

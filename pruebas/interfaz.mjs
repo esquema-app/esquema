@@ -106,6 +106,7 @@ const VISTAS = [
   ["dibujar", "E=>{E.readme=null;E.dibujar={pedido:'',tipo:'auto',cambiar:true,error:'Escribe qué quieres que dibuje.'}}"],
   ["dibujar-historial", "E=>{E.dibujar.error=null;E.cambiosIA.push({id:'ia-y',ruta:E.sel,pedido:'Otro',antes:'',despues:'',estado:'quitado',resumen:{tipo:'secuencia',nodos:1,aristas:-2}})}"],
   ["dibujar-enviando", "E=>{E.dibujar.enviando=true}"],
+  ["crear-diagrama", "E=>{E.dibujar={pedido:'',tipo:'secuencia',nuevo:true,codigo:true}}"],
   ["confirmar", "E=>{E.dibujar=null;E.confirmar={titulo:'¿Quitar el cambio de la IA?',texto:'Lo editaste después. Si lo quitas, también se van esos cambios (puedes deshacerlo).',si:'Quitar igual',no:'Dejarlo',accion:()=>{}}}"],
   ["conflicto", "E=>{E.confirmar=null;const d=E.docs[E.sel];d.guardado=d.texto+'%%';d.estado='cambiado';window.Esquema.archivoCambiado({ruta:E.sel,texto:'flowchart TD\\n    X --> Y\\n'})}"],
   ["ajustes", "E=>{E.confirmar=null;E.ajustes=true;E.resultadoIA={claude:{ok:true},codex:{ok:false,error:'No encontré ChatGPT (Codex) en este computador.'}};E.probando={gemini:true}}"],
@@ -120,12 +121,13 @@ const VISTAS = [
   ["bienvenida-3-sin-ia", "E=>{E._ias=E.ias;E.ias=[]}"],
   ["sin-archivo", "E=>{E.ias=E._ias;E.bv=null;E.sel=null}"],
   ["lateral-celular", "E=>{E.lateral=true}"],
+  ["arbol-cerrado", "E=>{E.abiertas={docs:false}}"],
   ["sin-carpeta", "E=>{E.lateral=false;E.carpeta=null;E.archivos=[]}"],
 ];
 for (const idioma of (process.env.SOLO_PROYECTOS ? [] : ["es", "en"])) for (const ancho of [1280, 390]) {
   const p = await pagina({ ancho, alto: ancho < 500 ? 844 : 800, idioma, oscuro: ancho < 500 && idioma === "en" });
   for (const [nombre, f] of VISTAS) {
-    if (nombre === "lateral-celular" && ancho > 500) continue;
+    if ((nombre === "lateral-celular" || nombre === "arbol-cerrado") && ancho > 500) continue;
     await probar(p, f.slice(f.indexOf("{") + 1, f.lastIndexOf("}")));
     await espera(p, 60);
     if (idioma === "en") await sinTraducir(p, `${nombre} ${ancho}`);
@@ -322,6 +324,47 @@ console.log("Documento: revisado");
 }
 console.log("Dibújame: revisado");
 
+// ── 9b) Inicio de la carpeta, árbol y «Crear diagrama» ──
+{
+  const p = await pagina();
+  await p.click('[data-accion="inicio"]');
+  await espera(p);
+  const tarjetas = await p.$$eval(".tarjeta-inicio", (l) => l.map((x) => x.dataset.accion));
+  if (tarjetas.join() !== "crear-diagrama,p-documentar,p-flujo,nuevo") falla("El inicio no ofrece las cuatro acciones: " + tarjetas.join());
+  // El árbol: «docs» se cierra y se abre; lo de adentro desaparece y vuelve.
+  await p.click('[data-arbol="docs"]'); await espera(p);
+  if (await p.$('[data-abrir="docs/pago.mmd"]')) falla("Cerrar la carpeta del árbol no esconde sus archivos");
+  await p.click('[data-arbol="docs"]'); await espera(p);
+  if (!(await p.$('[data-abrir="docs/pago.mmd"]'))) falla("Abrir la carpeta del árbol no muestra sus archivos");
+  // «la secuencia de…» marca Secuencia mientras se escribe; sin el código, crea un diagrama nuevo en diagramas/.
+  await p.click('[data-accion="crear-diagrama"]');
+  await p.fill("#pedido-dibujo", "la secuencia de un pago entre la app y el banco");
+  if ((await p.getAttribute('[data-tipo-dibujo="secuencia"]', "aria-pressed")) !== "true") falla("«la secuencia de…» no elige Secuencia");
+  await p.uncheck("#usar-codigo");
+  await p.click('[data-accion="enviar-dibujo"]');
+  await p.waitForSelector(".tarjeta-ia", { timeout: 4000 });
+  const sel = await p.evaluate(() => { let s; window.Esquema._probar((E) => { s = E.sel; }); return s; });
+  if (sel !== "diagramas/secuencia-pago-app-banco.mmd") falla("«Crear diagrama» no creó el archivo esperado: " + sel);
+  if (!/^sequenceDiagram/.test(await textoDoc(p))) falla("«Crear diagrama» no hizo un diagrama de secuencia");
+  // Con el código: el mismo camino de los proyectos, primero «lo que se envía».
+  await p.click('[data-accion="inicio"]');
+  await p.click('[data-accion="crear-diagrama"]');
+  await p.fill("#pedido-dibujo", "el flujo de pagar con tarjeta");
+  await p.click('[data-accion="enviar-dibujo"]');
+  await p.waitForSelector('[data-accion="p-enviar"]', { timeout: 4000 });
+  const datos = await p.evaluate(() => { let d; window.Esquema._probar((E) => { d = E.pj.dialogo?.datos; }); return d; });
+  if (datos?.forma !== "diagrama" || datos?.tipo !== "flujo") falla("«Crear diagrama» con el código no pide un diagrama de flujo: " + JSON.stringify(datos));
+  // Si se cierra mientras la IA dibuja, el dibujo igual llega (en un archivo nuevo).
+  await p.evaluate(() => window.Esquema._probar((E) => { E.pj.dialogo = null; E.dibujar = { pedido: "Otro flujo", tipo: "flujo", enviando: true, nuevo: true }; }));
+  await p.keyboard.press("Escape");
+  await p.evaluate(() => window.Esquema.dibujoListo({ ok: true, texto: "flowchart TD\n    A --> B\n" }));
+  await espera(p, 150);
+  const otro = await p.evaluate(() => { let s; window.Esquema._probar((E) => { s = E.sel; }); return s; });
+  if (otro !== "diagramas/otro-flujo.mmd") falla("Un dibujo que llega con el diálogo cerrado se perdió: " + otro);
+  await p.close();
+}
+console.log("Inicio, árbol y Crear diagrama: revisado");
+
 // ── 10) README para GitHub ──
 {
   const p = await pagina();
@@ -512,6 +555,7 @@ if (CAPTURAS) {
   const tomas = [
     ["flujo", "docs/arquitectura.mmd", "E=>{}"], ["secuencia", "README.md", "E=>{E.bloque=1;E.lz.ajustar=true}"], ["documento", "README.md", "E=>{}"],
     ["readme", "README.md", "E=>{E.readme={paso:'listo',descripcion:'',estructura:true,texto:document.querySelector('#texto').value}}"],
+    ["inicio", "README.md", "E=>{E.sel=null;E.panel=null}"],
   ];
   for (const [ancho, alto] of [[1280, 800], [390, 844]]) for (const oscuro of [false, true]) {
     const p = await pagina({ ancho, alto, oscuro });

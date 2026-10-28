@@ -19,7 +19,12 @@ formato que GitHub ya muestra (Markdown con bloques ```` ```mermaid ```` y archi
   quieras (queda fijado), Supr para borrar, ⌘Z para deshacer. Cada cambio aparece al tiro en el texto, tocando solo esa línea.
 - **Un motor propio, rápido y liviano**: entre 40 y 100 veces más rápido que Mermaid, sin dependencias ([medición](#rendimiento)).
 - **Documentos con diagramas que se editan en el lugar**, vista previa en vivo, enlaces que nunca cargan nada de internet.
-- **Tu IA te ayuda** (Claude Code, Codex o Gemini, con tu cuenta): «Dibújame» propone un diagrama desde lo que describes, y el
+- **Tu carpeta, de un vistazo.** A la izquierda, la carpeta entera como árbol (cada subcarpeta se abre y se cierra). Al elegirla,
+  el **Inicio** ofrece lo que se puede hacer: **Crear diagrama**, **Documentación completa**, **Documentar un flujo** y **Escribir un
+  documento**.
+- **Tu IA te ayuda** (Claude Code, Codex o Gemini, con tu cuenta): pídele «el flujo de…», «la secuencia de…» o «la arquitectura
+  de…» y elige el tipo de diagrama por cómo lo pides. **Crear diagrama** puede leer el código de la carpeta (antes de enviar ves
+  exactamente qué va) o solo tu descripción, y «Dibújame» cambia el diagrama que tienes abierto. El
   asistente **README para GitHub** escribe el README de tu proyecto con la lista de archivos (solo nombres, respetando `.gitignore`,
   nunca secretos). Cada cambio de la IA tiene su tarjeta con **«Quitar este cambio»**.
 - **Proyectos: documentación que crece con tu código.** Elige la carpeta de un repositorio: Esquema lee el README, las guías, los
@@ -41,9 +46,9 @@ formato que GitHub ya muestra (Markdown con bloques ```` ```mermaid ```` y archi
 |---|---|---|
 | ![](docs/img/esquema-documento-escritorio-claro.png) | ![](docs/img/esquema-secuencia-escritorio-oscuro.png) | ![](docs/img/esquema-readme-escritorio-claro.png) |
 
-| Proyecto: elementos conectados en todos los documentos | Versiones: comparar texto y diagramas, y restaurar |
-|---|---|
-| ![](docs/img/esquema-proyecto-elementos-escritorio-claro.png) | ![](docs/img/esquema-proyecto-versiones-escritorio-claro.png) |
+| Inicio: tu carpeta como árbol y lo que puedes hacer | Proyecto: elementos conectados en todos los documentos | Versiones: comparar texto y diagramas, y restaurar |
+|---|---|---|
+| ![](docs/img/esquema-inicio-escritorio-claro.png) | ![](docs/img/esquema-proyecto-elementos-escritorio-claro.png) | ![](docs/img/esquema-proyecto-versiones-escritorio-claro.png) |
 
 <p align="center"><img src="docs/img/esquema-flujo-390-oscuro.png" width="240" alt="Esquema en un celular, modo oscuro"> <img src="docs/img/esquema-documento-390-claro.png" width="240" alt="Documento en un celular"></p>
 
@@ -172,7 +177,11 @@ already renders (Markdown with ```` ```mermaid ```` blocks and `.mmd` files), pl
   a minimal edit to the text, keeping your comments and formatting.
 - **Its own fast, dependency-free engine**: 40–100× faster than Mermaid ([benchmark](#rendimiento)).
 - **Documents** with diagrams you edit in place and a live preview that never loads anything from the internet.
-- **Your own AI** (Claude Code, Codex or Gemini, with your account): “Draw it” proposes a diagram from a description, and the
+- **Your folder at a glance.** On the left, the whole folder as a tree (each subfolder opens and closes). When you pick it, **Home**
+  offers what you can do: **Create a diagram**, **Full documentation**, **Document a flow** and **Write a document**.
+- **Your own AI** (Claude Code, Codex or Gemini, with your account): ask for “the flow of…”, “the sequence of…” or “the
+  architecture of…” and the diagram type follows how you ask. **Create a diagram** can read the folder's code (you see exactly what
+  goes before sending) or just your description, and “Draw it” changes the diagram you have open. The
   **README for GitHub** assistant writes your project's README from the file list (names only, respecting `.gitignore`, never
   secrets). Every AI change has a card with **“Remove this change”**.
 - **Projects: documentation that grows with your code.** Pick a repository folder: Esquema reads the README, guides, files and git

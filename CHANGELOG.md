@@ -5,6 +5,14 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Tu carpeta, de un vistazo:** a la izquierda, la carpeta entera como árbol, y al elegirla un **Inicio** con lo que puedes hacer:
+  crear un diagrama, la documentación completa, documentar un flujo o escribir un documento. · *Your folder at a glance: the whole
+  folder as a tree, and a Home screen with what you can do: create a diagram, full documentation, document a flow or write a
+  document.*
+- **Pídele a tu IA «el flujo de…» o «la secuencia de…»:** el tipo de diagrama sale de cómo lo pides, y «Crear diagrama» puede leer
+  el código de la carpeta (ves antes exactamente qué se envía). Si cierras «Dibújame» mientras tu IA dibuja, el diagrama igual
+  aparece. · *Ask your AI for “the flow of…” or “the sequence of…”: the diagram type follows how you ask, and “Create a diagram” can
+  read the folder's code. If you close “Draw it” while your AI is drawing, the diagram still shows up.*
 - **Documentar un proyecto:** elige la carpeta de un repositorio y Esquema te muestra lo que encontró (README, guías, lenguajes,
   git); tu IA escribe la visión general, la arquitectura y los flujos en `docs/esquema/`, y tú revisas cada documento antes de
   guardarlo. Ves exactamente qué se le manda antes de cada envío. · *Document a project: pick a repository and your AI writes the

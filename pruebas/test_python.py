@@ -266,6 +266,20 @@ class Proyecto(unittest.TestCase):
         for c in CASOS["proyecto_elemento"]:
             self.assertEqual(not proyecto_mod.validar_elemento(c["elemento"]), c["valido"], json.dumps(c["elemento"])[:120])
 
+    def test_el_tipo_pedido_llega_al_prompt(self):
+        """«la secuencia de…» pide un diagrama de secuencia; «Crear diagrama» con el código deja un documento corto en diagramas/."""
+        e = {"pedido": "la secuencia de pagar", "tipo": "secuencia", "idioma": "es"}
+        texto = proyecto_mod.prompt(e, "flujo", "docs/esquema", [])
+        self.assertIn("un diagrama de secuencia", texto)
+        self.assertIn("flujos/<nombre>.md", texto)
+        corto = proyecto_mod.prompt({**e, "forma": "diagrama", "tipo": "arquitectura"}, "flujo", "docs/esquema", [])
+        self.assertIn("diagramas/<nombre>.md", corto)
+        self.assertIn("un diagrama de arquitectura", corto)
+        # Sin tipo (o uno desconocido) la IA lo deduce del pedido, con la misma regla en Dibújame.
+        for tipo in (None, "auto", "otro"):
+            self.assertIn("«la secuencia de…»", proyecto_mod.prompt({**e, "tipo": tipo}, "flujo", "docs/esquema", []))
+            self.assertIn("«la secuencia de…»", asistente.prompt_dibujar({"pedido": "x", "tipo": tipo}))
+
     def test_nombre_del_readme_y_manifiestos_en_subcarpetas(self):
         """Un README que abre con HTML centrado y «## Instalar»: el nombre es el <h1>, no el primer «##»."""
         d = tempfile.mkdtemp()

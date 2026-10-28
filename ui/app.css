@@ -74,6 +74,27 @@ button { cursor: pointer; }
 .archivo .ic { color: var(--gris); }
 .archivo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .archivo small { margin-left: auto; color: var(--gris); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+/* Árbol de la carpeta: cada nivel corre 14 px; la flecha dice si la subcarpeta está abierta. */
+.arbol .archivo { padding-left: calc(8px + var(--n, 0) * 14px); }
+.arbol .carpeta-arbol { gap: 4px; }
+.arbol .carpeta-arbol .ic + .ic { margin-right: 4px; }
+.arbol .carpeta-arbol[aria-expanded="true"] > .ic:first-child { color: var(--texto); }
+/* Inicio de una carpeta: cuatro acciones grandes, una por fila en celular. */
+.inicio { max-width: 760px; margin: 0 auto; padding: 32px 24px; overflow: auto; }
+.inicio-cab { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
+.inicio-cab h2 { margin: 0; font-size: 20px; }
+.inicio-cab p { margin: 2px 0 0; color: var(--gris); }
+.acciones-inicio { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 16px; }
+.tarjeta-inicio { display: flex; gap: 12px; align-items: flex-start; text-align: left; padding: 16px; border: 1px solid var(--borde); border-radius: 12px; background: var(--panel); color: var(--texto); min-height: 96px; }
+.tarjeta-inicio:hover { border-color: var(--acento); }
+.tarjeta-inicio:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.ti-icono { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9px; background: var(--acento-suave); color: var(--acento); }
+.ti-icono .ic { width: 18px; height: 18px; }
+.ti-txt { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ti-txt b { font-size: 15px; }
+.ti-txt small { color: var(--gris); font-size: 13px; line-height: 1.45; }
+.inicio-mas { margin: 0; }
+@media (max-width: 760px) { .acciones-inicio { grid-template-columns: minmax(0, 1fr); } .inicio { padding: 20px 16px; } }
 .pie-lateral { border-top: 1px solid var(--borde); padding: 8px; display: flex; gap: 4px; }
 .pie-lateral .boton { flex: 1; justify-content: flex-start; }
 .contenido { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }

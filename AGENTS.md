@@ -166,7 +166,19 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
   para un nodo nuevo; en un `.md`, dentro de los bloques mermaid.
 - **Documento:** texto | vista con los diagramas dibujados (`resultadoBloque` con caché); «Editar» abre el bloque en el lienzo en el
   lugar (el texto sigue siendo el del documento); los enlaces nunca navegan (https → navegador; relativos → abre ese archivo).
-- **IA:** «Dibújame» (`dibujar` → `dibujoListo`): se valida con el motor; con errores no se aplica y se explica. Aplicado, queda en
+- **Lateral e inicio:** la carpeta como árbol (`arbolDe`/`arbolHTML`; `E.abiertas` guarda lo que la persona abrió o cerró y, si no
+  tocó nada, `arbolAbierta` abre todo con ≤ 20 archivos, la carpeta del archivo abierto y la de la documentación). Una carpeta recién
+  elegida abre en su **Inicio** (`inicioHTML`, también arriba del panel de un proyecto): «Crear diagrama» (`crear-diagrama`),
+  «Documentación completa» (`p-documentar`: sin proyecto, «Lo que encontré»; con proyecto, la IA la vuelve a escribir y se revisa
+  como propuestas), «Documentar un flujo» (`p-flujo`) y «Escribir un documento» (`nuevo`).
+- **Tipo de diagrama por cómo se pide:** `tipoDelPedido` («el flujo de…» → flujo, «la secuencia de…» → secuencia, «la arquitectura
+  de…» → arquitectura; marca el tipo mientras se escribe si la persona no lo eligió a mano) va en `dibujar` y en la tarea `flujo` de
+  `proyecto`; en Python, `asistente.tipo_diagrama` arma la misma frase para los dos prompts («auto»: la IA lo deduce con esa regla).
+- **IA:** «Dibújame» (`dibujar` → `dibujoListo`): se valida con el motor; con errores no se aplica y se explica. Sin archivo abierto
+  o desde «Crear diagrama» crea `diagramas/<nombre>.mmd` (`nombreDesde`: sin artículos ni preposiciones). «Crear diagrama» con «Que
+  lea el código» va por la tarea `flujo` de proyectos con `forma: "diagrama"` (un documento corto en `<docs>/diagramas/`). Si el
+  diálogo se cierra mientras la IA dibuja, la respuesta igual se aplica (`pendienteDibujo`); si ya no está abierto lo que iba a
+  cambiar, queda en un archivo nuevo. Aplicado, queda en
   `E.cambiosIA` y en una tarjeta del lienzo con «Quitar este cambio» (si se editó después, pregunta; se puede deshacer). En la vista
   previa del navegador, `dibujoSimulado` arma un diagrama con las partes del pedido. **README para GitHub** (`crearReadme` →
   `readmeListo`): describe, «Ver lo que se envía» (`estructura`, la misma lista que verá la IA), vista previa con diagramas, «Pedir

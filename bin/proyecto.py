@@ -564,8 +564,8 @@ def prompt(e, tarea, docs, ps):
                     "(los componentes y cómo se conectan, con un diagrama de arquitectura), y entre 2 y 4 flujos principales en "
                     "«flujos/<nombre>.md» (lo que hace la persona con la app, cada uno con un diagrama de secuencia o de flujo). "
                     "Además, la lista de elementos (entre 5 y 30)."),
-        "flujo": (f"Documenta, en {idioma}, este flujo específico del proyecto: un documento en «flujos/<nombre>.md» con un diagrama "
-                  "(secuencia o flujo) y una explicación paso a paso. Reutiliza los elementos que ya existen (mismos id) y agrega "
+        "flujo": (f"Documenta, en {idioma}, este flujo específico del proyecto: un documento en «flujos/<nombre>.md» con "
+                  f"{asistente.tipo_diagrama(e.get('tipo'))} y una explicación paso a paso. Reutiliza los elementos que ya existen (mismos id) y agrega "
                   "los nuevos que hagan falta. Si para hacerlo bien necesitas leer archivos del código, pídelos en PIDE y no "
                   "escribas el documento todavía."),
         "cambio": (f"Cambió cómo funciona algo del proyecto. Actualiza, en {idioma}, los documentos que te mando para que digan lo "
@@ -576,6 +576,11 @@ def prompt(e, tarea, docs, ps):
                     f"{idioma}, solo lo que esos cambios dejaron desactualizado, devolviendo cada documento COMPLETO con su misma "
                     "ruta. Si nada cambia, no mandes archivos y explícalo en la NOTA."),
     }[tarea]
+    if tarea == "flujo" and e.get("forma") == "diagrama":
+        encabezado = (f"Dibuja, en {idioma}, lo que pide la persona sobre este proyecto: un documento corto en «diagramas/<nombre>.md» "
+                      f"con un título, {asistente.tipo_diagrama(e.get('tipo'))} y entre 2 y 4 líneas que expliquen cómo leerlo. "
+                      "Reutiliza los elementos que ya existen (mismos id) y agrega los nuevos que hagan falta. Si para hacerlo bien "
+                      "necesitas leer archivos del código, pídelos en PIDE y no escribas el documento todavía.")
     partes = [encabezado, asistente.SUBCONJUNTO, FORMATO, f"\nLa documentación vive en «{docs}/» dentro del repositorio."]
     for p in ps:
         etiqueta = {"archivo": "archivo", "documento": "documento"}.get(p["clave"], p["clave"])
