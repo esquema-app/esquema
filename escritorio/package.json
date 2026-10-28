@@ -1,0 +1,104 @@
+{
+  "name": "esquema",
+  "productName": "Esquema",
+  "version": "0.1.0",
+  "description": "Diagramas y documentación que GitHub ya entiende: Mermaid en texto o dibujado, con tu propia IA.",
+  "homepage": "https://esquema-app.github.io/esquema/",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Esquema",
+    "email": "soydavidcornejo@users.noreply.github.com"
+  },
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "inicio": "electron .",
+    "preparar:linux": "bash herramientas/preparar.sh linux",
+    "preparar:windows": "bash herramientas/preparar.sh windows",
+    "empaquetar:linux": "bash herramientas/preparar.sh linux && electron-builder --linux AppImage tar.gz deb",
+    "empaquetar:windows": "bash herramientas/preparar.sh windows && electron-builder --win dir && bash herramientas/instalador-windows.sh"
+  },
+  "devDependencies": {
+    "electron": "44.9.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "app.esquema.escritorio",
+    "productName": "Esquema",
+    "copyright": "AGPL-3.0 · Esquema",
+    "directories": {
+      "output": "dist",
+      "buildResources": "iconos"
+    },
+    "files": [
+      "src/**",
+      "iconos/**",
+      "package.json"
+    ],
+    "asar": true,
+    "extraResources": [
+      {
+        "from": "../bin",
+        "to": "esquema/bin",
+        "filter": [
+          "*.py"
+        ]
+      },
+      {
+        "from": "../ui",
+        "to": "esquema/ui",
+        "filter": [
+          "**/*",
+          "!demo.json"
+        ]
+      },
+      {
+        "from": "../plantillas",
+        "to": "esquema/plantillas",
+        "filter": [
+          "**/*.json"
+        ]
+      },
+      {
+        "from": "vendor/${os}/python",
+        "to": "python"
+      },
+      {
+        "from": "iconos/esquema-256.png",
+        "to": "esquema.png"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "tar.gz",
+        "deb"
+      ],
+      "icon": "iconos/esquema.png",
+      "category": "Development",
+      "artifactName": "Esquema-Linux.${ext}",
+      "synopsis": "Diagramas y documentación que GitHub ya entiende",
+      "syncDesktopName": true,
+      "executableName": "esquema"
+    },
+    "deb": {
+      "packageName": "esquema",
+      "maintainer": "Esquema <soydavidcornejo@users.noreply.github.com>"
+    },
+    "win": {
+      "target": [
+        "dir"
+      ],
+      "icon": "iconos/esquema.ico",
+      "artifactName": "Esquema-Windows.${ext}",
+      "signExecutable": false
+    },
+    "publish": null,
+    "compression": "maximum"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/esquema-app/esquema.git"
+  },
+  "desktopName": "esquema.desktop"
+}

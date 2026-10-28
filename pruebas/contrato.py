@@ -3,8 +3,10 @@
 
 Revisa: 1) cada host.enviar("x") de la interfaz está en puente.json y simulado en simular() (la vista previa del navegador);
 2) cada acción de puente.json la usa la interfaz; 3) cada respuesta de puente.json existe en window.Esquema; 4) los scripts que
-nombra el contrato existen en bin/; 5) cuando existan, la app de Mac (Ventana.swift) y la de Windows/Linux (escritorio/src/main.js,
-objeto ACCIONES) atienden todas las acciones y solo llaman funciones que la interfaz tiene; 6) la CSP de ui/index.html."""
+nombra el contrato existen en bin/; 5) la app de Mac (Ventana.swift, un `case` por acción) y la de Windows/Linux (escritorio/src/main.js, objeto ACCIONES)
+atienden todas las acciones, mandan todas las respuestas (también archivoCambiado, archivos y menu) y solo llaman funciones que la
+interfaz tiene; 6) la seguridad de las apps (puente solo para el marco principal, navegación solo dentro de ui/, sandbox y
+contextIsolation, actualizaciones solo desde los Releases con huella, Electron fijado y sin scripts de instalación); 7) la CSP."""
 import json
 import os
 import re
@@ -40,17 +42,64 @@ for a, d in puente["acciones"].items():
     for s in re.findall(r"bin/(\w+\.py)", d["como"]):
         if not os.path.exists(os.path.join(RAIZ, "bin", s)):
             problemas.append(f'"{a}" usa bin/{s}, que no existe')
+# Las respuestas que cada app tiene que mandar: lo que responde cada acción + los avisos de la carpeta vigilada + el menú.
+respuestas_app = {d["responde"] for d in puente["acciones"].values() if d["responde"]} | {"archivoCambiado", "archivos", "menu"}
+
+
+def tiene(texto, *patrones):
+    return all(re.search(p, texto, re.S) for p in patrones)
+
+
 mac = leer("app/Sources/Esquema/Ventana.swift")
 if mac is not None:
     casos_mac = set(re.findall(r'"(\w+)"', " ".join(re.findall(r"case ([^:]+):", mac))))
-    problemas += [f'Mac (Ventana.swift) no atiende "{a}"' for a in sorted(acciones - casos_mac)]
-    swift = "".join(leer(os.path.join("app/Sources/Esquema", n)) for n in os.listdir(os.path.join(RAIZ, "app/Sources/Esquema")) if n.endswith(".swift"))
-    problemas += [f"Mac llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(set(re.findall(r'llamar\("(\w+)"', swift)) - funciones_ui)]
+    problemas += [f'Mac (Ventana.swift) no atiende "{a}"' for a in sorted((acciones | contrato) - casos_mac)]
+    carpeta_swift = os.path.join(RAIZ, "app/Sources/Esquema")
+    swift = "".join(leer(os.path.join("app/Sources/Esquema", n)) for n in sorted(os.listdir(carpeta_swift)) if n.endswith(".swift"))
+    llamadas_mac = set(re.findall(r'llamar\("(\w+)"', swift))
+    problemas += [f"Mac llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(llamadas_mac - funciones_ui)]
+    problemas += [f'Mac nunca responde "{f}"' for f in sorted(respuestas_app - llamadas_mac)]
+    # Seguridad: el puente solo para el marco principal con origen file; la ventana solo navega dentro de ui/; enlaces solo https.
+    if not tiene(mac, r"frameInfo\.isMainFrame", r'securityOrigin\.protocol == "file"'):
+        problemas.append("Mac: el puente tiene que atender solo al marco principal con origen file (Ventana.swift)")
+    if not tiene(mac, r"decidePolicyFor", r"hasPrefix\(carpetaUI\)", r'scheme == "https"'):
+        problemas.append("Mac: la ventana solo puede navegar dentro de ui/ y abrir https en el navegador (Ventana.swift)")
+    act = leer("app/Sources/Esquema/Actualizaciones.swift") or ""
+    if not tiene(act, r'repo = "esquema-app/esquema"', r"/releases/download/", r"esDescargaNuestra\(z\)", r"shasum -a 256", r"comillas\("):
+        problemas.append("Mac: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella y comillas() (Actualizaciones.swift)")
+    if re.search(r'"(claude|codex)"\s*,\s*\[', swift) and "--disallowedTools" not in swift:
+        problemas.append("Mac: si la app llama a la IA, tiene que ser sin herramientas")
+    if "carpeta" in re.search(r"static func guardar\(_ cambios.*?\n    \}", swift, re.S).group(0).split("default:")[0].split("switch k")[1]:
+        problemas.append("Mac: la acción config no puede cambiar la carpeta (Servicios.swift)")
 escritorio = leer("escritorio/src/main.js")
 if escritorio:
     casos_e = set(re.findall(r"^\s{2}(?:async\s+)?(\w+)\s*\(", escritorio.split("const ACCIONES = {", 1)[1].split("\n};", 1)[0], re.M))
-    problemas += [f'Windows/Linux (ACCIONES) no atiende "{a}"' for a in sorted(acciones - casos_e)]
-    problemas += [f"Windows/Linux llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(set(re.findall(r'llamar\("(\w+)"', escritorio)) - funciones_ui)]
+    problemas += [f'Windows/Linux (ACCIONES) no atiende "{a}"' for a in sorted((acciones | contrato) - casos_e)]
+    llamadas_e = set(re.findall(r'llamar\("(\w+)"', escritorio)) | set(re.findall(r'avisar\("(\w+)"', leer("escritorio/src/vigilante.js") or ""))
+    problemas += [f"Windows/Linux llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(llamadas_e - funciones_ui)]
+    problemas += [f'Windows/Linux nunca responde "{f}"' for f in sorted(respuestas_app - llamadas_e)]
+    if not tiene(escritorio, r"contextIsolation: true", r"sandbox: true", r"nodeIntegration: false", r"webviewTag: false"):
+        problemas.append("Windows/Linux: la ventana necesita contextIsolation, sandbox, sin nodeIntegration ni webview (main.js)")
+    if not tiene(escritorio, r'ipcMain\.on\("esquema"', r"e\.sender !== ventana\.webContents", r"e\.senderFrame !== e\.sender\.mainFrame", r"startsWith\(ORIGEN\)"):
+        problemas.append("Windows/Linux: el puente solo atiende al marco principal de la ventana propia (main.js)")
+    if not tiene(escritorio, r'"will-navigate"', r"setWindowOpenHandler", r"setPermissionRequestHandler", r'u\.protocol === "https:"'):
+        problemas.append("Windows/Linux: la ventana no puede navegar fuera de ui/ ni abrir ventanas; enlaces solo https (main.js)")
+    precarga = leer("escritorio/src/preload.js") or ""
+    if set(re.findall(r'exposeInMainWorld\("(\w+)"', precarga)) != {"ESQUEMA_HOST", "esquemaEscritorio"}:
+        problemas.append("Windows/Linux: preload.js solo expone ESQUEMA_HOST y esquemaEscritorio.enviar")
+    act = leer("escritorio/src/actualizaciones.js") or ""
+    if not tiene(act, r'REPO = "esquema-app/esquema"', r"/releases/download/", r"esDescargaNuestra\(url\(inst\.archivo\)\)", r"huella !== esperada"):
+        problemas.append("Windows/Linux: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella (actualizaciones.js)")
+    paquete = json.loads(leer("escritorio/package.json"))
+    version = paquete.get("devDependencies", {}).get("electron", "")
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version) or tuple(map(int, version.split("."))) < (44, 9, 1):
+        problemas.append(f"Windows/Linux: Electron con versión exacta y 44.9.1 o más nueva (arreglo de certificados), no «{version}»")
+    if any(not re.fullmatch(r"\d+\.\d+\.\d+", v) for v in paquete.get("devDependencies", {}).values()):
+        problemas.append("Windows/Linux: las dependencias van con versión exacta")
+    if "ignore-scripts=true" not in (leer("escritorio/.npmrc") or "") or not leer("escritorio/package-lock.json"):
+        problemas.append("Windows/Linux: .npmrc con ignore-scripts=true y package-lock.json versionado")
+    if paquete.get("version") != (re.search(r"<key>CFBundleShortVersionString</key>\s*<string>([^<]+)</string>", leer("app/Info.plist") or "") or [None, None])[1]:
+        problemas.append("La versión de escritorio/package.json y la de app/Info.plist tienen que ser iguales (publicar.yml)")
 html = leer("ui/index.html")
 csp = re.search(r'Content-Security-Policy" content="([^"]+)"', html)
 if not csp or "script-src 'self'" not in csp.group(1) or "'unsafe-eval'" in csp.group(1) or "object-src 'none'" not in csp.group(1):
@@ -60,4 +109,4 @@ if re.search(r"<script>|\son\w+=", html) or re.search(r"\son(click|load|error|in
 if problemas:
     print("✗ Contrato roto:\n  - " + "\n  - ".join(problemas))
     sys.exit(1)
-print(f"✓ Contrato: {len(acciones)} acciones y {len(funciones_ui)} funciones en orden" + ("" if mac or escritorio else " (las apps nativas llegan en la fase siguiente)"))
+print(f"✓ Contrato: {len(acciones)} acciones y {len(funciones_ui)} funciones en orden en la interfaz" + (", Mac" if mac else "") + (", Windows y Linux" if escritorio else ""))
