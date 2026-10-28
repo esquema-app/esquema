@@ -25,7 +25,9 @@
     dibujar: null,          // {pedido, tipo, cambiar, enviando, error, propuesta}
     cambiosIA: [],          // [{id, ruta, pedido, resumen, antes, despues, estado}]
     tarjetaIA: null,        // id del último cambio de la IA (la tarjeta del lienzo)
-    confirmar: null,        // {texto, si, no, accion}
+    confirmar: null,        // {titulo, texto, si, no, accion, alNo?}
+    actualizacion: { hay: false }, // {hay, detalle}: versión nueva (la revisa la app al abrir y cada 6 horas)
+    revisando: null,        // Ajustes → Actualizaciones: null | "buscando" | "al-dia" | "sin-conexion" | {paso, texto, pct}
     lateral: false,         // en celular: la lista de archivos abierta
     sugerencias: [],
   };
@@ -167,6 +169,14 @@
     d.estado = "guardando"; d.enviado = d.texto;
     host.enviar("guardarArchivo", { ruta, texto: d.texto });
     pintarEstadoGuardado();
+  }
+  /** Guarda ya todo lo que tenga cambios (menú Guardar, antes de cerrar la app o de actualizarla). */
+  function guardarTodo() {
+    for (const [ruta, d] of Object.entries(E.docs)) {
+      if (d.texto == null || d.texto === d.guardado || d.estado === "guardando") continue;
+      clearTimeout(temporizadores[ruta]);
+      guardar(ruta);
+    }
   }
   function abrir(ruta) {
     if (E.sel && E.sel !== ruta) guardar(E.sel);
@@ -786,7 +796,8 @@
     const capa = (id, html, clase = "") => `<div class="capa"><div class="dialogo ${clase}" role="dialog" aria-modal="true" aria-labelledby="${id}">${html}</div></div>`;
     if (E.bv === 0) return `<div class="capa capa-idioma"><div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv">${bienvenida()}</div></div>`;
     if (E.bv !== null) return capa("t-bv", bienvenida(), "bienvenida");
-    if (E.confirmar) return capa("t-conf", `<h2 id="t-conf">${E.confirmar.titulo}</h2><p>${E.confirmar.texto}</p><div class="pie-dialogo"><button class="boton" data-accion="confirmar-no">${E.confirmar.no}</button><button class="boton principal" data-accion="confirmar-si" data-autofoco>${E.confirmar.si}</button></div>`);
+    // titulo y texto llegan como HTML ya escapado (frase() o esc() del texto en español; traducirDOM lo traduce); los botones, como texto.
+    if (E.confirmar) return capa("t-conf", `<h2 id="t-conf">${E.confirmar.titulo}</h2><p>${E.confirmar.texto}</p><div class="pie-dialogo"><button class="boton" data-accion="confirmar-no">${esc(E.confirmar.no)}</button><button class="boton principal" data-accion="confirmar-si" data-autofoco>${esc(E.confirmar.si)}</button></div>`);
     if (E.ajustes) return capa("t-aj", dialogoAjustes(), "ajustes");
     if (E.readme) return capa("t-rm", dialogoReadme(), "ancho");
     if (E.dibujar) return capa("t-dj", dialogoDibujar());
@@ -814,6 +825,18 @@
       <div class="pie-dialogo"><button class="boton izq" data-bv="${paso - 1}">Atrás</button>
         ${paso < pasos.length - 1 ? `<button class="boton principal" data-bv="${paso + 1}" ${puede ? "" : "disabled"} data-autofoco>Siguiente</button>` : `<button class="boton" data-accion="bv-fin">Lo hago después</button><button class="boton principal" data-accion="bv-fin" data-autofoco>Empezar</button>`}</div>`;
   }
+  /** Ajustes → Actualizaciones: buscar, el aviso de versión nueva con sus notas y el avance por pasos al instalarla. */
+  function filaActualizacion() {
+    const v = E.revisando, a = E.actualizacion || {};
+    if (v && typeof v === "object") {
+      const pct = typeof v.pct === "number" ? ` · ${Math.max(0, Math.min(100, Math.round(v.pct)))}%` : "";
+      const error = v.paso === "error";
+      return `<div class="fila"><span class="txt"><b class="${error ? "error-texto" : ""}" data-sin-traducir>${esc(v.texto || "")}${pct}</b>${error ? "" : frase("Paso {n} de 3", { n: v.paso }, "small")}</span>${error ? `<button class="boton" data-accion="buscar-actualizacion">Buscar de nuevo</button>` : ""}</div>`;
+    }
+    if (a.hay) return `<div class="fila"><span class="txt"><b>Hay una versión nueva de Esquema</b><small class="notas-version" data-sin-traducir>${esc(a.detalle || "")}</small></span><button class="boton principal" data-accion="actualizar">Actualizar ahora</button></div>`;
+    const estado = v === "buscando" ? "Buscando…" : v === "al-dia" ? "Estás en la última versión" : v === "sin-conexion" ? "No pude revisar: sin conexión" : "Esquema revisa sola si hay versiones nuevas.";
+    return `<div class="fila"><span class="txt">${estado}</span><button class="boton" data-accion="buscar-actualizacion" ${v === "buscando" ? "disabled" : ""}>Buscar actualizaciones</button></div>`;
+  }
   function filasIA() {
     if (!E.ias.length) return `<p>No encontré ninguna IA instalada. Puedes instalar Claude Code, Codex o Gemini y probarla en Ajustes.</p>`;
     return E.ias.map((ia) => {
@@ -828,6 +851,7 @@
       <h3>Idioma</h3><div class="seg" role="group" aria-label="Idioma" data-sin-traducir><button data-ajuste-idioma="es" aria-pressed="${E.idioma === "es"}" lang="es">Español</button><button data-ajuste-idioma="en" aria-pressed="${E.idioma === "en"}" lang="en">English</button></div>
       <h3>Tema</h3><div class="seg" role="group" aria-label="Tema">${[["sistema", "Como el sistema"], ["claro", "Claro"], ["oscuro", "Oscuro"]].map(([v, n]) => `<button data-tema="${v}" aria-pressed="${tema === v}">${n}</button>`).join("")}</div>
       <h3>Tu IA</h3>${filasIA()}
+      <h3>Actualizaciones</h3>${filaActualizacion()}
       <h3>Acerca de</h3>
       <p>${frase("Esquema {v} · Gratis y abierto (AGPL-3.0). Sin cuentas ni telemetría: tus archivos no salen de tu computador.", { v: E.version || "" })}</p>
       <div class="chips"><button class="chip" data-enlace="${ENLACES.sitio}">Sitio</button><button class="chip" data-enlace="${ENLACES.codigo}">Código</button><button class="chip" data-enlace="${ENLACES.comunidad}">Comunidad</button><button class="chip" data-enlace="${ENLACES.catalogo}">Catálogo de plantillas</button></div>
@@ -991,7 +1015,7 @@
     if (!d || d.texto == null) return;
     const intacto = d.texto === c.despuesDoc;
     if (!intacto && !forzar) {
-      E.confirmar = { titulo: tr("¿Quitar el cambio de la IA?"), texto: tr("Lo editaste después. Si lo quitas, también se van esos cambios (puedes deshacerlo)."), si: tr("Quitar igual"), no: tr("Dejarlo"), accion: () => quitarCambioIA(id, true) };
+      E.confirmar = { titulo: esc("¿Quitar el cambio de la IA?"), texto: esc("Lo editaste después. Si lo quitas, también se van esos cambios (puedes deshacerlo)."), si: "Quitar igual", no: "Dejarlo", accion: () => quitarCambioIA(id, true) };
       return pintar();
     }
     if (c.antesDoc != null && c.antesDoc !== "") cambiarTexto(c.antesDoc, { origen: "ia" });
@@ -1117,7 +1141,9 @@
       case "ajustes": E.lateral = false; E.ajustes = true; return pintar();
       case "cerrar": cerrarDialogo(); return;
       case "confirmar-si": { const c = E.confirmar; E.confirmar = null; c?.accion(); return pintar(); }
-      case "confirmar-no": E.confirmar = null; return pintar();
+      case "confirmar-no": { const c = E.confirmar; E.confirmar = null; c?.alNo?.(); return pintar(); }
+      case "buscar-actualizacion": E.revisando = "buscando"; host.enviar("buscarActualizacion"); return pintar();
+      case "actualizar": guardarTodo(); E.revisando = { paso: "0", texto: tr("Preparando…") }; host.enviar("actualizar"); return pintar();
       case "bv-fin": E.bv = null; E.config.bienvenida = true; host.enviar("config", { bienvenida: true }); if (!E.sel && E.archivos.length) return abrir(primerArchivo()); return pintar();
       case "deshacer": return deshacer();
       case "rehacer": return rehacer();
@@ -1233,6 +1259,10 @@
   // ───────────── Lo que llama la app ─────────────
   window.Esquema = {
     async estado(e) {
+      if (e.actualizacion) {
+        E.actualizacion = e.actualizacion.hay ? { hay: true, detalle: e.actualizacion.detalle || "" } : { hay: false };
+        if (E.actualizacion.hay && !E.avisoVersion) { E.avisoVersion = true; toast("Hay una versión nueva de Esquema: está en Ajustes"); }
+      }
       Object.assign(E, { config: e.config || {}, ias: e.ias || [], version: e.version || "", plantillas: (e.plantillas || []).filter((p) => !validarPlantilla(p).length), carpeta: e.carpeta || null, archivos: (e.archivos || []).slice().sort(porRuta) });
       const parametros = new URLSearchParams(location.search);
       if (parametros.has("vacio")) { E.carpeta = null; E.archivos = []; }
@@ -1268,12 +1298,27 @@
       if (d.estado === "cambiado") programarGuardado(r.ruta);
       pintarEstadoGuardado();
     },
-    /** El archivo cambió en el disco (otro programa, git pull…). Si no hay cambios sin guardar, se recarga solo. */
+    /** El archivo cambió en el disco (otro programa, VS Code, git pull…). Si no hay cambios sin guardar, se recarga solo (y se puede
+     *  deshacer); si los hay, se pregunta con cuál quedarse. */
     archivoCambiado(r) {
       const d = E.docs[r.ruta];
-      if (!d || d.texto == null) return;
-      if (d.texto === d.guardado) { d.pila.push(d.texto); d.texto = r.texto; d.guardado = r.texto; if (r.ruta === E.sel) refrescar("disco"); toast(Tp("«{x}» cambió en el disco: lo actualicé", { x: nombreDe(r.ruta) }), true); }
-      else toast(Tp("«{x}» cambió en el disco, pero tienes cambios sin guardar: se quedan los tuyos", { x: nombreDe(r.ruta) }), true);
+      if (!d || d.texto == null || typeof r.texto !== "string") return;
+      if (r.texto === d.texto) { d.guardado = r.texto; if (d.estado !== "guardando") d.estado = "guardado"; return pintarEstadoGuardado(); }
+      const usarDisco = () => {
+        clearTimeout(temporizadores[r.ruta]);
+        d.pila.push(d.texto); d.futuro = []; d.texto = r.texto; d.guardado = r.texto; d.estado = "guardado"; d.ultimo = 0;
+        if (r.ruta === E.sel) { E.elegido = null; refrescar("disco"); }
+        pintarEstadoGuardado();
+      };
+      if (d.texto === d.guardado && d.estado !== "guardando") { usarDisco(); return toast(Tp("«{x}» cambió en el disco: lo actualicé", { x: nombreDe(r.ruta) }), true); }
+      E.confirmar = {
+        titulo: frase("«{x}» cambió en el disco", { x: nombreDe(r.ruta) }),
+        texto: esc("Otro programa lo cambió mientras tenías cambios sin guardar aquí. ¿Con cuál versión te quedas?"),
+        si: "Usar la del disco", no: "Quedarme con la mía",
+        accion: usarDisco,
+        alNo: () => { d.guardado = r.texto; d.estado = "cambiado"; programarGuardado(r.ruta); },
+      };
+      pintar();
     },
     archivos(r) { E.archivos = (r.archivos || []).slice().sort(porRuta); pintar(); },
     iaProbada(r) { delete E.probando[r.ia]; E.resultadoIA[r.ia] = r; if (r.ok) toast("Lista para usar"); pintar(); },
@@ -1291,6 +1336,32 @@
     },
     exportado(r) { if (r.ok) toast(r.ruta ? Tp("Guardado en {x}", { x: r.ruta }) : tr("Listo"), true); else if (r.error) toast(r.error); },
     copiado(r) { toast(r.ok ? "Copiado: pégalo en GitHub y se verá como diagrama" : "No pude copiar"); },
+    actualizacionRevisada(r) {
+      E.actualizacion = r.hay ? { hay: true, detalle: r.detalle || "" } : { hay: false };
+      E.revisando = r.hay ? null : r.sinConexion ? "sin-conexion" : "al-dia";
+      pintar();
+    },
+    actualizacionProgreso(r) { E.revisando = { paso: String(r.paso || ""), texto: r.texto || "", pct: r.pct }; pintar(); },
+    /** Los menús de la app (Mac: barra de menús; Windows y Linux: menú de la ventana). Nada antes de elegir el idioma. */
+    menu(r) {
+      const a = r && r.accion;
+      if (E.bv === 0 || !E.cargado) return;
+      const campo = document.activeElement;
+      const enCampo = campo && campo.id !== "texto" && (campo.tagName === "INPUT" || campo.tagName === "TEXTAREA");
+      const conDibujo = () => $("#lienzo") && (ultimoBueno || ultimoResultado);
+      switch (a) {
+        case "guardar": return guardarTodo();
+        case "deshacer": return enCampo ? document.execCommand("undo") : deshacer();
+        case "rehacer": return enCampo ? document.execCommand("redo") : rehacer();
+        case "acercar": return conDibujo() && zoomEn(1.25);
+        case "alejar": return conDibujo() && zoomEn(0.8);
+        case "ajustar": if (conDibujo()) { ajustarVista(ultimoBueno || ultimoResultado); aplicarVista(); pintarSeleccion(); } return;
+        case "texto": case "ambos": case "dibujo": if (E.sel) { E.vista = a; pintar(); } return;
+      }
+      if (E.bv !== null) return;  // en la bienvenida no se abren otros diálogos
+      if (a === "nuevo") { if (!E.carpeta) return toast("Elige una carpeta primero"); E.lateral = false; E.nuevo = { categoria: "todas", busqueda: "", elegida: null, nombre: "" }; return pintar(); }
+      if (a === "ajustes") { E.lateral = false; E.ajustes = true; return pintar(); }
+    },
     _probar(f) { f(E); pintar(); },
     _pruebas: { validarPlantilla, validarNombre, resumen, abrir, motor: M },
   };
@@ -1349,6 +1420,8 @@
         window._copiado = d.texto;
         return (navigator.clipboard?.writeText(d.texto) || Promise.reject()).then(() => A.copiado({ ok: true }), () => A.copiado({ ok: true }));
       case "abrirEnlace": return toast("En la app, aquí se abre el enlace en tu navegador");
+      case "buscarActualizacion": return luego(300, () => A.actualizacionRevisada({ hay: false, detalle: "" }));
+      case "actualizar": return luego(300, () => A.actualizacionProgreso({ paso: "error", texto: tr("En la vista previa no hay nada que actualizar.") }));
     }
   }
   function readmeSimulado(d) {

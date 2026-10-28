@@ -233,6 +233,8 @@ button { cursor: pointer; }
 .fila:last-child { border-bottom: 0; }
 .fila .txt { flex: 1; min-width: 0; }
 .fila .txt small { display: block; color: var(--gris); }
+.fila .txt .error-texto { color: var(--rojo); }
+.fila .txt .notas-version { white-space: pre-line; overflow-wrap: anywhere; }
 .ok { color: var(--verde); font-weight: 600; }
 .mal-txt { color: var(--rojo); }
 .ajustes h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--gris); margin: 20px 0 4px; }
