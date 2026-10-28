@@ -354,6 +354,15 @@ console.log("Dibújame: revisado");
   await p.waitForSelector('[data-accion="p-enviar"]', { timeout: 4000 });
   const datos = await p.evaluate(() => { let d; window.Esquema._probar((E) => { d = E.pj.dialogo?.datos; }); return d; });
   if (datos?.forma !== "diagrama" || datos?.tipo !== "flujo") falla("«Crear diagrama» con el código no pide un diagrama de flujo: " + JSON.stringify(datos));
+  // «Dibújame» con un archivo abierto: un pedido sobre «este proyecto» marca «Que lea el código» y va por lo que se envía.
+  await p.evaluate(() => window.Esquema._probar((E) => { E.pj.dialogo = null; }));
+  await abrir(p, "docs/pago.mmd");
+  await p.click('[data-accion="dibujame"]');
+  if (await p.isChecked("#usar-codigo")) falla("«Dibújame» lee el código sin que se lo pidan");
+  await p.fill("#pedido-dibujo", "quiero el diagrama de secuencia de este proyecto, explicando lo de git");
+  if (!(await p.isChecked("#usar-codigo"))) falla("Un pedido sobre «este proyecto» no marca «Que lea el código»");
+  await p.click('[data-accion="enviar-dibujo"]');
+  await p.waitForSelector('[data-accion="p-enviar"]', { timeout: 4000 });
   // Si se cierra mientras la IA dibuja, el dibujo igual llega (en un archivo nuevo).
   await p.evaluate(() => window.Esquema._probar((E) => { E.pj.dialogo = null; E.dibujar = { pedido: "Otro flujo", tipo: "flujo", enviando: true, nuevo: true }; }));
   await p.keyboard.press("Escape");

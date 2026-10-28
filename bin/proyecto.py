@@ -581,7 +581,7 @@ def prompt(e, tarea, docs, ps):
                       f"con un título, {asistente.tipo_diagrama(e.get('tipo'))} y entre 2 y 4 líneas que expliquen cómo leerlo. "
                       "Reutiliza los elementos que ya existen (mismos id) y agrega los nuevos que hagan falta. Si para hacerlo bien "
                       "necesitas leer archivos del código, pídelos en PIDE y no escribas el documento todavía.")
-    partes = [encabezado, asistente.SUBCONJUNTO, FORMATO, f"\nLa documentación vive en «{docs}/» dentro del repositorio."]
+    partes = [encabezado, asistente.SOLO_ESTO, asistente.SUBCONJUNTO, FORMATO, f"\nLa documentación vive en «{docs}/» dentro del repositorio."]
     for p in ps:
         etiqueta = {"archivo": "archivo", "documento": "documento"}.get(p["clave"], p["clave"])
         attr = f' ruta="{p["ruta"]}"' if p.get("ruta") else ""

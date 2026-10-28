@@ -5,6 +5,10 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Tu IA dibuja tu proyecto, no otros:** si pides algo sobre «este proyecto», Esquema le muestra el proyecto a tu IA (antes ves qué
+  se envía), y Claude ya no usa tu memoria personal ni tus notas, que lo llevaban a dibujar otros proyectos tuyos. · *Your AI draws
+  your project, not others: asking about “this project” sends it the project (you see what goes first), and Claude no longer uses
+  your personal memory or notes, which made it draw other projects of yours.*
 - **Tu carpeta, de un vistazo:** a la izquierda, la carpeta entera como árbol, y al elegirla un **Inicio** con lo que puedes hacer:
   crear un diagrama, la documentación completa, documentar un flujo o escribir un documento. · *Your folder at a glance: the whole
   folder as a tree, and a Home screen with what you can do: create a diagram, full documentation, document a flow or write a

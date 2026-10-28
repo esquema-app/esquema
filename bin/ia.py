@@ -54,6 +54,23 @@ def _entorno():
     return {k: v for k, v in os.environ.items() if not k.startswith("ESQUEMA_")}
 
 
+#: Claude Code carga la memoria de la persona (CLAUDE.md, memoria automática, plugins) aunque corra sin herramientas, y con eso
+#: rellenaba los diagramas con otros proyectos suyos. Esto lo apaga y mantiene su sesión (no exige una llave de API como --bare).
+SIN_MEMORIA_CLAUDE = {"CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
+_ayuda = {}
+
+
+def _soporta(comando, opcion):
+    """Si el CLI conoce una opción (las versiones viejas fallan con opciones desconocidas). Se pregunta una vez por comando."""
+    if comando not in _ayuda:
+        try:
+            r = subprocess.run([comando, "--help"], stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8", timeout=20)
+            _ayuda[comando] = (r.stdout or "") + (r.stderr or "")
+        except (OSError, subprocess.SubprocessError):
+            _ayuda[comando] = ""
+    return opcion in _ayuda[comando]
+
+
 def ejecutar_ia(prompt, timeout=600, ia=None):
     ia = ia or elegida()
     comando = next((r for r in map(shutil.which, IAS[ia][0]) if r), IAS[ia][0][0])
@@ -78,8 +95,12 @@ def ejecutar_ia(prompt, timeout=600, ia=None):
         if ia == "gemini":
             cmd = [comando, "-p", "Responde a las instrucciones de arriba. Entrega solo el resultado pedido.", "-o", "text"]
         else:
-            # Sin herramientas ni servidores MCP: la IA solo responde texto, no puede leer ni cambiar nada.
+            # Sin herramientas ni servidores MCP: la IA solo responde texto, no puede leer ni cambiar nada. Y sin la memoria de la
+            # persona: solo ve lo que Esquema le manda (lo que muestra «Ver lo que se envía»).
             cmd = [comando, "-p", "--output-format", "text", "--disallowedTools", "*", "--strict-mcp-config"]
+            if _soporta(comando, "--safe-mode"):
+                cmd.append("--safe-mode")
+            return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env={**_entorno(), **SIN_MEMORIA_CLAUDE})
         return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env=_entorno())
 
 

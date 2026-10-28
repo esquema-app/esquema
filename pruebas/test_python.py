@@ -175,6 +175,9 @@ class IA(unittest.TestCase):
         self.assertIn("--strict-mcp-config", u["args"])
         self.assertEqual(u["entorno"], [], "la IA no recibe variables ESQUEMA_*")
         self.assertTrue(os.path.basename(u["cwd"]).startswith("esquema-ia-"))
+        # Sin la memoria de la persona (CLAUDE.md, memoria automática, plugins): solo ve lo que Esquema le manda.
+        self.assertIn("--safe-mode", u["args"])
+        self.assertTrue({"CLAUDE_CODE_DISABLE_AUTO_MEMORY", "CLAUDE_CODE_DISABLE_CLAUDE_MDS"} <= set(u["sin_memoria"]))
 
     def test_probar_falla_con_mensaje(self):
         os.environ["IA_FALSA_MODO"] = "falla"
@@ -275,6 +278,9 @@ class Proyecto(unittest.TestCase):
         corto = proyecto_mod.prompt({**e, "forma": "diagrama", "tipo": "arquitectura"}, "flujo", "docs/esquema", [])
         self.assertIn("diagramas/<nombre>.md", corto)
         self.assertIn("un diagrama de arquitectura", corto)
+        # La IA de la persona no rellena con su memoria (otros proyectos, notas): todos los prompts lo piden.
+        for p in (texto, corto, asistente.prompt_dibujar(e), asistente.prompt_readme({"descripcion": "x"})):
+            self.assertIn(asistente.SOLO_ESTO, p)
         # Sin tipo (o uno desconocido) la IA lo deduce del pedido, con la misma regla en Dibújame.
         for tipo in (None, "auto", "otro"):
             self.assertIn("«la secuencia de…»", proyecto_mod.prompt({**e, "tipo": tipo}, "flujo", "docs/esquema", []))

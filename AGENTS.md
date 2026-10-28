@@ -19,7 +19,9 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
    de las flechas) va en una línea de comentario `%% esquema: {...}` que Mermaid ignora. Editar en el lienzo cambia **solo** las líneas
    necesarias: comentarios, sangrías y el estilo de quien escribió quedan igual.
 3. **La IA es la del usuario** y ve lo mínimo: el pedido, el diagrama abierto si se pide cambiarlo y, para el README, solo nombres de
-   archivos (respetando `.gitignore`, sin secretos). Corre sin herramientas. Su respuesta se valida con el motor y **nunca se aplica
+   archivos (respetando `.gitignore`, sin secretos). Corre sin herramientas y **sin la memoria de la persona** (Claude Code con
+   `--safe-mode` si lo conoce, `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` y `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; todos los prompts dicen
+   `asistente.SOLO_ESTO`): sin eso rellenaba con otros proyectos suyos. Su respuesta se valida con el motor y **nunca se aplica
    sola de forma definitiva**: queda como un cambio con «Quitar este cambio». Para documentar un proyecto ve el README, las guías
    (AGENTS/CONTRIBUTING…), la lista de archivos, los manifiestos y los mensajes de git (sin autores), y solo los archivos de código
    que la persona aprueba; antes de cada envío se muestra exactamente lo que va («Ver lo que se envía»), y lo que parece un secreto
@@ -171,6 +173,9 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
   elegida abre en su **Inicio** (`inicioHTML`, también arriba del panel de un proyecto): «Crear diagrama» (`crear-diagrama`),
   «Documentación completa» (`p-documentar`: sin proyecto, «Lo que encontré»; con proyecto, la IA la vuelve a escribir y se revisa
   como propuestas), «Documentar un flujo» (`p-flujo`) y «Escribir un documento» (`nuevo`).
+- **Pedidos sobre «este proyecto»** (`hablaDelProyecto`: «este proyecto», «la app», «el repo», «mi código»…) marcan «Que lea el
+  código» en «Dibújame» y «Crear diagrama» mientras se escribe (si la persona no lo tocó a mano); con eso van por la tarea `flujo` de
+  proyectos (ver lo que se envía, la IA puede pedir archivos) y no por `dibujar`, que solo manda el pedido.
 - **Tipo de diagrama por cómo se pide:** `tipoDelPedido` («el flujo de…» → flujo, «la secuencia de…» → secuencia, «la arquitectura
   de…» → arquitectura; marca el tipo mientras se escribe si la persona no lo eligió a mano) va en `dibujar` y en la tarea `flujo` de
   `proyecto`; en Python, `asistente.tipo_diagrama` arma la misma frase para los dos prompts («auto»: la IA lo deduce con esa regla).

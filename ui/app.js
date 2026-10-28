@@ -365,6 +365,11 @@
     if (/\b(flujo|flow|proceso|process|pasos|steps)\b/.test(t)) return "flujo";
     return "auto";
   }
+  /** «este proyecto», «esta app», «el repo», «mi código»…: el pedido es sobre la carpeta, así que la IA tiene que leerla. */
+  function hablaDelProyecto(texto) {
+    const t = String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    return /\b(este|del|el|mi|nuestro|this|the|my|our) (proyecto|repo|repositorio|codigo|app|aplicacion|sistema|project|repository|code|application)\b|\b(esta|la|mi|nuestra) (app|aplicacion)\b/.test(t);
+  }
   /** Nombre de archivo a partir de lo que se pidió: «El flujo de compra» → «el-flujo-de-compra». */
   const PALABRAS_VACIAS = new Set("el la los las un una unos unas de del al a en y o con por para entre desde hasta que su sus mi mis the a an of to in and or with for from my".split(" "));
   function nombreDesde(texto, otro) {
@@ -1055,7 +1060,7 @@
       <div class="chips" style="margin-top:8px">${ejemplos.map((x, i) => `<button class="chip" data-ejemplo-dibujo="${i}">${x}</button>`).join("")}</div>
       <label>Tipo</label><div class="chips">${[["auto", "Que elija"], ["flujo", "Flujo"], ["secuencia", "Secuencia"], ["arquitectura", "Arquitectura"]].map(([v, n]) => `<button class="chip" data-tipo-dibujo="${v}" aria-pressed="${(d.tipo || "auto") === v}">${n}</button>`).join("")}</div>
       ${hayDiagrama ? `<label class="marcar"><input type="checkbox" id="cambiar-actual" ${d.cambiar ? "checked" : ""}> <span>Cambiar el diagrama que tengo abierto<small>${esDocumento(E.sel) ? "Si no, agrega uno nuevo al documento." : "Si no, crea uno nuevo."}</small></span></label>` : ""}
-      ${d.nuevo ? `<label class="marcar"><input type="checkbox" id="usar-codigo" ${d.codigo ? "checked" : ""}> <span>Que lea el código de esta carpeta${frase("Antes de enviar te muestro exactamente qué va. Queda en la documentación del proyecto ({x}).", { x: (E.proyecto?.docs || "docs/esquema") + "/diagramas/" }, "small")}</span></label>` : ""}
+      ${E.carpeta ? `<label class="marcar"><input type="checkbox" id="usar-codigo" ${d.codigo ? "checked" : ""}> <span>Que lea el código de esta carpeta${frase("Antes de enviar te muestro exactamente qué va. Queda en la documentación del proyecto ({x}).", { x: (E.proyecto?.docs || "docs/esquema") + "/diagramas/" }, "small")}</span></label>` : ""}
       ${d.error ? `<p class="mal-txt" data-sin-traducir>${d.error}</p>` : ""}
       ${cambiosDelArchivo()}
       <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="enviar-dibujo">${ic("chispa")} Dibujar</button></div>`;
@@ -1088,7 +1093,7 @@
     if (!d.pedido) { d.error = tr("Escribe qué quieres que dibuje."); return pintar(); }
     const tipo = d.tipo && d.tipo !== "auto" ? d.tipo : tipoDelPedido(d.pedido);
     // Con el código: el mismo camino que «Documentar un flujo» (ver lo que se envía, la IA puede pedir archivos, propuestas que se revisan).
-    if (d.nuevo && d.codigo) { E.dibujar = null; P.pedirIA("flujo", { pedido: d.pedido, tipo, forma: "diagrama" }); return; }
+    if (d.codigo && E.carpeta) { E.dibujar = null; P.pedirIA("flujo", { pedido: d.pedido, tipo, forma: "diagrama" }); return; }
     d.enviando = true; d.error = null;
     host.enviar("dibujar", { pedido: d.pedido, tipo, actual: d.cambiar ? textoLienzo() : "", idioma: E.idioma });
     pintar();
@@ -1341,6 +1346,10 @@
       E.dibujar.tipo = tipo;
       document.querySelectorAll("[data-tipo-dibujo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tipoDibujo === tipo)));
     }
+    if (e.target.id === "pedido-dibujo" && E.dibujar && !E.dibujar.codigoManual && hablaDelProyecto(e.target.value)) {
+      const c = $("#usar-codigo"); if (c && !c.checked) { c.checked = true; E.dibujar.codigo = true; }
+    }
+    if (e.target.id === "usar-codigo" && E.dibujar) { E.dibujar.codigo = e.target.checked; E.dibujar.codigoManual = true; }
     if (e.target.id === "texto") { cambiarTexto(e.target.value, { origen: "texto", agrupar: true }); return; }
     if (e.target.id === "buscar-plantilla") {
       E.nuevo.busqueda = e.target.value;

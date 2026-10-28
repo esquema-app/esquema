@@ -6,11 +6,15 @@ import json
 import os
 import sys
 
+if sys.argv[1:] == ["--help"]:
+    print("Usage: claude [options]\n  --safe-mode   Start with all customizations disabled")
+    sys.exit(0)
 prompt = sys.stdin.read()
 registro = os.environ.get("IA_FALSA_REGISTRO")
 if registro:
     with open(registro, "a", encoding="utf-8") as f:
-        f.write(json.dumps({"args": sys.argv[1:], "prompt": prompt, "cwd": os.getcwd(), "entorno": sorted(k for k in os.environ if k.startswith("ESQUEMA_"))}) + "\n")
+        f.write(json.dumps({"args": sys.argv[1:], "prompt": prompt, "cwd": os.getcwd(), "entorno": sorted(k for k in os.environ if k.startswith("ESQUEMA_")),
+                            "sin_memoria": sorted(k for k in os.environ if k.startswith("CLAUDE_CODE_DISABLE_"))}) + "\n")
 modo = os.environ.get("IA_FALSA_MODO", "")
 if modo == "falla":
     print("se cayó", file=sys.stderr)
