@@ -368,7 +368,9 @@ def leer(e):
     info_readme = None
     if readme:
         t, _ = leer_texto(os.path.join(base, readme), 8000)
-        titulo = next((l.lstrip("# ").strip() for l in t.split("\n") if l.startswith("#")), "")
+        # Solo el título principal: «# Nombre» o <h1>…</h1> (muchos README abren con HTML centrado); nunca un «## Instalar».
+        h1 = re.search(r"^#[ \t]+(.+)$", t, re.M) or re.search(r"<h1[^>]*>([\s\S]*?)</h1>", t, re.I)
+        titulo = re.sub(r"\s+", " ", re.sub(r"<[^>]+>|!\[[^\]]*\]\([^)]*\)", "", h1.group(1))).strip() if h1 else ""
         parrafo = next((p.strip() for p in re.split(r"\n\s*\n", re.sub(r"```[\s\S]*?```", "", t))
                         if p.strip() and not p.strip().startswith(("#", "<", "!", "[!", "|", "-", "*"))), "")
         info_readme = {"ruta": readme, "titulo": titulo[:120], "resumen": ocultar_secretos(re.sub(r"\s+", " ", parrafo))[:400]}
@@ -376,6 +378,13 @@ def leer(e):
     for m in MANIFIESTOS_EXTRA:
         if m in conjunto:
             manifiestos.setdefault(m, {})
+    # Proyectos con varias partes (app/Package.swift, escritorio/package.json…): manifiestos hasta dos niveles adentro.
+    conocidos = ("package.json", "pyproject.toml", "Cargo.toml", "go.mod") + MANIFIESTOS_EXTRA
+    for r in sorted(rutas):
+        if "/" in r and r.count("/") <= 2 and r.split("/")[-1] in conocidos and len(manifiestos) < 20:
+            sub, nombre_m = r.rsplit("/", 1)
+            datos = carpeta_mod.manifiestos(os.path.join(base, sub), {nombre_m}).get(nombre_m, {})
+            manifiestos.setdefault(r, datos)
     if "Package.swift" in conjunto:
         t, _ = leer_texto(os.path.join(base, "Package.swift"), 20000)
         n = re.search(r'name:\s*"([^"]{1,80})"', t)

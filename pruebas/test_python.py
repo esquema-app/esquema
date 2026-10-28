@@ -266,6 +266,21 @@ class Proyecto(unittest.TestCase):
         for c in CASOS["proyecto_elemento"]:
             self.assertEqual(not proyecto_mod.validar_elemento(c["elemento"]), c["valido"], json.dumps(c["elemento"])[:120])
 
+    def test_nombre_del_readme_y_manifiestos_en_subcarpetas(self):
+        """Un README que abre con HTML centrado y «## Instalar»: el nombre es el <h1>, no el primer «##»."""
+        d = tempfile.mkdtemp()
+        os.makedirs(os.path.join(d, "app")); os.makedirs(os.path.join(d, "escritorio"))
+        with open(os.path.join(d, "README.md"), "w", encoding="utf-8") as f:
+            f.write('<p align="center"><img src="logo.png"></p>\n<h1 align="center">Kalumi</h1>\n\n## Instalar\nhola\n')
+        with open(os.path.join(d, "escritorio", "package.json"), "w", encoding="utf-8") as f:
+            f.write('{"name": "kalumi-escritorio"}')
+        with open(os.path.join(d, "app", "Package.swift"), "w", encoding="utf-8") as f:
+            f.write('let p = Package(name: "Kalumi")')
+        r = proyecto_mod.leer({"carpeta": d})["encontrado"]
+        self.assertEqual(r["nombre"], "Kalumi")
+        self.assertEqual(r["manifiestos"]["escritorio/package.json"].get("name"), "kalumi-escritorio")
+        self.assertIn("app/Package.swift", r["manifiestos"])
+
     def test_leer_sin_secretos_ni_ignorados_y_con_git(self):
         p = repo_de_prueba()
         r = orden("leer", {"carpeta": p})
