@@ -84,6 +84,9 @@
     return (h >>> 0).toString(36);
   };
 
+  /** Id de un elemento del proyecto (pantalla, botón, servicio…): minúsculas, números y guiones. */
+  M.ID_ELEMENTO = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
   /** Lee y valida la línea `%% esquema: {...}` (lo que Mermaid ignora y Esquema guarda: posiciones fijadas, íconos, estilo de
    *  las flechas). Lo desconocido se descarta: nunca se ejecuta nada de aquí. */
   M.leerMeta = function (json) {
@@ -102,6 +105,11 @@
       for (const [id, v] of Object.entries(d.iconos)) if (typeof v === "string" && /^[a-z-]{1,24}$/.test(v) && id.length <= 80) r.iconos[id] = v;
     }
     if (d.aristas === "curva" || d.aristas === "recta" || d.aristas === "ortogonal") r.aristas = d.aristas;
+    // Elementos del proyecto (docs/esquema/esquema.json) a los que apunta cada nodo o participante: {"N3": "boton-grabar"}.
+    if (d.refs && typeof d.refs === "object" && !Array.isArray(d.refs)) {
+      r.refs = {};
+      for (const [id, v] of Object.entries(d.refs)) if (typeof v === "string" && v.length <= 60 && M.ID_ELEMENTO.test(v) && id.length <= 80) r.refs[id] = v;
+    }
     return r;
   };
   /** Escribe la línea de metadatos (una sola línea JSON, ordenada para que el diff de git sea chico). */
@@ -110,6 +118,7 @@
     if (meta.aristas && meta.aristas !== "curva") o.aristas = meta.aristas;
     if (meta.iconos && Object.keys(meta.iconos).length) o.iconos = Object.fromEntries(Object.keys(meta.iconos).sort().map((k) => [k, meta.iconos[k]]));
     if (meta.pos && Object.keys(meta.pos).length) o.pos = Object.fromEntries(Object.keys(meta.pos).sort().map((k) => [k, meta.pos[k]]));
+    if (meta.refs && Object.keys(meta.refs).length) o.refs = Object.fromEntries(Object.keys(meta.refs).sort().map((k) => [k, meta.refs[k]]));
     return Object.keys(o).length ? "%% esquema: " + JSON.stringify(o) : null;
   };
 })(globalThis.EsquemaMotor = globalThis.EsquemaMotor || {});

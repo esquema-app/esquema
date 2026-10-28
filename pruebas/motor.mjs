@@ -4,7 +4,9 @@
 // vuelve a escribir IGUAL; las variantes (formas no canónicas) se leen y su forma canónica dice lo mismo; 3) el acomodo no
 // solapa nodos, los grupos abrazan a los suyos y no tapan a los demás, las etiquetas no pisan nodos y las flechas llegan al
 // borde; 4) incremental: si solo cambia un texto que no cambia tamaños, no se vuelve a acomodar; 5) seguridad del SVG;
-// 6) cada frase de error del motor tiene su traducción; 7) un diagrama de 1000 nodos se dibuja en tiempo razonable.
+// 6) cada frase de error del motor tiene su traducción; 7) un diagrama de 1000 nodos se dibuja en tiempo razonable;
+// 8) proyectos (motor/proyecto.js): las referencias de `%% esquema` sobreviven a cada edición, esquema.json se valida igual que en
+// Python, y cambiar un elemento en todas partes (renombrar, quitar) deja los documentos y los diagramas válidos.
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -12,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-for (const f of ["texto", "flujo", "secuencia", "capas", "formas", "dibujo", "markdown"]) require(path.join(RAIZ, "ui/motor", f + ".js"));
+for (const f of ["texto", "flujo", "secuencia", "capas", "formas", "dibujo", "markdown", "proyecto"]) require(path.join(RAIZ, "ui/motor", f + ".js"));
 const M = globalThis.EsquemaMotor;
 const casos = JSON.parse(fs.readFileSync(path.join(RAIZ, "pruebas/casos.json"), "utf8"));
 let fallas = 0, total = 0;
@@ -197,6 +199,69 @@ console.log("Traducciones del motor");
   const faltan = [...frases].filter((x) => !en[x]);
   ok(!faltan.length, "frases del motor sin traducir:\n    " + faltan.join("\n    "));
   for (const [k, v] of Object.entries(en)) { const a = (k.match(/\{\w+\}/g) || []).sort().join(), b = (v.match(/\{\w+\}/g) || []).sort().join(); ok(a === b, `en.json: marcadores distintos en «${k}»`); }
+}
+
+console.log("Proyectos: referencias y elementos");
+{
+  for (const c of casos.proyecto_esquema) ok(!M.validarEsquema(c.esquema).length === c.valido, "validarEsquema (JS) ≠ caso: " + JSON.stringify(c.esquema).slice(0, 100));
+  for (const c of casos.proyecto_elemento) ok(!M.validarElemento(c.elemento).length === c.valido, "validarElemento (JS) ≠ caso: " + JSON.stringify(c.elemento).slice(0, 100));
+  const f = 'flowchart TD\n    A[Inicio] --> G[Grabar]\n    G --> S[Guardar]\n%% esquema: {"iconos":{"S":"base-de-datos"},"refs":{"G":"boton-grabar","S":"dato-notas"}}\n';
+  ok(igual(M.refsDiagrama(f), { G: "boton-grabar", S: "dato-notas" }), "refsDiagrama lee las referencias");
+  ok(M.serializarFlujo(M.parsearFlujo(f)) === f, "leer y escribir conserva la línea con refs");
+  const tras = [M.fijar(f, "A", 10, 20), M.renombrarNodo(f, "A", "Empieza"), M.agregarNodo(f, "Otro").texto, M.cambiarForma(f, "A", "rombo", "reloj"), M.cambiarDireccion(f, "LR"), M.estiloAristas(f, "recta"), M.conectar(f, "A", "S")];
+  for (const t of tras) ok(igual(M.refsDiagrama(t), { G: "boton-grabar", S: "dato-notas" }), "una edición del lienzo pierde las refs:\n" + t);
+  ok(igual(M.refsDiagrama(M.borrarNodo(f, "G")), { S: "dato-notas" }), "borrar un nodo quita su ref (y deja las demás)");
+  ok(igual(M.leerMeta('{"refs":{"A":"Mal Id","B":"ok","C":5}}').refs, { B: "ok" }), "leerMeta descarta refs inválidas");
+  ok(M.escribirMeta({ refs: { b: "y", a: "x" }, pos: { a: [1, 2] } }) === '%% esquema: {"pos":{"a":[1,2]},"refs":{"a":"x","b":"y"}}', "escribirMeta ordena las refs");
+  const s = 'sequenceDiagram\n    actor P as Persona\n    participant G as Grabar\n    participant N as Nube\n    P->>G: Toca\n    G->>+N: Sube\n    N-->>-G: Listo\n    Note over G,N: Cifrado\n    G-->>P: Grabando\n%% esquema: {"refs":{"G":"boton-grabar","N":"nube"}}\n';
+  const sinG = M.borrarParticipante(s, "G");
+  ok(!M.dibujar(sinG).errores.length && !/G->>|->>G|-->>G|G-->>/.test(sinG) && sinG.includes("Note over N: Cifrado") && igual(M.refsDiagrama(sinG), { N: "nube" }), "borrarParticipante quita sus mensajes y su ref:\n" + sinG);
+  ok(igual(M.refsDiagrama(M.renombrarParticipante(s, "G", "Empezar")), { G: "boton-grabar", N: "nube" }), "renombrarParticipante conserva las refs");
+  ok(M.idElemento("Botón Grabar", ["boton-grabar"]) === "boton-grabar-2" && M.idElemento("¡¡!!") === "elemento", "idElemento");
+
+  const docs = {
+    "docs/esquema/README.md": "# Minutero\n\nToca [Grabar](elementos.md#el-boton-grabar) para empezar. Grabar se pone rojo.\n\n```js\nconst Grabar = 1; // [Grabar](elementos.md#el-boton-grabar)\n```\n",
+    "docs/esquema/flujos/grabar.md": "# Grabar una reunión\n\nDespués de [grabar](../elementos.md#el-boton-grabar) queda en la [Nube](../elementos.md#el-nube).\n\n```mermaid\n" + f + "```\n\n```mermaid\n" + s + "```\n",
+    "docs/esquema/secuencia.mmd": s,
+    "docs/esquema/elementos.md": "# Elementos\n\n<a id=\"el-boton-grabar\"></a>\n\n### Grabar\n",
+    "docs/esquema/otro.md": "# Nada que ver\n",
+  };
+  const el = { id: "boton-grabar", tipo: "boton", nombre: "Grabar" };
+  const usos = M.usosElemento(docs, el);
+  ok(igual(usos.map((u) => [u.ruta, u.enlaces, u.nodos.length]), [["docs/esquema/README.md", 1, 0], ["docs/esquema/flujos/grabar.md", 1, 2], ["docs/esquema/secuencia.mmd", 0, 1]]), "usosElemento: " + JSON.stringify(usos.map((u) => [u.ruta, u.enlaces, u.nodos.length])));
+  // Renombrar en todas partes
+  const ren = Object.fromEntries(M.cambiarElemento(docs, el, { tipo: "renombrar", nombre: "Empezar a grabar" }).map((x) => [x.ruta, x]));
+  ok(ren["docs/esquema/README.md"].despues.includes("[Empezar a grabar](elementos.md#el-boton-grabar) para empezar. Grabar se pone rojo."), "renombrar cambia el enlace y deja la mención suelta");
+  ok(ren["docs/esquema/README.md"].despues.includes("const Grabar = 1; // [Grabar](elementos.md#el-boton-grabar)"), "renombrar no toca los bloques de código");
+  ok(ren["docs/esquema/flujos/grabar.md"].despues.includes("[grabar](../elementos.md#el-boton-grabar)") && ren["docs/esquema/flujos/grabar.md"].notas.renombrados.length === 2, "un enlace con otro texto («grabar») se respeta; los dos diagramas cambian");
+  ok(ren["docs/esquema/flujos/grabar.md"].despues.includes("G[Empezar a grabar]") && ren["docs/esquema/flujos/grabar.md"].despues.includes("participant G as Empezar a grabar"), "renombrar cambia el nodo y el participante");
+  ok(ren["docs/esquema/secuencia.mmd"].despues.includes("participant G as Empezar a grabar"), "renombrar cambia el .mmd");
+  ok(!ren["docs/esquema/otro.md"] && !ren["docs/esquema/elementos.md"], "renombrar no toca lo que no lo usa ni el glosario");
+  const ren2 = M.cambiarElemento(docs, el, { tipo: "renombrar", nombre: "Empezar a grabar", tambienSinEnlace: true }).find((x) => x.ruta === "docs/esquema/README.md");
+  ok(ren2.despues.includes("para empezar. Empezar a grabar se pone rojo.") && ren2.despues.includes("const Grabar = 1;"), "con «también sin enlace» cambia las menciones sueltas (no el código)");
+  // Quitar en todas partes: lo que queda es Mermaid y Markdown válidos
+  const qui = Object.fromEntries(M.cambiarElemento(docs, el, { tipo: "quitar", reconectar: true }).map((x) => [x.ruta, x]));
+  const g2 = qui["docs/esquema/flujos/grabar.md"];
+  ok(!g2.despues.includes("elementos.md#el-boton-grabar") && g2.despues.includes("Después de grabar queda en la [Nube](../elementos.md#el-nube)"), "quitar deja el texto sin enlace y no toca otros enlaces");
+  for (const b of M.bloquesMermaid(g2.despues)) ok(!M.dibujar(b.contenido).errores.length && !b.contenido.includes("Grabar") && !b.contenido.includes("boton-grabar"), "quitar deja cada diagrama válido y sin el elemento:\n" + b.contenido);
+  ok(/A --> S/.test(g2.despues) && igual(g2.notas.unidos, [["Inicio", "Guardar"]]), "quitar con «unir» conecta lo de antes con lo de después");
+  ok(qui["docs/esquema/README.md"].notas.frases.length === 1, "quitar avisa de las frases que lo nombran");
+  const sinUnir = M.cambiarElemento(docs, el, { tipo: "quitar", reconectar: false }).find((x) => x.ruta === "docs/esquema/flujos/grabar.md");
+  ok(igual(sinUnir.notas.sueltos.sort(), ["Guardar", "Inicio"]), "sin unir, avisa de lo que queda suelto: " + JSON.stringify(sinUnir.notas.sueltos));
+  ok(!M.cambiarElemento(docs, el, { tipo: "describir" }).some((x) => x.despues !== x.antes), "cambiar la descripción no toca los documentos");
+  // Limpiar lo que propone la IA y el glosario
+  const limpio = M.limpiarRefs("Ver [X](elementos.md#el-no-existe) y [G](elementos.md#el-boton-grabar).\n\n```mermaid\nflowchart TD\n    A --> B\n%% esquema: {\"refs\":{\"A\":\"no-existe\",\"B\":\"boton-grabar\"}}\n```\n", ["boton-grabar"]);
+  ok(limpio.startsWith("Ver X y [G](elementos.md#el-boton-grabar).") && limpio.includes('"refs":{"B":"boton-grabar"}') && !limpio.includes("no-existe"), "limpiarRefs:\n" + limpio);
+  const gl = M.glosario({ nombre: "Minutero", elementos: [el, { id: "nube", tipo: "servicio", nombre: "Nube <x>", descripcion: "Guarda", codigo: ["src/nube.py"] }] });
+  ok(gl.includes('<a id="el-boton-grabar"></a>') && gl.includes("### Grabar") && gl.includes("`src/nube.py`") && gl.indexOf("## Botones") < gl.indexOf("## Servicios"), "glosario con anclas por elemento");
+  ok(M.enlaceElemento("docs/esquema/flujos/a.md", "docs/esquema", "x", "Y [1]") === "[Y 1](../elementos.md#el-x)", "enlaceElemento con la ruta relativa al glosario");
+  // Comparar versiones
+  ok(igual(M.difLineas("a\nb\nc", "a\nx\nc").map((x) => x.tipo + x.texto), ["=a", "-b", "+x", "=c"]), "difLineas");
+  const dd = M.difDiagrama("flowchart TD\n    A[Uno] --> B[Dos]\n", "flowchart TD\n    A[Uno bis] --> C[Tres]\n");
+  ok(igual(dd.agregados, ["C"]) && dd.quitados[0].id === "B" && dd.cambiados[0].despues === "Uno bis" && dd.aristasAgregadas.length === 1 && dd.aristasQuitadas.length === 1, "difDiagrama: " + JSON.stringify(dd));
+  ok(igual(M.difVersiones({ a: "1", b: "2" }, { b: "3", c: "4" }), [{ ruta: "a", estado: "quitado" }, { ruta: "b", estado: "cambiado" }, { ruta: "c", estado: "nuevo" }]), "difVersiones");
+  const af = M.docsAfectados({ elementos: [el, { id: "nube", tipo: "servicio", nombre: "Nube", codigo: ["src/nube/"] }, { id: "otro", tipo: "otro", nombre: "Otro" }] }, docs, [{ mensaje: "Grabar pide confirmación", archivos: ["src/ui/x.js"] }, { mensaje: "x", archivos: ["src/nube/subir.py"] }]);
+  ok(igual(af.elementos.map((e) => e.id), ["boton-grabar", "nube"]) && af.documentos.includes("docs/esquema/flujos/grabar.md") && af.documentos.includes("docs/esquema/secuencia.mmd"), "docsAfectados: " + JSON.stringify(af));
 }
 
 console.log("Rendimiento");

@@ -292,6 +292,27 @@
     L[linea] = L[linea].slice(0, ev.txtIni) + textoMsg(nuevo) + L[linea].slice(ev.txtFin);
     return L.join("\n");
   };
+  /** Quita un participante: su declaración, sus mensajes, sus notas y sus activaciones (lo demás queda igual). Una nota sobre
+   *  varios participantes sigue sobre los demás. */
+  M.borrarParticipante = function (texto, id) {
+    const S = M.parsearSecuencia(texto);
+    if (!S.idx.has(id)) return texto;
+    const L = lineasDe(texto), fuera = new Set();
+    const q = S.idx.get(id);
+    if (q.decl) fuera.add(q.decl.linea);
+    for (const ev of S.eventos) {
+      if (ev.tipo === "mensaje" && (ev.de === id || ev.a === id)) fuera.add(ev.linea);
+      else if ((ev.tipo === "activar" || ev.tipo === "desactivar") && ev.p === id) fuera.add(ev.linea);
+      else if (ev.tipo === "nota" && ev.ps.includes(id)) {
+        const otros = ev.ps.filter((x) => x !== id);
+        if (!otros.length) fuera.add(ev.linea);
+        else L[ev.linea] = L[ev.linea].replace(/^(\s*note\s+(?:left of|right of|over)\s+)([^:]+?)(\s*:)/i, (_, a, __, c) => a + otros.join(",") + c);
+      }
+    }
+    const r = L.filter((_, i) => !fuera.has(i)).join("\n");
+    const m = M.leerMeta((/^\s*%%\s*esquema:\s*(\{.*\})\s*$/m.exec(r) || [])[1] || "null");
+    return m && (m.refs?.[id] || m.pos?.[id] || m.iconos?.[id]) ? M.ponerMeta(r, (x) => { if (x.refs) delete x.refs[id]; if (x.pos) delete x.pos[id]; if (x.iconos) delete x.iconos[id]; }) : r;
+  };
   M.borrarLinea = function (texto, linea) { const L = lineasDe(texto); L.splice(linea, 1); return L.join("\n"); };
   /** Agrega un mensaje después de la línea `despues` (o al final): A->>B: texto. */
   M.agregarMensaje = function (texto, de, a, despues = null, msg = "Mensaje") {

@@ -493,7 +493,7 @@
       return original(D, st);
     });
     let r = unir(L);
-    if (D.meta.pos?.[id] || D.meta.iconos?.[id]) r = M.ponerMeta(r, (m) => { if (m.pos) delete m.pos[id]; if (m.iconos) delete m.iconos[id]; });
+    if (D.meta.pos?.[id] || D.meta.iconos?.[id] || D.meta.refs?.[id]) r = M.ponerMeta(r, (m) => { if (m.pos) delete m.pos[id]; if (m.iconos) delete m.iconos[id]; if (m.refs) delete m.refs[id]; });
     return r;
   };
 

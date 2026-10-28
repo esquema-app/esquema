@@ -985,5 +985,557 @@
    "respuesta": "No puedo hacer eso.",
    "esperado": null
   }
+ ],
+ "proyecto_esquema": [
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "README.md",
+      "titulo": "Visión",
+      "tipo": "vision"
+     },
+     {
+      "ruta": "flujos/grabar.md",
+      "titulo": "Grabar",
+      "tipo": "flujo"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": true
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [],
+    "elementos": [],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": true
+  },
+  {
+   "esquema": {
+    "formato": 2,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "README.md",
+      "titulo": "Visión",
+      "tipo": "vision"
+     },
+     {
+      "ruta": "flujos/grabar.md",
+      "titulo": "Grabar",
+      "tipo": "flujo"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "",
+    "documentos": [
+     {
+      "ruta": "README.md",
+      "titulo": "Visión",
+      "tipo": "vision"
+     },
+     {
+      "ruta": "flujos/grabar.md",
+      "titulo": "Grabar",
+      "tipo": "flujo"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "README.md",
+      "titulo": "Visión",
+      "tipo": "vision"
+     },
+     {
+      "ruta": "flujos/grabar.md",
+      "titulo": "Grabar",
+      "tipo": "flujo"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    },
+    "extra": 1
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "../fuera.md",
+      "titulo": "x",
+      "tipo": "otro"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": ".oculto/x.md",
+      "titulo": "x",
+      "tipo": "otro"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "a/b/c/d.md",
+      "titulo": "x",
+      "tipo": "otro"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "x.txt",
+      "titulo": "x",
+      "tipo": "otro"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "x.md",
+      "titulo": "x",
+      "tipo": "raro"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "x.md",
+      "titulo": "x",
+      "tipo": "otro"
+     },
+     {
+      "ruta": "x.md",
+      "titulo": "y",
+      "tipo": "otro"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "README.md",
+      "titulo": "Visión",
+      "tipo": "vision"
+     },
+     {
+      "ruta": "flujos/grabar.md",
+      "titulo": "Grabar",
+      "tipo": "flujo"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "a",
+      "tipo": "boton",
+      "nombre": "A"
+     },
+     {
+      "id": "a",
+      "tipo": "boton",
+      "nombre": "B"
+     }
+    ],
+    "fuentes": {
+     "leido": "2026-10-28",
+     "archivos": [
+      "README.md"
+     ]
+    }
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "README.md",
+      "titulo": "Visión",
+      "tipo": "vision"
+     },
+     {
+      "ruta": "flujos/grabar.md",
+      "titulo": "Grabar",
+      "tipo": "flujo"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "leido": "ayer"
+    }
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Minutero",
+    "documentos": [
+     {
+      "ruta": "README.md",
+      "titulo": "Visión",
+      "tipo": "vision"
+     },
+     {
+      "ruta": "flujos/grabar.md",
+      "titulo": "Grabar",
+      "tipo": "flujo"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "boton-grabar",
+      "tipo": "boton",
+      "nombre": "Grabar",
+      "descripcion": "Empieza",
+      "codigo": [
+       "src/grabar.py"
+      ]
+     }
+    ],
+    "fuentes": {
+     "archivos": [
+      "../x"
+     ]
+    }
+   },
+   "valido": false
+  }
+ ],
+ "proyecto_elemento": [
+  {
+   "elemento": {
+    "id": "boton-grabar",
+    "tipo": "boton",
+    "nombre": "Grabar"
+   },
+   "valido": true
+  },
+  {
+   "elemento": {
+    "id": "api",
+    "tipo": "servicio",
+    "nombre": "API",
+    "descripcion": "",
+    "codigo": [
+     "src/api/",
+     "Sources/App.swift"
+    ]
+   },
+   "valido": true
+  },
+  {
+   "elemento": {
+    "id": "Boton",
+    "tipo": "boton",
+    "nombre": "x"
+   },
+   "valido": false
+  },
+  {
+   "elemento": {
+    "id": "a--b",
+    "tipo": "boton",
+    "nombre": "x"
+   },
+   "valido": false
+  },
+  {
+   "elemento": {
+    "id": "a",
+    "tipo": "clase",
+    "nombre": "x"
+   },
+   "valido": false
+  },
+  {
+   "elemento": {
+    "id": "a",
+    "tipo": "boton",
+    "nombre": "  "
+   },
+   "valido": false
+  },
+  {
+   "elemento": {
+    "id": "a",
+    "tipo": "boton",
+    "nombre": "x",
+    "codigo": [
+     "../afuera"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "elemento": {
+    "id": "a",
+    "tipo": "boton",
+    "nombre": "x",
+    "codigo": [
+     "/etc/passwd"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "elemento": {
+    "id": "a",
+    "tipo": "boton",
+    "nombre": "x",
+    "otro": 1
+   },
+   "valido": false
+  },
+  {
+   "elemento": {
+    "id": "a",
+    "tipo": "boton",
+    "nombre": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "valido": false
+  }
  ]
 }
