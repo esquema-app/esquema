@@ -1,0 +1,36 @@
+name: 🧪 Lo probé en mi computador / I tested it on my computer
+description: Cuéntanos cómo le fue a Esquema en tu sistema (sobre todo Windows y Linux). / Tell us how Esquema did on your system.
+labels: [probar]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias! Probar en un computador de verdad es de las ayudas que más sirven: Windows no lo podemos probar en GitHub.
+        Usa solo diagramas ficticios. / Thanks! Testing on a real computer is one of the most useful things you can do. Fictional diagrams only.
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Sistema / System
+      options: [Windows 11, Windows 10, "Linux (Ubuntu, Debian…)", "Linux (Fedora, Arch, otro / other)", Mac]
+    validations: { required: true }
+  - type: input
+    id: detalle
+    attributes:
+      label: Versión del sistema y cómo instalaste / OS version and how you installed
+      placeholder: Windows 11 23H2 · instalar.ps1 / Ubuntu 24.04 · AppImage
+    validations: { required: true }
+  - type: checkboxes
+    id: revisado
+    attributes:
+      label: Lo que funcionó / What worked
+      options:
+        - label: Se instaló y abrió (y el aviso de app sin firmar fue claro) / It installed and opened (and the unsigned-app warning was clear)
+        - label: Elegí una carpeta y abrí un .md y un .mmd / I picked a folder and opened a .md and a .mmd
+        - label: Edité en el lienzo y el texto cambió (y al revés) / I edited on the canvas and the text changed (and vice versa)
+        - label: Si cambio un archivo en otro editor, Esquema lo recarga / Editing a file in another editor reloads it in Esquema
+        - label: Exporté SVG o PNG / I exported SVG or PNG
+        - label: «Nuevo» → «Comunidad» bajó una plantilla / “New” → “Community” downloaded a template
+  - type: textarea
+    id: problemas
+    attributes:
+      label: Lo que falló o se vio raro (capturas bienvenidas) / What failed or looked odd (screenshots welcome)

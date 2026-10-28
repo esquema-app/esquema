@@ -5,7 +5,7 @@
 <p align="center"><b>Diagramas y documentación que GitHub ya entiende.</b><br>
 Escribe Mermaid o dibuja en el lienzo: los dos se mantienen al día. Gratis, abierto y en tu computador.</p>
 
-<p align="center"><a href="#english">English below</a></p>
+<p align="center"><a href="https://esquema-app.github.io/esquema/"><b>Sitio y descargas</b></a> · <a href="https://esquema-app.github.io/esquema/demo/">Pruébala en el navegador</a> · <a href="https://github.com/esquema-app/esquema-catalogo">Plantillas de la comunidad</a> · <a href="https://github.com/esquema-app/esquema/discussions">Comunidad</a> · <a href="#english">English below</a></p>
 
 ![Esquema: diagrama de arquitectura con su texto Mermaid al lado](docs/img/esquema-flujo-escritorio-claro.png)
 
@@ -23,7 +23,8 @@ formato que GitHub ya muestra (Markdown con bloques ```` ```mermaid ```` y archi
   asistente **README para GitHub** escribe el README de tu proyecto con la lista de archivos (solo nombres, respetando `.gitignore`,
   nunca secretos). Cada cambio de la IA tiene su tarjeta con **«Quitar este cambio»**.
 - **Plantillas** de arquitectura, secuencia de API, flujo de usuario, proceso de negocio, README, decisión de arquitectura (ADR) y
-  runbook. **Exporta** a SVG, PNG, Markdown o «Copiar para GitHub».
+  runbook, y las del [catálogo de la comunidad](https://github.com/esquema-app/esquema-catalogo) en «Nuevo» → «Comunidad» (se
+  descargan con su huella revisada). **Exporta** a SVG, PNG, Markdown o «Copiar para GitHub».
 - Íconos de arquitectura propios, claro y oscuro, español e inglés, y lo primero que pregunta es tu idioma.
 
 | Documento con sus diagramas | Secuencia editable | README con tu IA |
@@ -66,7 +67,7 @@ Esquema (117 KB sin minificar), medido con [`herramientas/comparar_mermaid.mjs`]
 
 ## Instalar
 
-Esquema es gratis y no pide cuenta. Cada instalador baja la última versión publicada en GitHub, **verifica su huella SHA-256** y la
+En el [sitio](https://esquema-app.github.io/esquema/#descargar) está el botón para tu sistema. Esquema es gratis y no pide cuenta. Cada instalador baja la última versión publicada en GitHub, **verifica su huella SHA-256** y la
 instala solo para tu usuario (sin contraseña de administrador). Tus documentos quedan en tu carpeta y nunca se tocan; la
 configuración va en `~/Library/Application Support/Esquema` (Mac), `%APPDATA%\Esquema` (Windows) o `~/.config/esquema` (Linux).
 
@@ -99,13 +100,22 @@ verifica su huella y la app se cierra y vuelve a abrir sola, sin perder lo que e
 El núcleo (motor, interfaz, plantillas, IA y pruebas) corre en el navegador con una carpeta de ejemplo ficticia y en las apps de
 **Mac** (nativa, SwiftPM + WKWebView) y **Windows y Linux** (Electron), con la misma interfaz. Las apps vigilan tu carpeta: si
 cambias un archivo en otro editor (VS Code, `git pull`…), Esquema lo recarga; si tenías cambios sin guardar, te pregunta con cuál
-versión quedarte. Lo planificado (BPMN, estados, ER, gantt, mapa mental, catálogo de plantillas de la comunidad) está en
-[AGENTS.md](AGENTS.md#lo-que-viene-planificado).
+versión quedarte. Las plantillas de la comunidad llegan desde [esquema-catalogo](https://github.com/esquema-app/esquema-catalogo).
+Lo planificado (BPMN, estados, ER, gantt, mapa mental) está en [AGENTS.md](AGENTS.md#lo-que-viene-planificado).
+
+## Comunidad
+
+- **Comparte una plantilla** sin programar: descríbela con palabras en
+  [«Proponer una plantilla»](https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml) y la armamos (CC0).
+- **Conversa** en [Discussions](https://github.com/esquema-app/esquema/discussions): dudas, ideas y lo que documentaste.
+- **Aporta:** prueba en Windows o Linux, traduce o toma una
+  [tarea de bienvenida](https://github.com/esquema-app/esquema/labels/good%20first%20issue). Detalle en [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Desarrollo
 
 ```bash
 cd ui && python3 -m http.server 8765      # http://localhost:8765 (?idioma=en, ?bienvenida, ?vacio)
+node herramientas/pagina_capturas.mjs     # la página (docs/) como en GitHub Pages, con la demo en /demo/
 bash pruebas/correr.sh                    # todas las pruebas (la interfaz necesita Playwright)
 node herramientas/comparar_mermaid.mjs    # rendimiento y compatibilidad contra Mermaid real (lo instala aparte)
 bash build.sh                             # Mac: compila e instala en ~/Applications/Esquema.app
@@ -142,6 +152,12 @@ already renders (Markdown with ```` ```mermaid ```` blocks and `.mmd` files), pl
 Your files stay yours: plain `.md`/`.mmd` in the folder you choose. Esquema-only data (pinned positions, icons) lives in a
 `%% esquema: {...}` comment that Mermaid ignores. The apps watch your folder: if you edit a file in another editor, Esquema reloads it
 (and asks which version to keep if you had unsaved changes).
+
+**Website, downloads and live demo:** [esquema-app.github.io/esquema](https://esquema-app.github.io/esquema/?lang=en). **Community
+templates** (CC0) come from [esquema-catalogo](https://github.com/esquema-app/esquema-catalogo) under “New” → “Community”; propose one in
+plain words with the [template form](https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml). Questions and
+ideas: [Discussions](https://github.com/esquema-app/esquema/discussions); good first issues are labeled
+[`good first issue`](https://github.com/esquema-app/esquema/labels/good%20first%20issue).
 
 **Install** (free, no account; each installer downloads the latest GitHub Release, checks its SHA-256 and installs for your user only):
 

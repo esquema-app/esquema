@@ -6,3 +6,6 @@ contact_links:
   - name: 💬 Conversar, preguntar o mostrar lo que documentaste
     url: https://github.com/esquema-app/esquema/discussions
     about: Dudas de uso, ideas a medio cocinar y tus diagramas. / Questions, rough ideas and what you made.
+  - name: 🧩 Proponer una plantilla para el catálogo
+    url: https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml
+    about: Descríbela con palabras y la armamos. / Describe it in words and we'll build it.

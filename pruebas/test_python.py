@@ -316,6 +316,31 @@ class Repo(unittest.TestCase):
         r = subprocess.run([sys.executable, os.path.join(RAIZ, "herramientas", "generar_demo.py"), "--revisar"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout)
 
+    def test_pagina(self):
+        """docs/index.html: CSP sin scripts en línea, JSON-LD válido con las mismas preguntas que se ven, descargas con los nombres
+        fijos de publicar.yml, imagen para compartir de 1200×630 y sitemap con la URL canónica."""
+        import re
+        import struct
+        h = open(os.path.join(RAIZ, "docs", "index.html"), encoding="utf-8").read()
+        csp = re.search(r'Content-Security-Policy" content="([^"]+)"', h).group(1)
+        self.assertIn("script-src 'self'", csp)
+        self.assertNotIn("unsafe", csp)
+        self.assertNotRegex(h, r"<script>|<script (?!src=|type=\"application/ld\+json\")|\son\w+=|style=\"")
+        ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', h, re.S).group(1))
+        preguntas = [q["name"] for g in ld["@graph"] if g["@type"] == "FAQPage" for q in g["mainEntity"]]
+        visibles = re.findall(r"<summary><span data-es>(.*?)</span>", h)
+        self.assertEqual(preguntas, visibles)
+        publicar = open(os.path.join(RAIZ, ".github", "workflows", "publicar.yml"), encoding="utf-8").read()
+        js = open(os.path.join(RAIZ, "docs", "pagina.js"), encoding="utf-8").read()
+        for nombre in set(re.findall(r"releases/latest/download/([\w.-]+)", h)) | set(re.findall(r'"(Esquema-[\w.-]+)"', js)):
+            self.assertIn(nombre, publicar)
+        for ruta in re.findall(r'(?:src|href)="(?!https?:|#|demo/|\./)([^"?]+)"', h):
+            self.assertTrue(os.path.exists(os.path.join(RAIZ, "docs", ruta)), ruta)
+        with open(os.path.join(RAIZ, "docs", "img", "compartir.png"), "rb") as f:
+            self.assertEqual(struct.unpack(">II", f.read(24)[16:24]), (1200, 630))
+        self.assertIn('<link rel="canonical" href="https://esquema-app.github.io/esquema/">', h)
+        self.assertIn("<loc>https://esquema-app.github.io/esquema/</loc>", open(os.path.join(RAIZ, "docs", "sitemap.xml"), encoding="utf-8").read())
+
     def test_licencia_agpl_completa(self):
         t = open(os.path.join(RAIZ, "LICENSE"), encoding="utf-8").read()
         self.assertIn("GNU AFFERO GENERAL PUBLIC LICENSE", t)

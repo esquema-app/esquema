@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; upgrade-insecure-requests">
+<title>Esquema — editor de diagramas Mermaid gratis: dibuja o escribe, y GitHub lo muestra | Alternativa abierta a Mermaid Live y draw.io</title>
+<meta name="description" content="Editor de diagramas y documentación gratis y de código abierto para Mac, Windows y Linux. Escribe Mermaid o dibuja en el lienzo y los dos se mantienen al día; tu README en GitHub lo muestra igual. Motor propio entre 40 y 100 veces más rápido que Mermaid, plantillas y tu propia IA.">
+<link rel="canonical" href="https://esquema-app.github.io/esquema/">
+<link rel="alternate" hreflang="es" href="https://esquema-app.github.io/esquema/">
+<link rel="alternate" hreflang="en" href="https://esquema-app.github.io/esquema/?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://esquema-app.github.io/esquema/">
+<meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Esquema">
+<meta property="og:url" content="https://esquema-app.github.io/esquema/">
+<meta property="og:locale" content="es_CL"><meta property="og:locale:alternate" content="en_US">
+<meta property="og:title" content="Esquema — diagramas y documentación que GitHub ya entiende">
+<meta property="og:description" content="Escribe Mermaid o dibuja en el lienzo: los dos se mantienen al día. Motor propio 40–100× más rápido que Mermaid. Gratis, abierto y en tu computador.">
+<meta property="og:image" content="https://esquema-app.github.io/esquema/img/compartir.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Esquema: un diagrama de arquitectura con su texto Mermaid al lado, con datos de ejemplo">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Esquema — diagramas y documentación que GitHub ya entiende">
+<meta name="twitter:description" content="Escribe Mermaid o dibuja en el lienzo: los dos se mantienen al día. 40–100× más rápido que Mermaid. Gratis y abierto para Mac, Windows y Linux.">
+<meta name="twitter:image" content="https://esquema-app.github.io/esquema/img/compartir.png">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "SoftwareApplication",
+   "name": "Esquema",
+   "url": "https://esquema-app.github.io/esquema/",
+   "image": "https://esquema-app.github.io/esquema/img/compartir.png",
+   "screenshot": "https://esquema-app.github.io/esquema/img/esquema-flujo-escritorio-claro.png",
+   "description": "Editor de diagramas y documentación que lee y escribe Mermaid: se edita escribiendo el texto o dibujando en el lienzo, con un motor propio entre 40 y 100 veces más rápido que Mermaid, plantillas y tu propia IA para dibujar diagramas y escribir el README.",
+   "applicationCategory": "DeveloperApplication",
+   "operatingSystem": "macOS 15, Windows 10, Windows 11, Linux",
+   "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+   "isAccessibleForFree": true,
+   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+   "downloadUrl": "https://github.com/esquema-app/esquema/releases/latest",
+   "codeRepository": "https://github.com/esquema-app/esquema",
+   "inLanguage": ["es", "en"]
+  },
+  {
+   "@type": "FAQPage",
+   "mainEntity": [
+    { "@type": "Question", "name": "¿Lo que hago en Esquema se ve igual en GitHub?", "acceptedAnswer": { "@type": "Answer", "text": "Sí. Esquema guarda Mermaid de verdad: archivos .mmd y bloques mermaid dentro de tus .md, que GitHub dibuja solo. Lo propio de Esquema (posiciones fijadas a mano, íconos y estilo de las flechas) va en una línea de comentario que Mermaid ignora." } },
+    { "@type": "Question", "name": "¿Qué tan rápido es, de verdad?", "acceptedAnswer": { "@type": "Answer", "text": "En el mismo navegador (Chromium) y con los mismos diagramas, Mermaid 12.2.0 tarda 423 ms en dibujar un flujo de 50 nodos y 7.729 ms uno de 1.000; Esquema, 7 ms y 75 ms. Es la mediana de varias pasadas con herramientas/comparar_mermaid.mjs, que está en el repositorio para que cualquiera lo repita." } },
+    { "@type": "Question", "name": "¿Qué diagramas dibuja?", "acceptedAnswer": { "@type": "Answer", "text": "Flujos, secuencias y arquitectura (flujos con formas e íconos de servidor, base de datos, cola, nube…). Los otros tipos de Mermaid, como gantt o ER, se conservan tal cual y GitHub los sigue mostrando; Esquema los irá dibujando de a uno." } },
+    { "@type": "Question", "name": "¿Mis archivos salen de mi computador?", "acceptedAnswer": { "@type": "Answer", "text": "No. Esquema trabaja con los .md y .mmd de la carpeta que eliges, no los copia ni los manda a ninguna parte y no tiene servidores ni telemetría. Si usas tu IA, ella recibe solo lo que le pides y, para el README, solo los nombres de los archivos." } },
+    { "@type": "Question", "name": "¿Necesito una IA para usarlo?", "acceptedAnswer": { "@type": "Answer", "text": "No. La IA es opcional: si ya tienes Claude Code, Codex o Gemini con tu cuenta, Esquema la usa para «Dibújame» y para escribir el README. Cada cambio de la IA se puede quitar con un toque." } },
+    { "@type": "Question", "name": "¿Por qué mi computador dice que no puede verificar la app?", "acceptedAnswer": { "@type": "Answer", "text": "Porque Esquema no paga los certificados de Apple ni de Microsoft. Con el instalador de un comando no pasa en Mac. Si bajaste el .zip a mano en macOS 15: intenta abrirla, ve a Ajustes del Sistema → Privacidad y seguridad y toca «Abrir igualmente». En Windows, si aparece «Windows protegió tu PC»: «Más información» → «Ejecutar de todas formas». Cada descarga tiene su huella SHA-256 en el Release para comprobar que es la nuestra." } },
+    { "@type": "Question", "name": "¿Cuánto cuesta?", "acceptedAnswer": { "@type": "Answer", "text": "Nada. Esquema es gratis y de código abierto (AGPL-3.0), sin cuentas ni publicidad. Las plantillas del catálogo de la comunidad son de dominio público (CC0)." } }
+   ]
+  }
+ ]
+}
+</script>
+<link rel="stylesheet" href="pagina.css">
+</head>
+<body>
+<header class="barra">
+  <div class="ancho">
+    <a class="marca" href="./"><img src="favicon.svg" alt="" width="28" height="28">Esquema</a>
+    <nav aria-label="Secciones">
+      <a href="#rendimiento"><span data-es>Rendimiento</span><span data-en>Speed</span></a>
+      <a href="#como-funciona"><span data-es>Cómo funciona</span><span data-en>How it works</span></a>
+      <a href="#comparar"><span data-es>Comparación</span><span data-en>Comparison</span></a>
+      <a href="#preguntas"><span data-es>Preguntas</span><span data-en>FAQ</span></a>
+      <a href="#comunidad"><span data-es>Comunidad</span><span data-en>Community</span></a>
+      <a href="#descargar"><span data-es>Descargar</span><span data-en>Download</span></a>
+    </nav>
+    <button class="idioma" id="idioma" type="button" aria-label="English / Español">EN</button>
+  </div>
+</header>
+
+<main>
+<section class="portada">
+  <div class="ancho">
+    <div>
+      <span class="etiqueta"><span data-es>Gratis · Código abierto · Mac, Windows y Linux</span><span data-en>Free · Open source · Mac, Windows and Linux</span></span>
+      <h1><span data-es>Diagramas que <em>GitHub ya entiende.</em></span><span data-en>Diagrams <em>GitHub already understands.</em></span></h1>
+      <p class="intro"><span data-es>Escribe Mermaid o dibuja en el lienzo: los dos se mantienen al día y cada cambio toca solo su línea. Tu documentación queda en tus <code>.md</code> y <code>.mmd</code>, y tu README la muestra igual.</span><span data-en>Write Mermaid or draw on the canvas: both stay in sync and every change touches only its own line. Your docs stay in your <code>.md</code> and <code>.mmd</code> files, and your README shows them as is.</span></p>
+      <div class="cifra">
+        <b>40–100×</b>
+        <span><span data-es>más rápido que Mermaid al dibujar, medido en el mismo navegador. <a href="#rendimiento">Ver la medición</a></span><span data-en>faster than Mermaid at drawing, measured in the same browser. <a href="#rendimiento">See the benchmark</a></span></span>
+      </div>
+      <div class="botones">
+        <a class="boton principal" id="descarga-principal" href="#descargar">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 16.5h12"/></svg>
+          <span id="descarga-texto"><span data-es>Descargar gratis</span><span data-en>Download free</span></span>
+        </a>
+        <a class="boton" href="demo/"><span data-es>Probar en el navegador</span><span data-en>Try it in your browser</span> →</a>
+        <p class="nota-boton" id="descarga-nota"><span data-es>Sin cuenta. También el código, en <a href="https://github.com/esquema-app/esquema">GitHub</a>.</span><span data-en>No account. The code is on <a href="https://github.com/esquema-app/esquema">GitHub</a>.</span></p>
+      </div>
+    </div>
+    <div class="editor" aria-label="Editor de prueba">
+      <div class="editor-barra"><span class="archivo">arquitectura.mmd</span><span data-es>· escribe y mira</span><span data-en>· type and watch</span><span class="tiempo" id="tiempo"></span></div>
+      <div class="editor-cuerpo">
+        <textarea id="mermaid" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Texto Mermaid del diagrama"></textarea>
+        <div class="lienzo" id="dibujo" role="img" aria-label="El diagrama, dibujado por el motor de Esquema"></div>
+      </div>
+      <div class="editor-pie" id="editor-pie"><span data-es>Es el motor de Esquema, aquí mismo. Cambia un nombre, agrega <code>D --&gt; E[Correo]</code> o rompe algo a propósito.</span><span data-en>This is Esquema's engine, right here. Rename a box, add <code>D --&gt; E[Email]</code> or break something on purpose.</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="rendimiento">
+  <div class="ancho">
+    <span class="etiqueta"><span data-es>Rendimiento</span><span data-en>Speed</span></span>
+    <h2><span data-es>Un motor propio, sin dependencias.</span><span data-en>Its own engine, no dependencies.</span></h2>
+    <p class="intro"><span data-es>Esquema dibuja con su propio motor (117 KB sin minificar) en vez de Mermaid (5,4 MB minificado). Por eso puede volver a dibujar en cada tecla: si el cambio no mueve nada, no vuelve a acomodar y solo reemplaza lo que cambió.</span><span data-en>Esquema draws with its own engine (117 KB unminified) instead of Mermaid (5.4 MB minified). That's why it can redraw on every keystroke: if a change doesn't move anything, it doesn't lay out again and only replaces what changed.</span></p>
+    <div class="medidas">
+      <div class="medida"><h3><span data-es>Flujo, 50 nodos</span><span data-en>Flowchart, 50 nodes</span></h3>
+        <div class="cota"><span class="quien">Mermaid</span><span class="regla"><i class="a-100"></i></span><span class="ms">423 ms</span></div>
+        <div class="cota esquema"><span class="quien">Esquema</span><span class="regla"><i class="a-50"></i></span><span class="ms">7 ms</span></div></div>
+      <div class="medida"><h3><span data-es>Flujo, 200 nodos</span><span data-en>Flowchart, 200 nodes</span></h3>
+        <div class="cota"><span class="quien">Mermaid</span><span class="regla"><i class="a-100"></i></span><span class="ms">1.388 ms</span></div>
+        <div class="cota esquema"><span class="quien">Esquema</span><span class="regla"><i class="a-200"></i></span><span class="ms">32 ms</span></div></div>
+      <div class="medida"><h3><span data-es>Flujo, 1.000 nodos</span><span data-en>Flowchart, 1,000 nodes</span></h3>
+        <div class="cota"><span class="quien">Mermaid</span><span class="regla"><i class="a-100"></i></span><span class="ms">7.729 ms</span></div>
+        <div class="cota esquema"><span class="quien">Esquema</span><span class="regla"><i class="a-1000"></i></span><span class="ms">75 ms</span></div></div>
+      <div class="medida"><h3><span data-es>Secuencia, 200 mensajes</span><span data-en>Sequence, 200 messages</span></h3>
+        <div class="cota"><span class="quien">Mermaid</span><span class="regla"><i class="a-100"></i></span><span class="ms">217 ms</span></div>
+        <div class="cota esquema"><span class="quien">Esquema</span><span class="regla"><i class="a-sec"></i></span><span class="ms">3 ms</span></div></div>
+    </div>
+    <p class="al-pie"><span data-es>Mismo navegador (Chromium), mismos diagramas, mediana de varias pasadas, Mermaid 12.2.0, dibujando desde cero. Al editar, Esquema tarda todavía menos (12 ms con 200 nodos). Lo midió <a href="https://github.com/esquema-app/esquema/blob/main/herramientas/comparar_mermaid.mjs"><code>herramientas/comparar_mermaid.mjs</code></a>: córrelo en tu computador y compara.</span><span data-en>Same browser (Chromium), same diagrams, median of several runs, Mermaid 12.2.0, drawing from scratch. While editing, Esquema is even faster (12 ms with 200 nodes). Measured with <a href="https://github.com/esquema-app/esquema/blob/main/herramientas/comparar_mermaid.mjs"><code>herramientas/comparar_mermaid.mjs</code></a>: run it on your computer and compare.</span></p>
+  </div>
+</section>
+
+<section id="como-funciona">
+  <div class="ancho">
+    <span class="etiqueta"><span data-es>Cómo funciona</span><span data-en>How it works</span></span>
+    <h2><span data-es>Texto y dibujo, la misma cosa.</span><span data-en>Text and drawing, one and the same.</span></h2>
+    <p class="intro"><span data-es>El texto Mermaid es la fuente de verdad. Lo que haces en el lienzo se escribe ahí, cambiando solo la línea necesaria: tus comentarios, tu sangría y tu estilo quedan como estaban.</span><span data-en>The Mermaid text is the source of truth. What you do on the canvas is written there, changing only the line it needs: your comments, indentation and style stay as they were.</span></p>
+    <div class="pasos">
+      <ol id="pasos">
+        <li data-paso="0"><b><span class="num">1</span><span data-es>Escribe o dibuja</span><span data-en>Write or draw</span></b><span><span data-es>Autocompletar y errores claros en el texto; en el lienzo, doble clic para crear, arrastra para conectar, ⌘Z para deshacer.</span><span data-en>Autocomplete and clear errors in the text; on the canvas, double-click to create, drag to connect, ⌘Z to undo.</span></span></li>
+        <li data-paso="1"><b><span class="num">2</span><span data-es>Se acomoda solo</span><span data-en>It lays itself out</span></b><span><span data-es>Capas, grupos y flechas que no pisan nada. Si mueves algo a mano, queda fijado en una línea que Mermaid ignora.</span><span data-en>Layers, groups and arrows that don't overlap. Move something by hand and it stays pinned in a line Mermaid ignores.</span></span></li>
+        <li data-paso="2"><b><span class="num">3</span><span data-es>GitHub lo muestra igual</span><span data-en>GitHub shows it as is</span></b><span><span data-es>Es Mermaid de verdad dentro de tu <code>.md</code>: haz commit y tu README ya tiene el diagrama. También exporta SVG, PNG o «Copiar para GitHub».</span><span data-en>It's real Mermaid inside your <code>.md</code>: commit and your README already has the diagram. It also exports SVG, PNG or “Copy for GitHub”.</span></span></li>
+      </ol>
+      <div class="animacion">
+        <pre id="anim-texto" aria-live="off"></pre>
+        <div class="lienzo" id="anim-dibujo" role="img" aria-label="El diagrama que se va armando"></div>
+        <div class="control"><span id="anim-estado"></span><button type="button" id="anim-boton"><span data-es>Pausar</span><span data-en>Pause</span></button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="que-trae">
+  <div class="ancho">
+    <span class="etiqueta"><span data-es>Lo que trae</span><span data-en>What's inside</span></span>
+    <h2><span data-es>Lo que a Mermaid le falta, sin salir de Mermaid.</span><span data-en>What Mermaid is missing, without leaving Mermaid.</span></h2>
+    <div class="rejilla">
+      <div class="tarjeta"><h3><span data-es>Documentos con diagramas</span><span data-en>Documents with diagrams</span></h3><p><span data-es>Tus <code>.md</code> con su vista previa en vivo. «Editar» abre cada diagrama en el lienzo, en el mismo lugar del documento.</span><span data-en>Your <code>.md</code> files with a live preview. “Edit” opens each diagram on the canvas, right where it is in the document.</span></p></div>
+      <div class="tarjeta"><h3><span data-es>Arquitectura con íconos</span><span data-en>Architecture with icons</span></h3><p><span data-es>Servidor, base de datos, cola, nube, API, navegador, celular… Íconos propios que GitHub ve como un flujo normal.</span><span data-en>Server, database, queue, cloud, API, browser, phone… Its own icons, which GitHub sees as a regular flowchart.</span></p></div>
+      <div class="tarjeta"><h3><span data-es>Tu IA te ayuda</span><span data-en>Your AI helps</span></h3><p><span data-es>Con Claude Code, Codex o Gemini y tu cuenta: «Dibújame» propone un diagrama y el asistente escribe el README de tu proyecto. Cada cambio trae «Quitar este cambio».</span><span data-en>With Claude Code, Codex or Gemini and your account: “Draw it” proposes a diagram and the assistant writes your project's README. Every change has “Remove this change”.</span></p></div>
+      <div class="tarjeta"><h3><span data-es>Plantillas y comunidad</span><span data-en>Templates and community</span></h3><p><span data-es>Arquitectura, secuencia de una API, flujo de usuario, proceso, README, ADR, runbook… y las del <a href="https://github.com/esquema-app/esquema-catalogo">catálogo de la comunidad</a>, en «Nuevo» → «Comunidad».</span><span data-en>Architecture, API sequence, user flow, process, README, ADR, runbook… plus the <a href="https://github.com/esquema-app/esquema-catalogo">community catalog</a>, under “New” → “Community”.</span></p></div>
+      <div class="tarjeta"><h3><span data-es>Errores que se entienden</span><span data-en>Errors you can understand</span></h3><p><span data-es>«Línea 4: falta cerrar «]» en «B[Pagar». Prueba: B[Pagar]». Y mientras lo arreglas, el lienzo sigue mostrando el último dibujo bueno.</span><span data-en>“Line 4: «]» is missing in «B[Pay». Try: B[Pay]”. While you fix it, the canvas keeps showing the last good drawing.</span></p></div>
+      <div class="tarjeta"><h3><span data-es>Tus archivos, tu carpeta</span><span data-en>Your files, your folder</span></h3><p><span data-es>Trabaja con la carpeta de tu proyecto: no copia nada, no deja archivos ocultos y recarga si cambias algo en otro editor o con <code>git pull</code>. Sin cuentas ni telemetría.</span><span data-en>Works with your project folder: copies nothing, leaves no hidden files and reloads when you change something in another editor or with <code>git pull</code>. No accounts, no telemetry.</span></p></div>
+    </div>
+    <div class="capturas">
+      <figure><img src="img/esquema-documento-escritorio-claro.png" width="1280" height="800" loading="lazy" alt="Un documento con sus diagramas dibujados"><figcaption><span data-es>Un README con sus diagramas.</span><span data-en>A README with its diagrams.</span></figcaption></figure>
+      <figure><img src="img/esquema-secuencia-escritorio-oscuro.png" width="1280" height="800" loading="lazy" alt="Un diagrama de secuencia editable, en modo oscuro"><figcaption><span data-es>Secuencias editables, en claro u oscuro.</span><span data-en>Editable sequences, light or dark.</span></figcaption></figure>
+      <figure><img src="img/esquema-readme-escritorio-claro.png" width="1280" height="800" loading="lazy" alt="El asistente que escribe el README con tu IA"><figcaption><span data-es>El README, escrito por tu IA.</span><span data-en>The README, written by your AI.</span></figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="comparar">
+  <div class="ancho">
+    <span class="etiqueta"><span data-es>Comparación</span><span data-en>Comparison</span></span>
+    <h2><span data-es>Cada uno es bueno en lo suyo.</span><span data-en>Each one is good at its own thing.</span></h2>
+    <p class="intro"><span data-es>Si quieres dibujar a mano alzada o cualquier forma libre, draw.io y Excalidraw son excelentes. Esquema es para la documentación que vive junto a tu código, en el formato que GitHub ya dibuja.</span><span data-en>If you want freehand sketches or any free-form shape, draw.io and Excalidraw are excellent. Esquema is for the docs that live next to your code, in the format GitHub already draws.</span></p>
+    <div class="tabla">
+      <table>
+        <thead><tr><th></th><th class="nuestro">Esquema</th><th>Mermaid Live Editor</th><th>draw.io</th><th>Excalidraw</th></tr></thead>
+        <tbody>
+          <tr><th><span data-es>Guarda Mermaid (GitHub lo dibuja en tu README)</span><span data-en>Saves Mermaid (GitHub draws it in your README)</span></th><td class="nuestro si"><span data-es>Sí</span><span data-en>Yes</span></td><td class="si"><span data-es>Sí</span><span data-en>Yes</span></td><td class="no"><span data-es>No: su propio formato o una imagen</span><span data-en>No: its own format or an image</span></td><td class="no"><span data-es>No: su propio formato o una imagen</span><span data-en>No: its own format or an image</span></td></tr>
+          <tr><th><span data-es>Editar escribiendo texto</span><span data-en>Edit by typing text</span></th><td class="nuestro si"><span data-es>Sí</span><span data-en>Yes</span></td><td class="si"><span data-es>Sí</span><span data-en>Yes</span></td><td class="no">No</td><td class="no">No</td></tr>
+          <tr><th><span data-es>Editar dibujando en un lienzo</span><span data-en>Edit by drawing on a canvas</span></th><td class="nuestro si"><span data-es>Sí</span><span data-en>Yes</span></td><td class="no"><span data-es>No</span><span data-en>No</span></td><td class="si"><span data-es>Sí</span><span data-en>Yes</span></td><td class="si"><span data-es>Sí</span><span data-en>Yes</span></td></tr>
+          <tr><th><span data-es>Texto y lienzo sincronizados</span><span data-en>Text and canvas in sync</span></th><td class="nuestro si"><span data-es>Sí, en los dos sentidos</span><span data-en>Yes, both ways</span></td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
+          <tr><th><span data-es>Documentos Markdown con diagramas editables en el lugar</span><span data-en>Markdown documents with diagrams editable in place</span></th><td class="nuestro si"><span data-es>Sí</span><span data-en>Yes</span></td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
+          <tr><th><span data-es>Tipos de diagrama</span><span data-en>Diagram types</span></th><td class="nuestro"><span data-es>Flujo, secuencia y arquitectura (el resto se conserva y GitHub lo muestra)</span><span data-en>Flowchart, sequence and architecture (the rest is kept and GitHub shows it)</span></td><td><span data-es>Todos los de Mermaid</span><span data-en>All of Mermaid's</span></td><td><span data-es>Formas libres, casi cualquier diagrama</span><span data-en>Free-form, almost any diagram</span></td><td><span data-es>Formas libres, estilo a mano alzada</span><span data-en>Free-form, hand-drawn style</span></td></tr>
+          <tr><th><span data-es>App de escritorio</span><span data-en>Desktop app</span></th><td class="nuestro">Mac, Windows, Linux</td><td class="no"><span data-es>Web</span><span data-en>Web</span></td><td class="si">Mac, Windows, Linux</td><td class="no"><span data-es>Web</span><span data-en>Web</span></td></tr>
+          <tr><th><span data-es>Gratis y de código abierto</span><span data-en>Free and open source</span></th><td class="nuestro si">AGPL-3.0</td><td class="si">MIT</td><td class="si">Apache-2.0</td><td class="si">MIT</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="preguntas">
+  <div class="ancho">
+    <span class="etiqueta"><span data-es>Preguntas frecuentes</span><span data-en>FAQ</span></span>
+    <h2><span data-es>Lo que suelen preguntar.</span><span data-en>What people usually ask.</span></h2>
+    <div class="preguntas">
+      <details><summary><span data-es>¿Lo que hago en Esquema se ve igual en GitHub?</span><span data-en>Does what I make in Esquema look the same on GitHub?</span></summary><div><p><span data-es>Sí. Esquema guarda Mermaid de verdad: archivos <code>.mmd</code> y bloques <code>mermaid</code> dentro de tus <code>.md</code>, que GitHub dibuja solo. Lo propio de Esquema (posiciones fijadas a mano, íconos y estilo de las flechas) va en una línea de comentario que Mermaid ignora.</span><span data-en>Yes. Esquema saves real Mermaid: <code>.mmd</code> files and <code>mermaid</code> blocks inside your <code>.md</code> files, which GitHub draws on its own. Esquema's extras (hand-pinned positions, icons and arrow style) live in a comment line Mermaid ignores.</span></p></div></details>
+      <details><summary><span data-es>¿Qué tan rápido es, de verdad?</span><span data-en>How fast is it, really?</span></summary><div><p><span data-es>En el mismo navegador (Chromium) y con los mismos diagramas, Mermaid 12.2.0 tarda 423 ms en dibujar un flujo de 50 nodos y 7.729 ms uno de 1.000; Esquema, 7 ms y 75 ms. Es la mediana de varias pasadas con <code>herramientas/comparar_mermaid.mjs</code>, que está en el repositorio para que cualquiera lo repita.</span><span data-en>In the same browser (Chromium) with the same diagrams, Mermaid 12.2.0 takes 423 ms to draw a 50-node flowchart and 7,729 ms for a 1,000-node one; Esquema takes 7 ms and 75 ms. That's the median of several runs with <code>herramientas/comparar_mermaid.mjs</code>, which is in the repository so anyone can repeat it.</span></p></div></details>
+      <details><summary><span data-es>¿Qué diagramas dibuja?</span><span data-en>Which diagrams does it draw?</span></summary><div><p><span data-es>Flujos, secuencias y arquitectura (flujos con formas e íconos de servidor, base de datos, cola, nube…). Los otros tipos de Mermaid, como gantt o ER, se conservan tal cual y GitHub los sigue mostrando; Esquema los irá dibujando de a uno.</span><span data-en>Flowcharts, sequences and architecture (flowcharts with shapes and icons for servers, databases, queues, clouds…). Other Mermaid types, like gantt or ER, are kept as they are and GitHub keeps showing them; Esquema will draw them one at a time.</span></p></div></details>
+      <details><summary><span data-es>¿Mis archivos salen de mi computador?</span><span data-en>Do my files leave my computer?</span></summary><div><p><span data-es>No. Esquema trabaja con los <code>.md</code> y <code>.mmd</code> de la carpeta que eliges, no los copia ni los manda a ninguna parte y no tiene servidores ni telemetría. Si usas tu IA, ella recibe solo lo que le pides y, para el README, solo los nombres de los archivos.</span><span data-en>No. Esquema works with the <code>.md</code> and <code>.mmd</code> files in the folder you choose, doesn't copy or send them anywhere, and has no servers or telemetry. If you use your AI, it only gets what you ask and, for the README, only file names.</span></p></div></details>
+      <details><summary><span data-es>¿Necesito una IA para usarlo?</span><span data-en>Do I need an AI to use it?</span></summary><div><p><span data-es>No. La IA es opcional: si ya tienes Claude Code, Codex o Gemini con tu cuenta, Esquema la usa para «Dibújame» y para escribir el README. Cada cambio de la IA se puede quitar con un toque.</span><span data-en>No. The AI is optional: if you already have Claude Code, Codex or Gemini with your account, Esquema uses it for “Draw it” and to write your README. Every AI change can be removed with one tap.</span></p></div></details>
+      <details id="sin-firmar"><summary><span data-es>¿Por qué mi computador dice que no puede verificar la app?</span><span data-en>Why does my computer say it can't verify the app?</span></summary><div>
+        <p><span data-es>Porque Esquema no paga los certificados de Apple ni de Microsoft. Con el instalador de un comando no pasa en Mac. Si bajaste el archivo a mano:</span><span data-en>Because Esquema doesn't pay for Apple's or Microsoft's certificates. With the one-command installer it doesn't happen on Mac. If you downloaded the file by hand:</span></p>
+        <ol>
+          <li><span data-es><b>macOS 15:</b> intenta abrir Esquema una vez, ve a <b>Ajustes del Sistema → Privacidad y seguridad</b> y, abajo, toca <b>«Abrir igualmente»</b>.</span><span data-en><b>macOS 15:</b> try to open Esquema once, go to <b>System Settings → Privacy &amp; Security</b> and, at the bottom, click <b>“Open Anyway”</b>.</span></li>
+          <li><span data-es><b>Windows:</b> si aparece «Windows protegió tu PC», toca <b>«Más información»</b> → <b>«Ejecutar de todas formas»</b>.</span><span data-en><b>Windows:</b> if “Windows protected your PC” appears, click <b>“More info”</b> → <b>“Run anyway”</b>.</span></li>
+        </ol>
+        <p><span data-es>Cada descarga tiene su huella SHA-256 en el Release, y el código de cada versión está en GitHub.</span><span data-en>Every download has its SHA-256 checksum in the Release, and each version's code is on GitHub.</span></p>
+      </div></details>
+      <details><summary><span data-es>¿Cuánto cuesta?</span><span data-en>How much does it cost?</span></summary><div><p><span data-es>Nada. Esquema es gratis y de código abierto (AGPL-3.0), sin cuentas ni publicidad. Las plantillas del catálogo de la comunidad son de dominio público (CC0).</span><span data-en>Nothing. Esquema is free and open source (AGPL-3.0), with no accounts or ads. Community catalog templates are public domain (CC0).</span></p></div></details>
+    </div>
+  </div>
+</section>
+
+<section id="comunidad" class="comunidad">
+  <div class="ancho">
+    <span class="etiqueta"><span data-es>Comunidad</span><span data-en>Community</span></span>
+    <h2><span data-es>Hecho entre todos.</span><span data-en>Made together.</span></h2>
+    <p class="intro"><span data-es>Hay lugar para cualquiera, programes o no.</span><span data-en>There's room for everyone, whether you code or not.</span></p>
+    <div class="rejilla">
+      <div class="tarjeta"><h3><span data-es>Comparte una plantilla</span><span data-en>Share a template</span></h3><p><span data-es>Cuéntala con palabras en el <a href="https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml">formulario</a> y nosotros armamos el resto. Aparece en Esquema para todos.</span><span data-en>Describe it in words in the <a href="https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml">form</a> and we'll do the rest. It shows up in Esquema for everyone.</span></p></div>
+      <div class="tarjeta"><h3><span data-es>Conversa</span><span data-en>Talk</span></h3><p><span data-es>Dudas, ideas y lo que documentaste, en <a href="https://github.com/esquema-app/esquema/discussions">Discussions</a>.</span><span data-en>Questions, ideas and what you documented, in <a href="https://github.com/esquema-app/esquema/discussions">Discussions</a>.</span></p></div>
+      <div class="tarjeta"><h3><span data-es>Prueba y aporta</span><span data-en>Test and contribute</span></h3><p><span data-es>Pruébalo en tu Windows o Linux, traduce o toma una <a href="https://github.com/esquema-app/esquema/labels/good%20first%20issue">tarea de bienvenida</a>. Todo está en <a href="https://github.com/esquema-app/esquema/blob/main/CONTRIBUTING.md">cómo aportar</a>.</span><span data-en>Try it on your Windows or Linux, translate, or pick a <a href="https://github.com/esquema-app/esquema/labels/good%20first%20issue">good first issue</a>. It's all in <a href="https://github.com/esquema-app/esquema/blob/main/CONTRIBUTING.md">how to contribute</a>.</span></p></div>
+    </div>
+  </div>
+</section>
+
+<section id="descargar">
+  <div class="ancho">
+    <span class="etiqueta"><span data-es>Descargar</span><span data-en>Download</span></span>
+    <h2><span data-es>Gratis, sin cuenta, para tu sistema.</span><span data-en>Free, no account, for your system.</span></h2>
+    <p class="intro"><span data-es>Los instaladores de un comando bajan la última versión, verifican su huella SHA-256 y la instalan solo para tu usuario, sin contraseña de administrador. Esquema avisa dentro de la app cuando hay una versión nueva.</span><span data-en>The one-command installers download the latest version, check its SHA-256 and install it for your user only, no admin password. Esquema tells you inside the app when there's a new version.</span></p>
+    <div class="descargas">
+      <div class="so" data-so="mac">
+        <h3>Mac <span class="tuyo-texto"><span data-es>tu sistema</span><span data-en>your system</span></span></h3>
+        <p><span data-es>Apple Silicon, macOS 15 o posterior. En la Terminal:</span><span data-en>Apple Silicon, macOS 15 or later. In Terminal:</span></p>
+        <div class="comando"><pre>curl -fsSL https://raw.githubusercontent.com/esquema-app/esquema/main/instalar.sh | bash</pre></div>
+        <a class="boton" href="https://github.com/esquema-app/esquema/releases/latest/download/Esquema-macOS.zip"><span data-es>O baja Esquema-macOS.zip</span><span data-en>Or get Esquema-macOS.zip</span></a>
+      </div>
+      <div class="so" data-so="windows">
+        <h3>Windows <span class="tuyo-texto"><span data-es>tu sistema</span><span data-en>your system</span></span></h3>
+        <p><span data-es>Windows 10 u 11, 64 bits. Baja el instalador o, en PowerShell:</span><span data-en>Windows 10 or 11, 64-bit. Get the installer or, in PowerShell:</span></p>
+        <div class="comando"><pre>irm https://raw.githubusercontent.com/esquema-app/esquema/main/instalar.ps1 | iex</pre></div>
+        <a class="boton" href="https://github.com/esquema-app/esquema/releases/latest/download/Esquema-Windows.exe"><span data-es>Bajar Esquema-Windows.exe</span><span data-en>Get Esquema-Windows.exe</span></a>
+      </div>
+      <div class="so" data-so="linux">
+        <h3>Linux <span class="tuyo-texto"><span data-es>tu sistema</span><span data-en>your system</span></span></h3>
+        <p><span data-es>x86_64. El comando de Mac sirve igual (con su lanzador <code>esquema</code>), o:</span><span data-en>x86_64. The Mac command works too (with its <code>esquema</code> launcher), or:</span></p>
+        <a class="boton" href="https://github.com/esquema-app/esquema/releases/latest/download/Esquema-Linux.AppImage"><span data-es>Bajar el AppImage</span><span data-en>Get the AppImage</span></a>
+        <a class="mas" href="https://github.com/esquema-app/esquema/releases/latest/download/Esquema-Linux.deb"><span data-es>Paquete .deb (no se actualiza solo)</span><span data-en>.deb package (doesn't self-update)</span></a>
+        <a class="mas" href="https://github.com/esquema-app/esquema/releases/latest/download/Esquema-Linux.tar.gz">Esquema-Linux.tar.gz</a>
+      </div>
+    </div>
+    <p class="aviso"><span data-es><b>App sin firmar.</b> El sistema puede avisar la primera vez: así se abre igual, en <a href="#sin-firmar">esta pregunta</a>. Todas las versiones, con su <code>.sha256</code>, en <a href="https://github.com/esquema-app/esquema/releases">Releases</a>.</span><span data-en><b>Unsigned app.</b> Your system may warn you the first time: here's how to open it anyway, in <a href="#sin-firmar">this question</a>. Every version, with its <code>.sha256</code>, is in <a href="https://github.com/esquema-app/esquema/releases">Releases</a>.</span></p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="ancho">
+    <span><span data-es>Esquema · Gratis y abierto (AGPL-3.0) · Sin cuentas ni telemetría</span><span data-en>Esquema · Free and open (AGPL-3.0) · No accounts, no telemetry</span></span>
+    <nav aria-label="Enlaces">
+      <a href="https://github.com/esquema-app/esquema"><span data-es>Código</span><span data-en>Code</span></a>
+      <a href="https://github.com/esquema-app/esquema-catalogo"><span data-es>Catálogo</span><span data-en>Catalog</span></a>
+      <a href="https://github.com/esquema-app/esquema/discussions"><span data-es>Comunidad</span><span data-en>Community</span></a>
+      <a href="https://github.com/esquema-app/esquema/blob/main/CONTRIBUTING.md"><span data-es>Cómo aportar</span><span data-en>Contribute</span></a>
+      <a href="https://github.com/esquema-app/esquema/blob/main/SECURITY.md"><span data-es>Seguridad</span><span data-en>Security</span></a>
+    </nav>
+  </div>
+</footer>
+
+<script src="demo/motor/texto.js"></script>
+<script src="demo/motor/flujo.js"></script>
+<script src="demo/motor/secuencia.js"></script>
+<script src="demo/motor/capas.js"></script>
+<script src="demo/motor/formas.js"></script>
+<script src="demo/motor/dibujo.js"></script>
+<script src="pagina.js"></script>
+</body>
+</html>
