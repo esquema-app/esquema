@@ -20,9 +20,13 @@
 !/CODE_OF_CONDUCT.md
 !/SECURITY.md
 !/LICENSE
+!/build.sh
+!/instalar.sh
+!/instalar.ps1
 app/.build/
 escritorio/node_modules/
 escritorio/dist/
+escritorio/vendor/
 node_modules/
 __pycache__/
 .terminos-privados
