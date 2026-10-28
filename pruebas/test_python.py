@@ -32,6 +32,7 @@ import comun  # noqa: E402
 import ia  # noqa: E402
 import plantilla_formato  # noqa: E402
 import plantillas  # noqa: E402
+import proyecto as proyecto_mod  # noqa: E402
 
 CASOS = json.load(open(os.path.join(RAIZ, "pruebas", "casos.json"), encoding="utf-8"))
 
@@ -223,6 +224,265 @@ class IA(unittest.TestCase):
             self.assertEqual(asistente.limpiar_diagrama(c["respuesta"]), c["esperado"], c["respuesta"])
 
 
+def git_en(carpeta, *args):
+    r = subprocess.run(["git", "-C", carpeta, "-c", "user.name=Pruebas", "-c", "user.email=pruebas@users.noreply.github.com", *args],
+                       capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    return r.stdout
+
+
+def repo_de_prueba(con_git=True):
+    """Un repositorio ficticio: README, código, un secreto, algo ignorado y un binario."""
+    p = tempfile.mkdtemp(dir=TMP)
+    archivos = {"README.md": "# Minutero\n\nNotas de reuniones de Ana Pérez. token = abcdef1234567890\n", "src/grabar.py": "def grabar():\n    pass\n",
+                "src/ui/boton.js": "export const x = 1;\n", ".env": "CLAVE=secreta", ".gitignore": "privado/\n*.log\n", "privado/notas.md": "x",
+                "app.log": "x", "AGENTS.md": "# Guía\n", "package.json": json.dumps({"name": "minutero", "description": "Notas"})}
+    for r, t in archivos.items():
+        ruta = os.path.join(p, *r.split("/"))
+        os.makedirs(os.path.dirname(ruta), exist_ok=True)
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write(t)
+    with open(os.path.join(p, "src", "icono.png"), "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n\x00\x00binario")
+    if con_git:
+        git_en(p, "init", "-q", "-b", "main")
+        git_en(p, "add", "-A")
+        git_en(p, "commit", "-qm", "Primera versión")
+    return p
+
+
+def orden(nombre, datos):
+    return correr("proyecto.py", nombre, entrada(datos))
+
+
+ESQUEMA_MIN = {"formato": 1, "nombre": "Minutero", "documentos": [{"ruta": "README.md", "titulo": "Visión", "tipo": "vision"}],
+               "elementos": [{"id": "boton-grabar", "tipo": "boton", "nombre": "Grabar", "codigo": ["src/grabar.py"]}]}
+
+
+class Proyecto(unittest.TestCase):
+    def test_casos_compartidos_de_esquema(self):
+        for c in CASOS["proyecto_esquema"]:
+            self.assertEqual(not proyecto_mod.validar_esquema(c["esquema"]), c["valido"], json.dumps(c["esquema"])[:120])
+        for c in CASOS["proyecto_elemento"]:
+            self.assertEqual(not proyecto_mod.validar_elemento(c["elemento"]), c["valido"], json.dumps(c["elemento"])[:120])
+
+    def test_leer_sin_secretos_ni_ignorados_y_con_git(self):
+        p = repo_de_prueba()
+        r = orden("leer", {"carpeta": p})
+        self.assertTrue(r["ok"], r)
+        f = r["encontrado"]
+        self.assertEqual(f["nombre"], "Minutero")
+        self.assertIn(["Python", 1], f["lenguajes"])
+        self.assertIn("AGENTS.md", f["guias"])
+        self.assertTrue(f["git"]["hay"])
+        self.assertEqual(f["git"]["rama"], "main")
+        self.assertEqual(f["git"]["commits"][0]["mensaje"], "Primera versión")
+        self.assertNotIn("autor", json.dumps(f["git"]))
+        self.assertGreaterEqual(f["omitidos"], 1)  # .env
+        self.assertEqual(f["binarios"], 1)
+        self.assertNotIn("abcdef1234567890", json.dumps(r))  # el resumen del README pasa por ocultar_secretos
+        self.assertFalse(f["documentado"])
+
+    def test_preparar_manda_solo_lo_permitido(self):
+        p = repo_de_prueba()
+        r = orden("preparar", {"carpeta": p, "tarea": "inicial", "archivos": ["src/grabar.py", ".env", "privado/notas.md", "app.log", "src/icono.png", "../fuera.txt", "/etc/hosts", "no-existe.py"]})
+        self.assertTrue(r["ok"], r)
+        texto = json.dumps(r, ensure_ascii=False)
+        rutas = [x.get("ruta") for x in r["piezas"]]
+        self.assertIn("src/grabar.py", rutas)
+        self.assertIn("README.md", rutas)
+        self.assertIn("AGENTS.md", rutas)
+        motivos = {x["ruta"]: x["motivo"] for x in r["rechazados"]}
+        self.assertEqual(motivos, {".env": "fuera", "privado/notas.md": "fuera", "app.log": "fuera", "src/icono.png": "binario", "../fuera.txt": "ruta", "/etc/hosts": "ruta", "no-existe.py": "fuera"})
+        self.assertNotIn("CLAVE=secreta", texto)
+        self.assertNotIn("abcdef1234567890", texto)
+        lista = next(x for x in r["piezas"] if x["clave"] == "lista")["texto"].split("\n")
+        self.assertNotIn(".env", lista)
+        self.assertNotIn("privado/notas.md", lista)
+        git = next(x for x in r["piezas"] if x["clave"] == "git")["texto"]
+        self.assertIn("Primera versión", git)
+        self.assertNotIn("Pruebas", git)  # sin autores
+        self.assertEqual(r["bytes"], sum(x["bytes"] for x in r["piezas"]))
+
+    def test_generar_con_la_ia_sin_herramientas_y_validado(self):
+        p = repo_de_prueba()
+        if os.path.exists(REGISTRO):
+            os.unlink(REGISTRO)
+        r = orden("generar", {"carpeta": p, "tarea": "inicial", "idioma": "es"})
+        self.assertTrue(r["ok"], r)
+        self.assertEqual([x["ruta"] for x in r["propuestas"]], ["README.md", "flujos/grabar.md"])  # nada fuera de docs, nada de elementos.md
+        grabar = r["propuestas"][1]["texto"]
+        self.assertNotIn("%%{init", grabar)
+        self.assertNotIn("click", grabar)
+        self.assertIn('%% esquema: {"refs":{"G":"boton-grabar"}}', grabar)
+        self.assertEqual(r["elementos"], [{"id": "boton-grabar", "tipo": "boton", "nombre": "Grabar", "codigo": ["src/grabar.py"]}])
+        self.assertEqual(r["descartados"], 3)
+        self.assertEqual(r["nota"], "Listo.")
+        with open(REGISTRO, encoding="utf-8") as f:
+            llamada = [json.loads(l) for l in f][-1]
+        self.assertIn("--disallowedTools", llamada["args"])
+        self.assertIn("--strict-mcp-config", llamada["args"])
+        self.assertEqual(llamada["entorno"], [])
+        self.assertNotIn("CLAVE=secreta", llamada["prompt"])
+        self.assertIn("<archivo ruta=\"README.md\">", llamada["prompt"])
+        # Lo que se ve en «Ver lo que se envía» es exactamente lo que recibe la IA.
+        ver = orden("preparar", {"carpeta": p, "tarea": "inicial"})
+        for pieza in ver["piezas"]:
+            self.assertIn(pieza["texto"], llamada["prompt"])
+
+    def test_generar_pide_archivos_y_basura(self):
+        p = repo_de_prueba()
+        os.environ["IA_FALSA_MODO"] = "pide"
+        try:
+            r = orden("generar", {"carpeta": p, "tarea": "flujo", "pedido": "cómo se graba"})
+        finally:
+            os.environ.pop("IA_FALSA_MODO")
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["pide"], ["src/grabar.py"])  # «../fuera.txt» no pasa
+        self.assertEqual(r["propuestas"], [])
+        self.assertFalse(orden("generar", {"carpeta": p, "tarea": "flujo", "pedido": ""})["ok"])
+        os.environ["IA_FALSA_MODO"] = "basura"
+        try:
+            r = orden("generar", {"carpeta": p, "tarea": "inicial"})
+        finally:
+            os.environ.pop("IA_FALSA_MODO")
+        self.assertFalse(r["ok"])
+        self.assertIn("formato", r["error"])
+
+    def test_carpeta_de_docs_segura(self):
+        p = repo_de_prueba()
+        for malo in ["../afuera", ".oculta", "docs/../..", "a/b/c/d/e", "docs\\..\\x"]:
+            r = orden("abrir", {"carpeta": p, "docs": malo})
+            self.assertFalse(r["ok"], malo)
+        self.assertFalse(orden("guardar", {"carpeta": p, "esquema": {"formato": 1}})["ok"])
+        self.assertFalse(orden("abrir", {"carpeta": os.path.join(p, "no-existe")})["ok"])
+
+    def test_guardar_abrir_y_recientes(self):
+        p = repo_de_prueba()
+        self.assertFalse(orden("abrir", {"carpeta": p})["existe"])
+        r = orden("guardar", {"carpeta": p, "esquema": ESQUEMA_MIN})
+        self.assertTrue(r["ok"], r)
+        with open(os.path.join(p, "docs", "esquema", "esquema.json"), encoding="utf-8") as f:
+            self.assertEqual(json.load(f), ESQUEMA_MIN)
+        a = orden("abrir", {"carpeta": p})
+        self.assertTrue(a["existe"])
+        self.assertEqual(a["esquema"], ESQUEMA_MIN)
+        self.assertEqual(a["recientes"][0]["ruta"], os.path.realpath(p))
+        e = correr("estado.py")
+        self.assertEqual(e["proyectos"][0], {"nombre": "Minutero", "ruta": os.path.realpath(p)})
+        # Un esquema.json roto no tumba nada: se avisa.
+        with open(os.path.join(p, "docs", "esquema", "esquema.json"), "w", encoding="utf-8") as f:
+            f.write('{"formato": 1, "nombre": "x", "documentos": [], "elementos": [{"id": "MAL"}]}')
+        a = orden("abrir", {"carpeta": p})
+        self.assertTrue(a["ok"])
+        self.assertFalse(a["existe"])
+        self.assertIn("esquema.json", a["error"])
+
+    def test_versiones_con_git_solo_la_carpeta_de_docs(self):
+        p = repo_de_prueba()
+        orden("guardar", {"carpeta": p, "esquema": ESQUEMA_MIN})
+        with open(os.path.join(p, "docs", "esquema", "README.md"), "w", encoding="utf-8") as f:
+            f.write("# Uno\n")
+        # Cambios de la persona en otros archivos: uno preparado (staged) y otro sin preparar. Ninguno entra en la versión.
+        with open(os.path.join(p, "src", "grabar.py"), "a", encoding="utf-8") as f:
+            f.write("# preparado\n")
+        git_en(p, "add", "src/grabar.py")
+        with open(os.path.join(p, "AGENTS.md"), "a", encoding="utf-8") as f:
+            f.write("sin preparar\n")
+        # Un hook que no debe correr.
+        gancho = os.path.join(p, ".git", "hooks", "pre-commit")
+        with open(gancho, "w", encoding="utf-8") as f:
+            f.write("#!/bin/sh\ntouch \"$(git rev-parse --show-toplevel)/HOOK-CORRIO\"\nexit 1\n")
+        os.chmod(gancho, 0o755)
+        r = orden("version", {"carpeta": p, "mensaje": "Documentación inicial"})
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["modo"], "git")
+        self.assertFalse(os.path.exists(os.path.join(p, "HOOK-CORRIO")))
+        en_commit = git_en(p, "show", "--name-only", "--format=%s%n%an", "HEAD").split("\n")
+        self.assertEqual(en_commit[0], "Documentación inicial")
+        self.assertEqual(en_commit[1], "Esquema")  # sin nombre configurado en git, queda a nombre de Esquema
+        self.assertEqual(sorted(x for x in en_commit[2:] if x), ["docs/esquema/README.md", "docs/esquema/esquema.json"])
+        estado = git_en(p, "status", "--porcelain")
+        self.assertIn("M  src/grabar.py", estado)  # sigue preparado, sin commit
+        self.assertIn(" M AGENTS.md", estado)
+        self.assertTrue(orden("version", {"carpeta": p, "mensaje": "otra"})["sin_cambios"])
+        # Segunda versión, historia, ver una versión y restaurarla (sin borrar nada).
+        with open(os.path.join(p, "docs", "esquema", "README.md"), "w", encoding="utf-8") as f:
+            f.write("# Dos\n")
+        with open(os.path.join(p, "docs", "esquema", "nuevo.md"), "w", encoding="utf-8") as f:
+            f.write("# Nuevo\n")
+        self.assertTrue(orden("versiones", {"carpeta": p})["pendiente"])
+        orden("version", {"carpeta": p, "mensaje": "Segunda"})
+        v = orden("versiones", {"carpeta": p})
+        self.assertEqual([x["mensaje"] for x in v["lista"]], ["Segunda", "Documentación inicial"])
+        self.assertFalse(v["pendiente"])
+        primera = v["lista"][1]["id"]
+        x = orden("ver", {"carpeta": p, "id": primera})
+        self.assertEqual(x["archivos"]["README.md"], "# Uno\n")
+        self.assertIn("esquema.json", x["archivos"])
+        self.assertEqual(orden("ver", {"carpeta": p, "id": "actual"})["archivos"]["README.md"], "# Dos\n")
+        for malo in ["HEAD", "--all", "main", "../x", "zz"]:
+            self.assertFalse(orden("ver", {"carpeta": p, "id": malo})["ok"], malo)
+        r = orden("restaurar", {"carpeta": p, "id": primera})
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["escritos"], ["README.md"])
+        self.assertEqual(r["sobran"], ["nuevo.md"])
+        self.assertTrue(os.path.exists(os.path.join(p, "docs", "esquema", "nuevo.md")))
+        with open(os.path.join(p, "docs", "esquema", "README.md"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "# Uno\n")
+
+    def test_cambios_del_codigo_desde_la_ultima_version(self):
+        p = repo_de_prueba()
+        orden("guardar", {"carpeta": p, "esquema": ESQUEMA_MIN})
+        orden("version", {"carpeta": p, "mensaje": "Docs"})
+        self.assertEqual(orden("abrir", {"carpeta": p})["cambios"]["n"], 0)
+        with open(os.path.join(p, "src", "grabar.py"), "a", encoding="utf-8") as f:
+            f.write("# confirma antes de grabar\n")
+        git_en(p, "commit", "-qam", "Grabar pide confirmación")
+        with open(os.path.join(p, "docs", "esquema", "README.md"), "w", encoding="utf-8") as f:
+            f.write("# Minutero\n")
+        c = orden("abrir", {"carpeta": p})["cambios"]
+        self.assertEqual(c["n"], 1)
+        self.assertEqual(c["commits"][0]["mensaje"], "Grabar pide confirmación")
+        self.assertIn("src/grabar.py", c["commits"][0]["archivos"])
+        # Lo que va a la IA para revisar: los commits (sin autores) y los documentos que se mandan.
+        r = orden("preparar", {"carpeta": p, "tarea": "revisar", "documentos": ["README.md", "../../.env", "esquema.json"]})
+        self.assertTrue(any("Grabar pide confirmación" in x["texto"] for x in r["piezas"] if x["clave"] == "commits"))
+        self.assertEqual([x["ruta"] for x in r["rechazados"]], ["../../.env", "esquema.json"])
+
+    def test_versiones_sin_git_son_copias_con_limite(self):
+        p = repo_de_prueba(con_git=False)
+        os.makedirs(os.path.join(p, "docs", "esquema"))
+        ruta = os.path.join(p, "docs", "esquema", "a.md")
+        anterior = proyecto_mod.MAX_COPIAS
+        proyecto_mod.MAX_COPIAS = 3
+        try:
+            for k in range(5):
+                with open(ruta, "w", encoding="utf-8") as f:
+                    f.write(f"# {k}\n")
+                r = proyecto_mod.version({"carpeta": p, "mensaje": f"v{k}"})
+                self.assertEqual(r["modo"], "copias")
+        finally:
+            proyecto_mod.MAX_COPIAS = anterior
+        self.assertTrue(proyecto_mod.version({"carpeta": p})["sin_cambios"])
+        v = orden("versiones", {"carpeta": p})
+        self.assertEqual([x["mensaje"] for x in v["lista"]], ["v4", "v3", "v2"])
+        self.assertFalse(v["pendiente"])
+        self.assertEqual(orden("ver", {"carpeta": p, "id": v["lista"][2]["id"]})["archivos"], {"a.md": "# 2\n"})
+        self.assertEqual(orden("restaurar", {"carpeta": p, "id": v["lista"][2]["id"]})["escritos"], ["a.md"])
+        with open(ruta, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "# 2\n")
+        self.assertFalse(orden("ver", {"carpeta": p, "id": "../../x"})["ok"])
+
+    def test_ocultar_secretos(self):
+        t = proyecto_mod.ocultar_secretos("password: hunter22x y https://ana:clave1@ejemplo.cl y AKIAABCDEFGHIJKLMNOP y ghp_" + "a" * 36)
+        self.assertNotIn("hunter22x", t)
+        self.assertNotIn("clave1", t)
+        self.assertNotIn("AKIA", t)
+        self.assertNotIn("ghp_", t)
+        self.assertIn("password", t)
+
+
 class Plantillas(unittest.TestCase):
     def test_casos_compartidos(self):
         for c in CASOS["plantillas"]:
@@ -349,7 +609,7 @@ class Repo(unittest.TestCase):
         self.assertGreater(len(t), 30000)
 
     def test_solo_biblioteca_estandar(self):
-        permitidos = set(sys.stdlib_module_names) | {"comun", "carpeta", "ia", "asistente", "plantillas", "plantilla_formato", "estado"}
+        permitidos = set(sys.stdlib_module_names) | {"comun", "carpeta", "ia", "asistente", "plantillas", "plantilla_formato", "estado", "proyecto"}
         for f in os.listdir(BIN):
             if not f.endswith(".py"):
                 continue

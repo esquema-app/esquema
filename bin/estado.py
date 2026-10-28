@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Todo lo que la interfaz necesita al abrir (respuesta `estado` del puente), salvo la carpeta (carpeta.py listar).
 
-Uso: estado.py <salida.json>   → {config, ias, version, plantillas}
+Uso: estado.py <salida.json>   → {config, ias, version, plantillas, proyectos}
      estado.py config <entrada.json> <salida.json>   → guarda los cambios de config (solo claves conocidas) → {ok, config}
 """
 import sys
@@ -9,10 +9,12 @@ import sys
 import comun
 import ia
 import plantillas
+import proyecto
 
 
 def estado():
-    return {"config": comun.config(), "ias": ia.lista(), "version": comun.VERSION, "plantillas": plantillas.listar()}
+    recientes = [{"nombre": p["nombre"], "ruta": p["ruta"]} for p in proyecto.recientes()]
+    return {"config": comun.config(), "ias": ia.lista(), "version": comun.VERSION, "plantillas": plantillas.listar(), "proyectos": recientes}
 
 
 def main(args):
