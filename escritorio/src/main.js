@@ -121,7 +121,9 @@ async function enviarEstado() {
 }
 
 /** Proyectos: lo que bin/proyecto.py sabe hacer (la interfaz no puede pedir otra cosa). */
-const ORDENES_PROYECTO = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar", "codigo", "codigo_leer", "codigo_guardar"];
+const ORDENES_PROYECTO = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar", "codigo", "codigo_leer", "codigo_guardar", "arbol", "documentar", "trabajo", "detener", "quitar"];
+/** Las órdenes largas que cuentan cómo van (bin/trabajos.py): sus eventos llegan a la interfaz como `proyectoProgreso`. */
+const ORDENES_CON_PROGRESO = ["documentar"];
 
 /** Deja `c` como la carpeta, la lista, la vigila y responde carpetaElegida (con proyecto: true si viene de un proyecto). */
 async function usarCarpeta(c, proyecto) {
@@ -239,7 +241,8 @@ const ACCIONES = {
     if (!orden || !base) return llamar("proyectoRespuesta", { orden: String(d.orden || "").slice(0, 20), ok: false, error: t("Elige una carpeta primero") });
     const e = { ...d, carpeta: base };
     delete e.orden;
-    const r = await Procesador.conEntrada("proyecto.py", orden, e);
+    const progreso = ORDENES_CON_PROGRESO.includes(orden) ? (eventos) => llamar("proyectoProgreso", { eventos }) : null;
+    const r = await Procesador.conEntrada("proyecto.py", orden, e, progreso);
     llamar("proyectoRespuesta", { ...r, orden });
   },
   async exportar(d) {

@@ -115,7 +115,10 @@ enum Procesador {
     /// Cuántos scripts están corriendo (para no actualizar en medio de uno).
     private(set) static var enCurso = 0
 
-    static func correrJSON(_ script: String, _ args: [String], fin: @escaping @MainActor ([String: Any]) -> Void) {
+    /// `progreso`: para los trabajos largos (documentar un proyecto). El script escribe sus eventos (una línea JSON cada uno) en el
+    /// archivo de ESQUEMA_PROGRESO; cada 0,5 s se leen las líneas nuevas y se pasan juntas a `progreso`.
+    static func correrJSON(_ script: String, _ args: [String], progreso: (@MainActor ([[String: Any]]) -> Void)? = nil,
+                           fin: @escaping @MainActor ([String: Any]) -> Void) {
         let salida = FileManager.default.temporaryDirectory.appendingPathComponent("esquema-\(UUID().uuidString).json")
         let p = Process()
         p.executableURL = Rutas.python
@@ -127,32 +130,88 @@ enum Procesador {
         env["ESQUEMA_DATOS"] = Rutas.datos.path
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONDONTWRITEBYTECODE"] = "1"  // no escribir __pycache__ dentro de la app (rompería su firma)
+        var lector: LectorProgreso? = nil
+        if let progreso {
+            let l = LectorProgreso(aviso: progreso)
+            env["ESQUEMA_PROGRESO"] = l.url.path
+            lector = l
+        }
         p.environment = env
         p.currentDirectoryURL = FileManager.default.temporaryDirectory
         p.standardInput = FileHandle.nullDevice
         p.standardOutput = FileHandle.nullDevice
         p.standardError = FileHandle.nullDevice
+        let lectorFinal = lector
         p.terminationHandler = { _ in
             Task { @MainActor in
                 enCurso -= 1
+                lectorFinal?.terminar()
                 let r = Archivos.leerJSON(salida)
                 try? FileManager.default.removeItem(at: salida)
                 fin(r.isEmpty ? ["ok": false, "error": Idioma.t("No pude terminar. Intenta de nuevo.")] : r)
             }
         }
         enCurso += 1
-        do { try p.run() } catch { enCurso -= 1; fin(["ok": false, "error": error.localizedDescription]); return }
+        do { try p.run() } catch { enCurso -= 1; lectorFinal?.terminar(); fin(["ok": false, "error": error.localizedDescription]); return }
+        lectorFinal?.empezar()
     }
 
     /// Igual que correrJSON, pero lo que manda la interfaz va en un archivo de entrada (nunca como argumento: se vería en la
     /// lista de procesos y podría parecer una opción).
-    static func conEntrada(_ script: String, _ accion: String, _ datos: [String: Any], fin: @escaping @MainActor ([String: Any]) -> Void) {
+    static func conEntrada(_ script: String, _ accion: String, _ datos: [String: Any], progreso: (@MainActor ([[String: Any]]) -> Void)? = nil,
+                           fin: @escaping @MainActor ([String: Any]) -> Void) {
         let entrada = FileManager.default.temporaryDirectory.appendingPathComponent("esquema-entrada-\(UUID().uuidString).json")
         Archivos.escribirJSON(entrada, datos)
-        correrJSON(script, [accion, entrada.path]) { r in
+        correrJSON(script, [accion, entrada.path], progreso: progreso) { r in
             try? FileManager.default.removeItem(at: entrada)
             fin(r)
         }
+    }
+}
+
+/// Lee el archivo de progreso de un script (JSONL) cada 0,5 s y pasa las líneas nuevas, ya leídas como JSON, a `aviso`.
+@MainActor
+final class LectorProgreso {
+    let url: URL
+    private let aviso: @MainActor ([[String: Any]]) -> Void
+    private var desde: UInt64 = 0
+    private var resto = Data()
+    private var reloj: Timer?
+
+    init(aviso: @escaping @MainActor ([[String: Any]]) -> Void) {
+        url = FileManager.default.temporaryDirectory.appendingPathComponent("esquema-progreso-\(UUID().uuidString).jsonl")
+        self.aviso = aviso
+        FileManager.default.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o600])
+    }
+
+    func empezar() {
+        // El reloj corre en el hilo principal (el de la interfaz): ahí se lee el archivo.
+        reloj = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            MainActor.assumeIsolated { self.leer() }
+        }
+    }
+
+    func leer() {
+        guard let h = try? FileHandle(forReadingFrom: url) else { return }
+        defer { try? h.close() }
+        guard (try? h.seek(toOffset: desde)) != nil, let d = try? h.readToEnd(), !d.isEmpty else { return }
+        desde += UInt64(d.count)
+        resto.append(d)
+        var eventos: [[String: Any]] = []
+        while let i = resto.firstIndex(of: 0x0A) {
+            let linea = resto.subdata(in: resto.startIndex..<i)
+            resto = resto.subdata(in: resto.index(after: i)..<resto.endIndex)
+            if let j = try? JSONSerialization.jsonObject(with: linea) as? [String: Any] { eventos.append(j) }
+        }
+        if !eventos.isEmpty { aviso(eventos) }
+    }
+
+    /// Al terminar el script: lo último que haya quedado y se borra el archivo.
+    func terminar() {
+        reloj?.invalidate()
+        reloj = nil
+        leer()
+        try? FileManager.default.removeItem(at: url)
     }
 }
 

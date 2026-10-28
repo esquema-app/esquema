@@ -44,7 +44,7 @@ for a, d in puente["acciones"].items():
         if not os.path.exists(os.path.join(RAIZ, "bin", s)):
             problemas.append(f'"{a}" usa bin/{s}, que no existe')
 # Las respuestas que cada app tiene que mandar: lo que responde cada acción + los avisos de la carpeta vigilada + el menú.
-respuestas_app = {d["responde"] for d in puente["acciones"].values() if d["responde"]} | {"archivoCambiado", "archivos", "menu"}
+respuestas_app = {d["responde"] for d in puente["acciones"].values() if d["responde"]} | {"archivoCambiado", "archivos", "menu", "proyectoProgreso"}
 
 
 def tiene(texto, *patrones):
@@ -118,6 +118,15 @@ if mac is not None:
         problemas.append("Mac: Ventana.ordenesProyecto tiene que ser igual a ORDENES de bin/proyecto.py")
     if not tiene(mac, r'case "proyecto":.*?ordenesProyecto\.contains\(orden\)', r'proyectos\.json'):
         problemas.append("Mac: la acción proyecto revisa la orden y abrirProyecto lee la ruta de proyectos.json")
+# Trabajos largos: las dos apps pasan ESQUEMA_PROGRESO al script, leen sus líneas nuevas y avisan con proyectoProgreso.
+if mac is not None:
+    servicios = leer("app/Sources/Esquema/Servicios.swift") or ""
+    if not tiene(servicios, r'env\["ESQUEMA_PROGRESO"\]', r"class LectorProgreso", r"withTimeInterval: 0\.5") or not tiene(mac, r'ordenesConProgreso: Set<String> = \["documentar"\]', r'llamar\("proyectoProgreso"'):
+        problemas.append("Mac: las órdenes largas pasan ESQUEMA_PROGRESO y avisan con proyectoProgreso cada 0,5 s (Servicios.swift, Ventana.swift)")
+if escritorio:
+    servicios = leer("escritorio/src/servicios.js") or ""
+    if not tiene(servicios, r"env\.ESQUEMA_PROGRESO = ", r"function lectorProgreso", r"setInterval\(leer, 500\)") or not tiene(escritorio, r'ORDENES_CON_PROGRESO = \["documentar"\]', r'llamar\("proyectoProgreso"'):
+        problemas.append("Windows/Linux: las órdenes largas pasan ESQUEMA_PROGRESO y avisan con proyectoProgreso cada 0,5 s (servicios.js, main.js)")
 if escritorio:
     oe = re.search(r"ORDENES_PROYECTO = \[([^\]]+)\]", escritorio)
     if not oe or set(re.findall(r'"(\w+)"', oe.group(1))) != ordenes_py:

@@ -15,7 +15,9 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
 
     static let maximoExportar = 50 * 1024 * 1024
     /// Proyectos: lo que bin/proyecto.py sabe hacer (la interfaz no puede pedir otra cosa).
-    static let ordenesProyecto: Set<String> = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar", "codigo", "codigo_leer", "codigo_guardar"]
+    static let ordenesProyecto: Set<String> = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar", "codigo", "codigo_leer", "codigo_guardar", "arbol", "documentar", "trabajo", "detener", "quitar"]
+    /// Las órdenes largas que cuentan cómo van (bin/trabajos.py): sus eventos llegan a la interfaz como `proyectoProgreso`.
+    static let ordenesConProgreso: Set<String> = ["documentar"]
 
     func mostrar() {
         if ventana == nil { crear() }
@@ -223,7 +225,11 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
             var e = d
             e.removeValue(forKey: "orden")
             e["carpeta"] = base.path
-            Procesador.conEntrada("proyecto.py", orden, e) { r in
+            var progreso: (@MainActor ([[String: Any]]) -> Void)? = nil
+            if Ventana.ordenesConProgreso.contains(orden) {
+                progreso = { (eventos: [[String: Any]]) in Ventana.shared.llamar("proyectoProgreso", ["eventos": eventos]) }
+            }
+            Procesador.conEntrada("proyecto.py", orden, e, progreso: progreso) { r in
                 var x = r
                 x["orden"] = orden
                 Ventana.shared.llamar("proyectoRespuesta", x)

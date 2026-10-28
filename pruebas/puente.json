@@ -81,12 +81,12 @@
     },
     "proyecto": {
       "datos": {
-        "orden": "abrir|leer|preparar|generar|guardar|version|versiones|ver|restaurar",
+        "orden": "abrir|leer|preparar|generar|guardar|version|versiones|ver|restaurar|vincular|mover|destinos|pasar|codigo|codigo_leer|codigo_guardar|arbol|documentar|trabajo|detener|quitar",
         "docs?": "carpeta de la documentación, relativa al proyecto (docs/esquema)",
         "…": "lo de cada orden (tarea, pedido, tipo auto|flujo|secuencia|arquitectura, forma documento|diagrama, archivos, documentos, idioma, esquema, mensaje, id)"
       },
       "responde": "proyectoRespuesta",
-      "como": "bin/proyecto.py <orden> <entrada {…datos, carpeta}> <salida>: la app solo acepta órdenes de la lista y agrega la carpeta actual; el script valida todo lo demás (rutas dentro del proyecto, carpeta de docs, esquema.json, tamaños). generar llama a la IA sin herramientas. La respuesta lleva {orden}."
+      "como": "bin/proyecto.py <orden> <entrada {…datos, carpeta}> <salida>: la app solo acepta órdenes de la lista y agrega la carpeta actual; el script valida todo lo demás (rutas dentro del proyecto, carpeta de docs, esquema.json, tamaños). generar llama a la IA sin herramientas. La respuesta lleva {orden}. Las órdenes largas (ordenesConProgreso: documentar) corren con ESQUEMA_PROGRESO=<archivo temporal>: el script escribe ahí sus eventos (una línea JSON cada uno, bin/trabajos.py) y la app lee las líneas nuevas cada 0,5 s y las pasa a la interfaz con proyectoProgreso."
     },
     "exportar": {
       "datos": {
@@ -146,7 +146,8 @@
     "estructuraLista": "{ok, archivos, omitidos, manifiestos} | {ok: false, error}",
     "readmeListo": "{ok, texto} | {ok: false, error}",
     "dibujoListo": "{ok, texto} | {ok: false, error}",
-    "proyectoRespuesta": "{orden, ok, …}: abrir {existe, docs, esquema, git, cambios, pendiente, recientes} · leer {encontrado} · preparar {tarea, piezas, rechazados, bytes} · generar {tarea, propuestas, elementos, pide, nota, descartados} · guardar {esquema, recientes} · version {modo, id | sin_cambios} · versiones {modo, lista, pendiente} · ver {id, archivos} · restaurar {escritos, sobran}",
+    "proyectoRespuesta": "{orden, ok, …}: abrir {existe, docs, esquema, git, cambios, pendiente, recientes} · leer {encontrado} · preparar {tarea, piezas, rechazados, bytes} · generar {tarea, propuestas, elementos, pide, nota, descartados} · guardar {esquema, recientes} · version {modo, id | sin_cambios} · versiones {modo, lista, pendiente} · ver {id, archivos} · restaurar {escritos, sobran} · arbol {archivos: [[ruta, tamaño, clase]], perfil, lecturas} · documentar / trabajo / detener / quitar {trabajo}",
+    "proyectoProgreso": "{eventos: [{t: \"estado\", trabajo} | {t: \"lee\", id, ruta, n} | {t: \"busca\", id, patron}]}: mientras corre una orden larga (documentar), las líneas nuevas del archivo de ESQUEMA_PROGRESO, cada ~0,5 s. «trabajo» es la vista del trabajo (bin/trabajos.py: id, estado, etapa, etapas, hechas, items, leidos, leyendo…); «ruta», relativa a la carpeta del código.",
     "exportado": "{ok, ruta?} | {ok: false, error?}",
     "copiado": "{ok}",
     "actualizacionRevisada": "{hay, detalle, sinConexion}",
