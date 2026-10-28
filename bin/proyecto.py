@@ -23,6 +23,11 @@ Uso (lo de la persona llega en un JSON de entrada; el último argumento siempre 
   pasar      escribe en el repo los documentos elegidos (solo .md/.mmd; reemplaza solo si se pide) → {ok, escritos, saltados}
   codigo     los .md/.mmd del repo del código, para verlos en el lateral → {ok, nombre, ubicacion, archivos}
   codigo_leer / codigo_guardar   abre o guarda uno de esos .md/.mmd (dentro de la carpeta del código) → como carpeta.py
+  arbol      TODOS los archivos del código (con su clase), el perfil (tipo de proyecto, partes) y lo que la IA leyó → {ok, archivos, perfil, lecturas}
+  documentar el trabajo por etapas que escribe la documentación (bin/documentar.py, en segundo plano, con progreso) → {ok, trabajo}
+  trabajo    en qué quedó el último trabajo del proyecto → {ok, trabajo}
+  detener    pide detener un trabajo que corre → {ok, deteniendo}
+  quitar     «Quitar este cambio» de un documento que escribió un trabajo → {ok, trabajo, ruta, borrado}
 
 Seguridad: solo se lee lo que comun.recorrer deja (respeta .gitignore, sin secretos ni carpetas pesadas), nada binario y con
 tope de tamaño; lo que va a la IA pasa además por `ocultar_secretos`. git se llama con argumentos fijos (nunca un shell), sin
@@ -504,6 +509,9 @@ def leer(e):
         "vinculado": L["vinculado"],
         "ubicacion": ubicacion(L["dir_docs"]),
     }
+    import inventario as inv
+    perfil = inv.inventario(base, excluir=docs if docs and encontrado["documentado"] else "")["perfil"]
+    encontrado["perfil"] = {k: perfil[k] for k in ("tipo", "componentes", "archivos")}
     return {"ok": True, "encontrado": encontrado}
 
 
@@ -1117,9 +1125,31 @@ def codigo_guardar(e):
     return carpeta_mod.guardar({"carpeta": _carpeta_codigo(e), "ruta": e.get("ruta"), "texto": e.get("texto")})
 
 
+# ───────────── Todo el código (para el árbol «Código»: sin abrirlo) y los trabajos ─────────────
+def arbol(e):
+    """Todos los archivos del código (no solo .md/.mmd), con su clase y tamaño, el perfil del proyecto y lo que la IA leyó:
+    {archivos: [[ruta, tamaño, clase]], omitidos, perfil, lecturas: {ruta: {f, c?}}, md: true si los .md se abren con @codigo/}."""
+    import inventario as inv
+    L = lugares(e)
+    x = inv.inventario(L["codigo"], excluir="" if L["vinculado"] else L["docs"] if leer_esquema(L["dir_docs"])[0] else "")
+    pid = inv.id_proyecto(base_de(e))
+    inv.guardar_perfil(pid, x["perfil"])
+    return {"ok": True, "nombre": os.path.basename(L["codigo"]), "ubicacion": ubicacion(L["codigo"]), "vinculado": L["vinculado"],
+            "archivos": x["archivos"], "omitidos": x["omitidos"], "perfil": x["perfil"], "lecturas": inv.estado_lecturas(pid, L["codigo"])}
+
+
+def _documentar(orden):
+    def f(e):
+        import documentar
+        return getattr(documentar, orden)(e)
+    return f
+
+
 ORDENES = {"abrir": abrir, "leer": leer, "preparar": preparar, "generar": generar, "guardar": guardar, "version": version,
            "versiones": versiones, "ver": ver, "restaurar": restaurar, "vincular": vincular, "mover": mover, "destinos": destinos,
-           "pasar": pasar, "codigo": codigo, "codigo_leer": codigo_leer, "codigo_guardar": codigo_guardar}
+           "pasar": pasar, "codigo": codigo, "codigo_leer": codigo_leer, "codigo_guardar": codigo_guardar,
+           "arbol": arbol, "documentar": _documentar("documentar"), "trabajo": _documentar("trabajo"), "detener": _documentar("detener"),
+           "quitar": _documentar("quitar")}
 
 
 def main(args):

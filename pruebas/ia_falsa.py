@@ -5,9 +5,10 @@ argumentos, para que las pruebas revisen que corre sin herramientas ni MCP."""
 import json
 import os
 import sys
+import time
 
 if sys.argv[1:] == ["--help"]:
-    print("Usage: claude [options]\n  --safe-mode   Start with all customizations disabled")
+    print("Usage: claude [options]\n  --safe-mode   Start with all customizations disabled\n  --output-format <format>  text, json or stream-json")
     sys.exit(0)
 prompt = sys.stdin.read()
 registro = os.environ.get("IA_FALSA_REGISTRO")
@@ -19,6 +20,49 @@ modo = os.environ.get("IA_FALSA_MODO", "")
 if modo == "falla":
     print("se cayó", file=sys.stderr)
     sys.exit(1)
+flujo = "stream-json" in sys.argv
+# Documentar por etapas (bin/documentar.py): primero un plan en JSON, después cada documento por separado.
+if "arma un PLAN" in prompt:
+    lento = float(os.environ.get("IA_FALSA_LENTO") or 0)
+    if flujo:
+        # Lo que cuenta Claude Code con --output-format stream-json --verbose: lo que va leyendo y, al final, la respuesta.
+        print(json.dumps({"type": "system", "subtype": "init", "tools": ["Read", "Glob", "Grep"]}), flush=True)
+        print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Glob", "input": {"pattern": "**/*.py"}}]}}), flush=True)
+        for r in ("README.md", "src/grabar.py", "../afuera.txt"):
+            print(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "Leo."}, {"type": "tool_use", "name": "Read", "input": {"file_path": os.path.join(os.getcwd(), r)}}]}}), flush=True)
+            if lento:
+                time.sleep(lento)
+        print("esto no es json", flush=True)
+    if modo == "plan-basura":
+        plan = "No sé armar un plan."
+    else:
+        plan = "Este es el plan:\n```json\n" + json.dumps({"tipo": "app", "resumen": "Notas de reuniones.", "componentes": [],
+            "elementos": [{"id": "boton-grabar", "tipo": "boton", "nombre": "Grabar", "codigo": ["src/grabar.py", "../afuera"]}, {"id": "Malo Id", "tipo": "boton", "nombre": "x"}],
+            "documentos": [{"ruta": "flujos/Grabar Reunion.md", "titulo": "Grabar una reunión", "tipo": "flujo", "que": "Cómo se graba.", "archivos": ["src/grabar.py", ".env", "../x"]},
+                           {"ruta": "vision.md", "titulo": "Visión general", "tipo": "vision", "que": "Qué es.", "archivos": ["README.md"]},
+                           {"ruta": "../fuera.md", "titulo": "x", "tipo": "otro"},
+                           {"ruta": "arquitectura.md", "titulo": "Arquitectura", "tipo": "arquitectura", "que": "Partes.", "archivos": []}]}, ensure_ascii=False) + "\n```"
+    if flujo:
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": plan}), flush=True)
+    else:
+        print(plan)
+    sys.exit(0)
+if "SOLO el documento «" in prompt:
+    ruta = prompt.split("SOLO el documento «", 1)[1].split("»", 1)[0]
+    titulo = prompt.split("titulado «", 1)[1].split("»", 1)[0]
+    if ruta == os.environ.get("IA_FALSA_FALLA_DOC"):
+        print("se cayó escribiendo " + ruta, file=sys.stderr)
+        sys.exit(1)
+    if os.environ.get("IA_FALSA_LENTO"):
+        time.sleep(float(os.environ["IA_FALSA_LENTO"]))
+    nivel = "../" * ruta.count("/")
+    texto = (f"Aquí va:\n# Otro título\n\nToca [Grabar]({nivel}elementos.md#el-boton-grabar) y [Fantasma]({nivel}elementos.md#el-no-existe).\n\n"
+             "```mermaid\n%%{init: {}}%%\nflowchart TD\n    G[Grabar] --> F[Fantasma]\n%% esquema: {\"refs\":{\"F\":\"no-existe\",\"G\":\"boton-grabar\"}}\n```\n")
+    if flujo:
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": texto}), flush=True)
+    else:
+        print(texto)
+    sys.exit(0)
 if "===ARCHIVO" in prompt:
     # Proyectos (bin/proyecto.py): bloques con documentos, elementos, archivos pedidos y una nota. Trae a propósito cosas que
     # no deben pasar: una ruta fuera de la carpeta, el glosario (lo arma Esquema), un elemento inválido y configuración en un diagrama.

@@ -8,6 +8,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -639,6 +640,272 @@ class Proyecto(unittest.TestCase):
         self.assertIn("password", t)
 
 
+class Documentar(unittest.TestCase):
+    """Documentar por etapas (bin/documentar.py + bin/trabajos.py): inventario sin IA, plan, un documento por llamada escrito al tiro
+    en la carpeta de la documentación, progreso en vivo, lo leído en lecturas.json, documentos que fallan, «Quitar este cambio»."""
+
+    def setUp(self):
+        for k in ("IA_FALSA_MODO", "IA_FALSA_FALLA_DOC", "IA_FALSA_LENTO"):
+            os.environ.pop(k, None)
+        self.progreso = os.path.join(TMP, "progreso.jsonl")
+        open(self.progreso, "w").close()
+        os.environ["ESQUEMA_PROGRESO"] = self.progreso
+
+    def tearDown(self):
+        os.environ.pop("ESQUEMA_PROGRESO", None)
+        for k in ("IA_FALSA_MODO", "IA_FALSA_FALLA_DOC", "IA_FALSA_LENTO"):
+            os.environ.pop(k, None)
+
+    def vinculado(self):
+        codigo = repo_de_prueba()
+        v = proyecto_mod.vincular({"carpeta": codigo})
+        return codigo, os.path.realpath(os.path.join(os.path.expanduser("~"), v["ubicacion"][2:]))
+
+    def eventos(self):
+        with open(self.progreso, encoding="utf-8") as f:
+            return [json.loads(l) for l in f if l.strip()]
+
+    def test_inventario_y_tipo_de_proyecto(self):
+        import inventario
+        d = tempfile.mkdtemp(dir=TMP)
+        archivos = {"movil/pubspec.yaml": "name: x", "movil/lib/main.dart": "void main(){}", "api/package.json": json.dumps({"dependencies": {"express": "4"}}),
+                    "api/index.js": "x", "web/package.json": json.dumps({"dependencies": {"react": "18"}}), "web/src/app.jsx": "x",
+                    "README.md": "# Mono", "logo.png": "x", ".env": "A=1", "datos/ventas.csv": "a,b", "node_modules/x/y.js": "x", ".gitignore": "*.log\n", "a.log": "x"}
+        for r, t in archivos.items():
+            os.makedirs(os.path.join(d, os.path.dirname(r)), exist_ok=True)
+            with open(os.path.join(d, r), "w", encoding="utf-8") as f:
+                f.write(t)
+        x = inventario.inventario(d)
+        rutas = {a[0]: a[2] for a in x["archivos"]}
+        self.assertEqual(rutas["movil/lib/main.dart"], "c")
+        self.assertEqual(rutas["logo.png"], "i")
+        self.assertEqual(rutas["datos/ventas.csv"], "t")
+        self.assertEqual(rutas[".env"], "s", "un secreto se ve en el árbol (marcado) pero la IA nunca lo lee")
+        self.assertNotIn("a.log", rutas)
+        self.assertNotIn("node_modules/x/y.js", rutas)
+        self.assertEqual(x["perfil"]["tipo"], "monorepo")
+        partes = {p["ruta"]: (p["tipo"], p["tecnologia"]) for p in x["perfil"]["componentes"]}
+        self.assertEqual(partes["movil"], ("movil", "Flutter"))
+        self.assertEqual(partes["api"], ("servicio", "Node"))
+        self.assertEqual(partes["web"], ("web", "JavaScript"))
+        # Escritos: casi todo Markdown.
+        e = tempfile.mkdtemp(dir=TMP)
+        for i in range(6):
+            with open(os.path.join(e, f"capitulo-{i}.md"), "w") as f:
+                f.write("# x")
+        self.assertEqual(inventario.inventario(e)["perfil"]["tipo"], "escritos")
+        # Una biblioteca de Python.
+        b = tempfile.mkdtemp(dir=TMP)
+        with open(os.path.join(b, "pyproject.toml"), "w") as f:
+            f.write('[project]\nname = "x"\n')
+        with open(os.path.join(b, "x.py"), "w") as f:
+            f.write("def f(): pass\n")
+        self.assertEqual(inventario.inventario(b)["perfil"]["tipo"], "biblioteca")
+
+    def test_arbol_con_todo_el_codigo_y_lecturas(self):
+        codigo, docs = self.vinculado()
+        r = orden("arbol", {"carpeta": docs})
+        self.assertTrue(r["ok"], r)
+        rutas = [a[0] for a in r["archivos"]]
+        for x in ("src/grabar.py", "src/ui/boton.js", "src/icono.png", "package.json", "README.md"):
+            self.assertIn(x, rutas)
+        self.assertNotIn("privado/notas.md", rutas)
+        self.assertEqual(r["lecturas"], {})
+        # Lo que lee la IA queda en la carpeta de Esquema (nunca en la del código), con su huella: si cambia, se nota.
+        import inventario
+        pid = inventario.id_proyecto(docs)
+        inventario.registrar_lecturas(pid, codigo, ["src/grabar.py", "README.md", "../fuera"])
+        self.assertTrue(os.path.isfile(os.path.join(os.environ["ESQUEMA_DATOS"], "proyectos", pid, "lecturas.json")))
+        lec = orden("arbol", {"carpeta": docs})["lecturas"]
+        self.assertEqual(sorted(lec), ["README.md", "src/grabar.py"])
+        self.assertNotIn("c", lec["src/grabar.py"])
+        time.sleep(1.1)
+        with open(os.path.join(codigo, "src", "grabar.py"), "w") as f:
+            f.write("def grabar():\n    return 1\n")
+        self.assertTrue(orden("arbol", {"carpeta": docs})["lecturas"]["src/grabar.py"].get("c"))
+
+    def test_stream_json_de_claude(self):
+        vistos = []
+        lineas = ['{"type":"system","subtype":"init"}', "no es json",
+                  json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "x"}, {"type": "tool_use", "name": "Read", "input": {"file_path": "/a/b.py"}}]}}),
+                  json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Grep", "input": {"pattern": "def ", "path": "/a"}}]}}),
+                  json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "rm"}}]}})]
+        for l in lineas:
+            self.assertIsNone(ia._evento_claude(l, vistos.append))
+        self.assertEqual(vistos, [{"t": "lee", "ruta": "/a/b.py"}, {"t": "busca", "patron": "def ", "ruta": "/a"}])
+        self.assertEqual(ia._evento_claude('{"type":"result","is_error":false,"result":"hola"}', vistos.append), ("hola", False))
+        self.assertEqual(ia._evento_claude('{"type":"result","is_error":true,"result":"sin saldo"}', vistos.append), ("sin saldo", True))
+        # Codex --json: se deduce el archivo de un comando de lectura.
+        c = []
+        ia._evento_codex(json.dumps({"type": "item.started", "item": {"type": "command_execution", "command": "bash -lc 'sed -n 1,200p src/app.py'"}}), c.append)
+        ia._evento_codex(json.dumps({"type": "item.started", "item": {"type": "command_execution", "command": ["rg", "-n", "pagar"]}}), c.append)
+        self.assertEqual(c, [{"t": "lee", "ruta": "src/app.py"}, {"t": "busca", "patron": "-n pagar"}])
+
+    def test_plan_valido_ordenado_y_plan_invalido(self):
+        import documentar
+        perfil = {"tipo": "app", "componentes": [], "archivos": 10}
+        plan, desc = documentar.validar_plan("```json\n" + json.dumps({"tipo": "raro", "documentos": [
+            {"ruta": "flujos/Pagar Cuenta.md", "titulo": "Pagar", "tipo": "flujo", "archivos": ["src/a.py", "../x", "/etc/hosts"]},
+            {"ruta": "Overview.md", "titulo": "Visión", "tipo": "vision"},
+            {"ruta": "elementos.md", "titulo": "Glosario", "tipo": "otro"},
+            {"ruta": "../fuera.md", "titulo": "x", "tipo": "otro"},
+            {"ruta": "x.md", "titulo": "", "tipo": "otro"},
+            {"ruta": "api.md", "titulo": "La API", "tipo": "glosario"},
+            {"ruta": "Diseño.md", "titulo": "Arquitectura", "tipo": "arquitectura"}]}) + "\n```", perfil)
+        self.assertEqual([d["ruta"] for d in plan["documentos"]], ["README.md", "arquitectura.md", "api.md", "elementos-del-proyecto.md", "flujos/pagar-cuenta.md"])
+        self.assertEqual(plan["tipo"], "app")
+        self.assertEqual(plan["documentos"][-1]["archivos"], ["src/a.py"])
+        self.assertEqual(desc, 2)
+        self.assertEqual(documentar.validar_plan("No sé.", perfil), (None, 0))
+        self.assertIsNone(documentar.validar_plan('{"documentos": []}', perfil)[0])
+        # El plan armado con el inventario respeta el tipo de proyecto.
+        p = documentar.plan_por_defecto({"tipo": "monorepo", "componentes": [{"ruta": "movil", "nombre": "Móvil", "tecnologia": "Flutter"}]}, "X")
+        self.assertEqual([d["ruta"] for d in p["documentos"]], ["README.md", "arquitectura.md", "componentes/movil.md"])
+        self.assertEqual([d["ruta"] for d in documentar.plan_por_defecto({"tipo": "escritos"}, "X")["documentos"]], ["README.md", "estructura.md"])
+
+    def test_documentar_por_etapas_escribe_al_tiro(self):
+        codigo, docs = self.vinculado()
+        if os.path.exists(REGISTRO):
+            os.unlink(REGISTRO)
+        r = orden("documentar", {"carpeta": docs, "tarea": "inicial", "idioma": "es"})
+        self.assertTrue(r["ok"], r)
+        t = r["trabajo"]
+        self.assertEqual(t["estado"], "listo", t)
+        self.assertEqual(t["hechas"], ["inventario", "explorar", "escribir", "cerrar"])
+        self.assertEqual([i["ruta"] for i in t["items"]], ["README.md", "arquitectura.md", "flujos/grabar-reunion.md"])
+        self.assertTrue(all(i["estado"] == "listo" for i in t["items"]))
+        # Cada documento está en la carpeta de la documentación, con el título del plan y sin enlaces ni refs a elementos que no existen.
+        with open(os.path.join(docs, "flujos", "grabar-reunion.md"), encoding="utf-8") as f:
+            md = f.read()
+        self.assertTrue(md.startswith("# Grabar una reunión\n"))
+        self.assertIn("[Grabar](../elementos.md#el-boton-grabar)", md)
+        self.assertNotIn("el-no-existe", md)
+        self.assertNotIn("%%{init", md)
+        self.assertIn('%% esquema: {"refs":{"G":"boton-grabar"}}', md)
+        x = json.load(open(os.path.join(docs, "esquema.json"), encoding="utf-8"))
+        self.assertEqual([d["ruta"] for d in x["documentos"]], ["README.md", "arquitectura.md", "flujos/grabar-reunion.md", "elementos.md"])
+        self.assertEqual(x["elementos"][0]["codigo"], ["src/grabar.py"])
+        self.assertTrue(os.path.isfile(os.path.join(docs, "elementos.md")))
+        self.assertEqual(sorted(x["fuentes"]["archivos"]), ["README.md", "src/grabar.py"])
+        # Una sola versión, en el git de la documentación; el del código, igual.
+        if proyecto_mod.git_disponible():
+            self.assertEqual(proyecto_mod.versiones({"carpeta": docs})["lista"][0]["mensaje"], "Documentación hecha con Claude")
+            _, s, _ = proyecto_mod.git(codigo, "log", "--format=%s")
+            self.assertEqual(s.split("\n")[0], "Primera versión")
+        # La IA: explorar con lectura (solo Read/Glob/Grep, stream-json) y cada documento sin herramientas.
+        with open(REGISTRO, encoding="utf-8") as f:
+            llamadas = [json.loads(l) for l in f]
+        exp = llamadas[0]["args"]
+        self.assertIn("stream-json", exp)
+        self.assertEqual(exp[exp.index("--allowedTools") + 1], "Read,Glob,Grep")
+        self.assertNotIn("MultiEdit", exp[exp.index("--disallowedTools") + 1])
+        self.assertIn("Read(**/.env)", exp[exp.index("--disallowedTools") + 1])
+        self.assertIn("NO leas todo", llamadas[0]["prompt"])
+        for l in llamadas[1:]:
+            self.assertEqual(l["args"][l["args"].index("--disallowedTools") + 1], "*")
+            self.assertNotIn("CLAVE=secreta", l["prompt"])
+        self.assertTrue(any('<archivo ruta="src/grabar.py">' in l["prompt"] for l in llamadas[1:]), "cada documento lleva sus archivos clave")
+        # El progreso: estados y lo que leyó (solo dentro del código).
+        ev = self.eventos()
+        self.assertEqual({e["ruta"] for e in ev if e["t"] == "lee"}, {"README.md", "src/grabar.py"})
+        estados = [e["trabajo"]["etapa"] for e in ev if e["t"] == "estado"]
+        for etapa in ("inventario", "explorar", "escribir", "cerrar"):
+            self.assertIn(etapa, estados)
+        self.assertNotIn(codigo, json.dumps([e for e in ev if e["t"] != "estado"]), "rutas relativas al código, nunca absolutas")
+        # Lo leído queda en lecturas.json y el árbol lo muestra.
+        self.assertIn("src/grabar.py", orden("arbol", {"carpeta": docs})["lecturas"])
+        # Abrir el proyecto otra vez: el trabajo dice en qué quedó.
+        self.assertEqual(orden("trabajo", {"carpeta": docs})["trabajo"]["id"], t["id"])
+
+    def test_un_documento_que_falla_no_afecta_a_los_demas_y_se_reintenta(self):
+        codigo, docs = self.vinculado()
+        os.environ["IA_FALSA_FALLA_DOC"] = "arquitectura.md"
+        t = orden("documentar", {"carpeta": docs, "tarea": "inicial"})["trabajo"]
+        self.assertEqual(t["estado"], "con-fallas")
+        estados = {i["ruta"]: i["estado"] for i in t["items"]}
+        self.assertEqual(estados, {"README.md": "listo", "arquitectura.md": "fallo", "flujos/grabar-reunion.md": "listo"})
+        self.assertIn("Claude no respondió", next(i for i in t["items"] if i["ruta"] == "arquitectura.md")["error"])
+        self.assertFalse(os.path.exists(os.path.join(docs, "arquitectura.md")))
+        self.assertTrue(os.path.exists(os.path.join(docs, "README.md")))
+        os.environ.pop("IA_FALSA_FALLA_DOC")
+        r = orden("documentar", {"carpeta": docs, "reintentar": t["id"], "ruta": "arquitectura.md"})
+        self.assertEqual(r["trabajo"]["estado"], "listo", r)
+        self.assertTrue(os.path.exists(os.path.join(docs, "arquitectura.md")))
+        if proyecto_mod.git_disponible():
+            self.assertEqual(proyecto_mod.versiones({"carpeta": docs})["lista"][0]["mensaje"], "Reescribí «Arquitectura» con Claude")
+        for malo in ({"reintentar": t["id"], "ruta": "../x.md"}, {"reintentar": "../x", "ruta": "a.md"}, {"seguir": "20261028T000000-abcdef"}):
+            self.assertFalse(orden("documentar", {"carpeta": docs, **malo})["ok"], malo)
+
+    def test_plan_invalido_usa_el_inventario(self):
+        codigo, docs = self.vinculado()
+        os.environ["IA_FALSA_MODO"] = "plan-basura"
+        t = orden("documentar", {"carpeta": docs, "tarea": "inicial"})["trabajo"]
+        self.assertEqual(t["estado"], "listo", t)
+        self.assertEqual(t["aviso"], "plan")
+        self.assertEqual([i["ruta"] for i in t["items"]], ["README.md", "arquitectura.md"])
+
+    def test_la_ia_que_falla_al_explorar_dice_por_que(self):
+        codigo, docs = self.vinculado()
+        os.environ["IA_FALSA_MODO"] = "falla"
+        r = orden("documentar", {"carpeta": docs, "tarea": "inicial"})
+        self.assertEqual(r["trabajo"]["estado"], "error")
+        self.assertIn("Claude no respondió", r["trabajo"]["error"])
+        self.assertEqual(os.listdir(docs), [".git"] if proyecto_mod.git_disponible() else [])
+
+    def test_quitar_este_cambio(self):
+        codigo, docs = self.vinculado()
+        with open(os.path.join(docs, "README.md"), "w", encoding="utf-8") as f:
+            f.write("# Mío\n")
+        t = orden("documentar", {"carpeta": docs, "tarea": "inicial"})["trabajo"]
+        self.assertFalse(next(i for i in t["items"] if i["ruta"] == "README.md")["nuevo"])
+        # Uno que existía vuelve a como estaba; uno nuevo se borra y sale de esquema.json.
+        r = orden("quitar", {"carpeta": docs, "id": t["id"], "ruta": "README.md"})
+        self.assertTrue(r["ok"] and not r["borrado"], r)
+        self.assertEqual(open(os.path.join(docs, "README.md"), encoding="utf-8").read(), "# Mío\n")
+        r = orden("quitar", {"carpeta": docs, "id": t["id"], "ruta": "flujos/grabar-reunion.md"})
+        self.assertTrue(r["borrado"])
+        self.assertFalse(os.path.exists(os.path.join(docs, "flujos", "grabar-reunion.md")))
+        self.assertNotIn("flujos/grabar-reunion.md", [d["ruta"] for d in json.load(open(os.path.join(docs, "esquema.json")))["documentos"]])
+        self.assertEqual(next(i for i in r["trabajo"]["items"] if i["ruta"] == "flujos/grabar-reunion.md")["estado"], "quitado")
+        self.assertFalse(orden("quitar", {"carpeta": docs, "id": t["id"], "ruta": "flujos/grabar-reunion.md"})["ok"], "dos veces no")
+        if proyecto_mod.git_disponible():
+            self.assertTrue(proyecto_mod.versiones({"carpeta": docs})["lista"][0]["mensaje"].startswith("Quité «"))
+
+    def test_detener_e_interrumpido_y_seguir(self):
+        """«Detener» corta la IA y lo escrito se queda; un trabajo cuyo proceso murió se ve «interrumpido» y «Seguir» lo termina."""
+        import trabajos
+        codigo, docs = self.vinculado()
+        os.environ["IA_FALSA_LENTO"] = "0.6"
+        e = entrada({"carpeta": docs, "tarea": "inicial"})
+        salida = os.path.join(TMP, "salida-larga.json")
+        p = subprocess.Popen([sys.executable, os.path.join(BIN, "proyecto.py"), "documentar", e, salida])
+        id_ = None
+        for _ in range(100):
+            time.sleep(0.1)
+            ev = self.eventos()
+            if any(x["t"] == "lee" for x in ev):
+                id_ = ev[0]["trabajo"]["id"]
+                break
+        self.assertTrue(id_, "el progreso llega mientras la IA lee")
+        self.assertTrue(orden("detener", {"carpeta": docs, "id": id_})["deteniendo"])
+        p.wait(30)
+        r = json.load(open(salida, encoding="utf-8"))
+        self.assertEqual(r["trabajo"]["estado"], "detenido", r)
+        # Un trabajo «corriendo» sin latido: el proceso murió (se cerró la app). Se ve interrumpido y «Seguir» lo termina.
+        os.environ.pop("IA_FALSA_LENTO")
+        t = trabajos.Trabajo.cargar(id_)
+        t.x.update({"estado": "corriendo", "latido": time.time() - 999})
+        t.guardar(emitir_estado=False)
+        self.assertEqual(orden("trabajo", {"carpeta": docs})["trabajo"]["estado"], "interrumpido")
+        r = orden("documentar", {"carpeta": docs, "seguir": id_})
+        self.assertEqual(r["trabajo"]["estado"], "listo", r)
+        self.assertTrue(os.path.exists(os.path.join(docs, "flujos", "grabar-reunion.md")))
+        # Otra carpeta no puede tocar este trabajo.
+        otro = tempfile.mkdtemp(dir=TMP)
+        self.assertFalse(orden("detener", {"carpeta": otro, "id": id_})["ok"])
+        self.assertIsNone(orden("trabajo", {"carpeta": otro})["trabajo"])
+
+
 class Plantillas(unittest.TestCase):
     def test_casos_compartidos(self):
         for c in CASOS["plantillas"]:
@@ -765,7 +1032,8 @@ class Repo(unittest.TestCase):
         self.assertGreater(len(t), 30000)
 
     def test_solo_biblioteca_estandar(self):
-        permitidos = set(sys.stdlib_module_names) | {"comun", "carpeta", "ia", "asistente", "plantillas", "plantilla_formato", "estado", "proyecto"}
+        permitidos = set(sys.stdlib_module_names) | {"comun", "carpeta", "ia", "asistente", "plantillas", "plantilla_formato", "estado", "proyecto",
+                                                     "inventario", "trabajos", "documentar"}
         for f in os.listdir(BIN):
             if not f.endswith(".py"):
                 continue
