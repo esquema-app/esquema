@@ -12,10 +12,13 @@
     const NOMBRE_TIPO = { pantalla: "Pantalla", boton: "Botón", accion: "Acción", servicio: "Servicio", modulo: "Módulo o archivo", dato: "Dato", actor: "Persona o sistema", otro: "Otro" };
     const hoy = () => new Date().toISOString().slice(0, 10);
     const clon = (x) => JSON.parse(JSON.stringify(x));
-    const docsDir = () => E.proyecto?.docs || E.encontrado?.docs || "docs/esquema";
-    const enDocs = (ruta) => ruta.startsWith(docsDir() + "/");
-    const rel = (ruta) => ruta.slice(docsDir().length + 1);
-    const completa = (r) => docsDir() + "/" + r;
+    const docsDir = () => E.proyecto?.docs ?? E.encontrado?.docs ?? (E.vinculo ? "" : "docs/esquema");
+    // Un proyecto vinculado (documentación aparte, en ~/Esquema) tiene docs "": la documentación es la carpeta entera.
+    const enDocs = (ruta) => !docsDir() || ruta.startsWith(docsDir() + "/");
+    const rel = (ruta) => (docsDir() ? ruta.slice(docsDir().length + 1) : ruta);
+    const completa = (r) => (docsDir() ? docsDir() + "/" + r : r);
+    const vinculado = () => !!(E.proyecto?.vinculado || E.vinculo);
+    const listaProyectos = (l) => l.map((p) => ({ nombre: p.nombre, ruta: p.ruta, ubicacion: p.ubicacion || "", codigo: p.codigo || "" }));
     const esquema = () => E.proyecto?.esquema || null;
     const elemento = (id) => esquema()?.elementos.find((e) => e.id === id) || null;
     const enviar = (orden, datos = {}) => host.enviar("proyecto", { orden, docs: docsDir(), ...datos });
@@ -73,6 +76,7 @@
 
     // ───────────── Pedirle a la IA (siempre se ve antes lo que se envía) ─────────────
     function pedirIA(tarea, datos) {
+      if (!E.proyecto && !vinculado()) { pj.despues = { tarea, datos }; pj.dialogo = null; enviar("vincular"); toast("Primero preparo la carpeta de documentación, aparte del código"); return api.pintar(); }
       pj.dialogo = { tipo: "envio", tarea, datos, cargando: true };
       enviar("preparar", { tarea, ...datos });
       api.pintar();
@@ -135,7 +139,8 @@
       const g = escribir(glosarioRuta(), M.glosario(x, E.idioma));
       if (g !== undefined) escritas.push(glosarioRuta());
       const mensaje = pr.tarea === "inicial" ? tr("Documentación inicial") : pr.tarea === "flujo" ? Tp("Documenté «{x}»", { x: (pj.ultimoEnvio?.datos?.pedido || "").slice(0, 80) }) : pr.tarea === "revisar" ? tr("Puse al día la documentación con los cambios del código") : Tp("Actualicé la documentación: {x}", { x: (pj.ultimoEnvio?.datos?.pedido || "").slice(0, 80) });
-      E.proyecto = { ...(E.proyecto || { docs: docsDir(), git: { hay: !!E.encontrado?.git?.hay }, cambios: null }), esquema: x };
+      E.proyecto = { ...(E.proyecto || { docs: docsDir(), git: { hay: !!E.encontrado?.git?.hay }, cambios: null,
+        vinculado: !!E.vinculo, ubicacion: E.vinculo?.ubicacion || "", codigo: E.vinculo?.codigo || "" }), esquema: x };
       guardarYVersion(x, mensaje, escritas);
       E.propuestas = null; E.encontrado = null; E.panel = "proyecto";
       pj.ultimo = null;  // deshacer un cambio anterior ya no tiene sentido: pasaría por encima de esto
@@ -187,17 +192,55 @@
       switch (r.orden) {
         case "abrir": {
           if (!r.ok) { if (r.error) toast(r.error); return; }
-          if (Array.isArray(r.recientes)) E.recientes = r.recientes.map((p) => ({ nombre: p.nombre, ruta: p.ruta }));
+          if (Array.isArray(r.recientes)) E.recientes = listaProyectos(r.recientes);
+          // Es la carpeta del código de un proyecto con su documentación aparte: se abre esa.
+          if (r.vinculado_en != null) { pj.pedido = true; host.enviar("abrirProyecto", { indice: r.vinculado_en }); return; }
           if (r.error) toast(r.error);
+          E.vinculo = r.vinculado ? { ubicacion: r.ubicacion || "", codigo: r.codigo || "" } : null;
           if (r.existe) {
-            E.proyecto = { docs: r.docs, esquema: r.esquema, git: r.git || { hay: false }, cambios: r.cambios || null, pendiente: !!r.pendiente };
+            E.proyecto = { docs: r.docs, esquema: r.esquema, git: r.git || { hay: false }, cambios: r.cambios || null, pendiente: !!r.pendiente,
+              vinculado: !!r.vinculado, ubicacion: r.ubicacion || "", codigo: r.codigo || "" };
             E.encontrado = null;
             cargarDocs();
             if (pj.pedido) { pj.pedido = false; E.panel = "proyecto"; }
+          } else if (r.vinculado) {
+            // Recién vinculado: falta escribir la documentación. Se muestra lo que Esquema encontró en el código.
+            E.proyecto = null; pj.pedido = false; E.panel = "proyecto"; E.encontrado = { cargando: true, docs: "" }; enviar("leer");
           } else {
             E.proyecto = null;
-            if (pj.pedido) { pj.pedido = false; E.panel = "proyecto"; E.encontrado = { cargando: true, docs: r.docs }; enviar("leer"); }
+            // «Agregar proyecto»: la documentación va aparte, en ~/Esquema, vinculada a esta carpeta.
+            if (pj.pedido) { pj.pedido = false; enviar("vincular"); }
           }
+          if (vinculado() && pj.despues) { const x = pj.despues; pj.despues = null; pedirIA(x.tarea, x.datos); }
+          return api.pintar();
+        }
+        case "vincular":
+        case "mover": {
+          if (!r.ok) { pj.despues = null; toast(r.error || "No pude preparar la carpeta de documentación"); return api.pintar(); }
+          if (Array.isArray(r.recientes)) E.recientes = listaProyectos(r.recientes);
+          if (r.orden === "mover") toast(Tp("Tu documentación quedó en {x}. La copia dentro del repo sigue ahí: bórrala cuando quieras.", { x: r.ubicacion }), true);
+          else toast(Tp("La documentación de este proyecto va a vivir en {x}", { x: r.ubicacion }), true);
+          pj.pedido = true; host.enviar("abrirProyecto", { indice: r.indice }); return;
+        }
+        case "destinos": {
+          const d = pj.dialogo;
+          if (!d || d.tipo !== "pasar") return;
+          if (!r.ok) { d.cargando = false; d.error = r.error; return api.pintar(); }
+          d.cargando = false; d.codigo = r.codigo || "";
+          for (const f of d.filas) {
+            const s = r.estados?.[f.destino];
+            if (!s) continue;
+            f.valido = s.valido !== false; f.existe = !!s.existe; f.antes = s.texto ?? null;
+            f.igual = f.existe && f.antes === (E.docs[completa(f.ruta)]?.texto ?? null);
+            if (!f.revisado) { f.elegido = f.valido && !f.igual && !f.existe; f.revisado = true; }
+          }
+          return api.pintar();
+        }
+        case "pasar": {
+          if (!r.ok) { toast(r.error || "No pude pasar los archivos"); return api.pintar(); }
+          pj.dialogo = null;
+          const n = (r.escritos || []).length, s = (r.saltados || []).length;
+          toast(s ? Tp("Pasé {n} archivos a {x}; {s} quedaron igual (ya existían o la ruta no servía)", { n, x: r.codigo, s }) : cuenta(n, "Pasé 1 archivo al proyecto", "Pasé {n} archivos al proyecto"), true);
           return api.pintar();
         }
         case "leer":
@@ -229,13 +272,14 @@
         case "guardar":
           if (!r.ok) { pj.espera = null; toast(r.error || "No pude guardar esquema.json"); return api.pintar(); }
           if (E.proyecto && r.esquema) E.proyecto.esquema = r.esquema;
-          if (Array.isArray(r.recientes)) E.recientes = r.recientes.map((p) => ({ nombre: p.nombre, ruta: p.ruta }));
+          if (Array.isArray(r.recientes)) E.recientes = listaProyectos(r.recientes);
           if (pj.espera) { pj.espera.esquema = true; revisarEspera(); }
           return api.pintar();
         case "version":
           if (!r.ok) { toast(r.error || "No pude guardar la versión"); return api.pintar(); }
           if (E.proyecto) { E.proyecto.pendiente = false; if (r.modo === "git" && !r.sin_cambios) E.proyecto.cambios = null; }
           toast(r.sin_cambios ? "No hay cambios desde la última versión" : "Guardé la versión");
+          if (!r.sin_cambios && vinculado()) pj.ofrecerPasar = true;
           if (pj.versiones) cargarVersiones();
           return api.pintar();
         case "versiones": {
@@ -295,8 +339,9 @@
     function recientesHTML() {
       const actual = E.carpeta?.ruta;
       const otros = E.recientes.map((p, i) => [p, i]).filter(([p]) => p.ruta !== actual);
-      if (!otros.length) return "";
-      return `<h3>Proyectos recientes</h3>${otros.map(([p, i]) => `<button class="archivo" data-p-reciente="${i}" title="${esc(p.ruta)}" data-sin-traducir>${ic("proyecto")}<span>${esc(p.nombre)}</span></button>`).join("")}`;
+      const fila = ([p, i]) => `<button class="archivo" data-p-reciente="${i}" title="${esc(p.ubicacion || p.ruta)}" data-sin-traducir>${ic("proyecto")}<span>${esc(p.nombre)}</span>${p.codigo ? `<small>${esc(p.codigo)}</small>` : ""}</button>`;
+      return `<h3>${E.proyecto || E.vinculo ? "Otros proyectos" : "Proyectos"}</h3>${otros.map(fila).join("")}
+        <button class="archivo" data-accion="p-agregar">${ic("mas")}<span>Agregar proyecto</span></button>`;
     }
     function barraHTML() {
       const titulos = { proyecto: "Proyecto", elementos: "Elementos", versiones: "Versiones", propuestas: "Revisa lo que propone tu IA" };
@@ -337,11 +382,14 @@
           ${fila(tr("Archivos"), T("{n} archivos leídos · {o} quedaron fuera (secretos, ignorados o demasiados)", { n: f.archivos, o: f.omitidos }))}
         </section>
         ${g.commits?.length ? `<section class="p-tarjeta"><h3>Últimos cambios</h3><ul class="p-commits" data-sin-traducir>${g.commits.slice(0, 6).map((c) => `<li><small>${esc(c.fecha)}</small> ${esc(c.mensaje)}</li>`).join("")}</ul></section>` : ""}
-        <section class="p-tarjeta">
+        ${E.vinculo ? `<section class="p-tarjeta">
+          <h3>Dónde queda la documentación</h3>
+          ${frase("Aparte de tu código, en {x}, con su propio historial de versiones. Después eliges qué pasar al proyecto.", { x: E.vinculo.ubicacion }, "p")}
+        </section>` : `<section class="p-tarjeta">
           <label for="p-docs">Dónde guardo la documentación (dentro del proyecto)</label>
           <input type="text" id="p-docs" value="${esc(f.docs || "docs/esquema")}" data-sin-traducir spellcheck="false">
           <p class="p-ayuda">Markdown y diagramas que GitHub muestra tal cual, más esquema.json con los elementos. ${g.hay ? "Cada versión es un commit solo de esa carpeta." : ""}</p>
-        </section>
+        </section>`}
         <div class="p-acciones"><button class="boton principal" data-accion="p-generar-inicial">${ic("chispa")} ${frase("Documentar con {ia}", { ia: nombreIA() })}</button></div>`;
     }
 
@@ -349,7 +397,10 @@
       const x = esquema(), c = E.proyecto.cambios, u = pj.ultimo, { listos } = docsProyecto();
       const docs = x.documentos.slice().sort((a, b) => (a.tipo === "glosario") - (b.tipo === "glosario") || TIPOS_ORDEN.indexOf(a.tipo) - TIPOS_ORDEN.indexOf(b.tipo) || a.ruta.localeCompare(b.ruta));
       const rev = E.proyecto.revision;
-      return `<div class="p-cab"><span class="p-icono">${ic("proyecto")}</span><div><h2 data-sin-traducir>${esc(x.nombre)}</h2>${frase("{d} documentos · {e} elementos · en {c}", { d: x.documentos.length, e: x.elementos.length, c: docsDir() + "/" }, "p")}</div></div>
+      const donde = E.proyecto.vinculado ? E.proyecto.ubicacion + "/" : docsDir() + "/";
+      return `<div class="p-cab"><span class="p-icono">${ic("proyecto")}</span><div><h2 data-sin-traducir>${esc(x.nombre)}</h2>${frase("{d} documentos · {e} elementos · en {c}", { d: x.documentos.length, e: x.elementos.length, c: donde }, "p")}${E.proyecto.vinculado && E.proyecto.codigo ? frase("Código: {x}", { x: E.proyecto.codigo }, "p") : ""}</div></div>
+        ${!E.proyecto.vinculado ? `<div class="p-aviso"><span>${frase("Esta documentación está dentro del repo ({x}). ¿La paso a una carpeta aparte en ~/Esquema? No borro nada del repo.", { x: docsDir() + "/" })}</span><button class="boton" data-accion="p-mover">Moverla aparte</button></div>` : ""}
+        ${E.proyecto.vinculado && pj.ofrecerPasar && !pj.espera ? `<div class="p-aviso"><span>Guardé la versión. ¿Quieres llevar algo de esto al repo del proyecto?</span><button class="boton" data-accion="p-pasar">Pasar al proyecto</button></div>` : ""}
         ${api.accionesInicioHTML()}
         ${pj.espera ? `<div class="p-aviso"><span class="giro"></span> Guardando la versión…</div>` : ""}
         ${u ? `<div class="p-aviso"><span data-sin-traducir>${esc(u.mensaje)}</span>${u.puede ? `<button class="boton" data-accion="p-deshacer">${ic("deshacer")} Deshacer este cambio</button>` : ""}</div>` : ""}
@@ -363,6 +414,7 @@
           <div class="p-lista">${docs.map((d) => `<button class="p-doc" data-abrir="${esc(completa(d.ruta))}"><span class="p-tipo">${ic(d.tipo === "glosario" ? "elemento" : /\.mmd$/.test(d.ruta) ? "diagrama" : "doc")}</span><span class="p-txt"><b data-sin-traducir>${esc(d.titulo)}</b><small data-sin-traducir>${esc(d.ruta)}</small></span></button>`).join("") || `<p class="p-ayuda">Todavía no hay documentos.</p>`}</div>
         </section>
         <div class="p-acciones izq">
+          ${E.proyecto.vinculado ? `<button class="boton" data-accion="p-pasar">${ic("exportar")} Pasar al proyecto</button>` : ""}
           <button class="boton" data-p="elementos">${ic("elemento")} Elementos</button>
           <button class="boton" data-p="versiones">${ic("historia")} Versiones</button>
         </div>`;
@@ -485,12 +537,36 @@
     }
 
     // ───────────── Diálogos ─────────────
+    /** «Pasar al proyecto»: cada documento con su casilla, dónde quedaría en el repo y si ya existe (con su diferencia). */
+    function abrirPasar() {
+      const filas = rutasDocs().map((r) => rel(r)).sort().map((ruta) => ({ ruta, destino: "docs/" + ruta, elegido: false, reemplazar: false }));
+      pj.ofrecerPasar = false;
+      pj.dialogo = { tipo: "pasar", filas, cargando: true, abierta: null };
+      enviar("destinos", { rutas: filas.map((f) => f.destino) });
+      api.pintar();
+    }
+    function pasarHTML(d) {
+      const n = d.filas.filter((f) => f.elegido && f.valido !== false).length;
+      const estado = (f) => f.valido === false ? `<span class="p-estado mal">La ruta no sirve</span>` : f.igual ? `<span class="p-estado">Igual</span>` : f.existe ? `<span class="p-estado aviso">Ya existe</span>` : `<span class="p-estado ok">Nuevo</span>`;
+      const fila = (f, i) => `<div class="p-pasar-fila">
+          <label class="marcar"><input type="checkbox" data-p-fila="${i}" ${f.elegido ? "checked" : ""} ${f.valido === false || f.igual ? "disabled" : ""}><span><b data-sin-traducir>${esc(f.ruta)}</b><small data-sin-traducir>→ ${esc(f.destino)}</small></span></label>
+          ${d.cargando ? "" : estado(f)}
+          ${f.existe && !f.igual ? `<span class="p-pasar-acc"><label class="marcar chico"><input type="checkbox" data-p-reemplazar="${i}" ${f.reemplazar ? "checked" : ""}> <span>Reemplazar</span></label><button class="boton plano" data-p-ver-dif="${i}">${d.abierta === i ? "Ocultar" : "Ver diferencia"}</button></span>` : ""}
+          ${d.abierta === i ? `<div class="p-dif" data-sin-traducir>${difHTML(f.antes || "", E.docs[completa(f.ruta)]?.texto || "")}</div>` : ""}
+        </div>`;
+      return `<h2 id="t-pj">Pasar al proyecto</h2>
+        ${frase("Elige qué documentos copiar al repo {x}. Lo que ya existe solo se cambia si marcas «Reemplazar».", { x: d.codigo || E.proyecto?.codigo || "" }, "p")}
+        ${d.cargando ? `<div class="esperando"><span class="giro"></span> Revisando el repo…</div>` : `<div class="p-pasar">${d.filas.map(fila).join("")}</div>`}
+        ${d.error ? `<p class="mal-txt">${esc(tr(d.error))}</p>` : ""}
+        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-pasar-enviar" ${d.cargando || d.enviando || !n ? "disabled" : ""}>${n === 1 ? "Pasar 1 archivo" : frase("Pasar {n} archivos", { n })}</button></div>`;
+    }
     function dialogoHTML(capa) {
       if (pj.generando) return capa("t-pj", `<h2 id="t-pj">${frase("{ia} está escribiendo la documentación…", { ia: nombreIA() })}</h2><div class="esperando"><span class="giro"></span><span>Puede tardar un par de minutos. Nada se guarda hasta que lo revises.</span></div><div class="pie-dialogo"><button class="boton" data-accion="p-cancelar">Cancelar</button></div>`);
       const d = pj.dialogo;
       if (!d) return "";
       if (d.tipo === "error") return capa("t-pj", `<h2 id="t-pj">No resultó</h2><p data-sin-traducir>${esc(tr(d.texto))}</p><div class="pie-dialogo"><button class="boton principal" data-accion="cerrar" data-autofoco>Entendido</button></div>`);
       if (d.tipo === "envio") return capa("t-pj", envioHTML(d), "ancho");
+      if (d.tipo === "pasar") return capa("t-pj", pasarHTML(d), "ancho");
       if (d.tipo === "flujo") return capa("t-pj", `<h2 id="t-pj">Documentar un flujo</h2><p>Cuéntale a tu IA qué quieres documentar: «el flujo de…» o «la secuencia de…». Si necesita leer archivos del código, te pregunta antes.</p>
         <textarea id="p-pedido" placeholder="Por ejemplo: cómo se graba una reunión, desde que tocas Grabar hasta que queda guardada" data-autofoco data-sin-traducir>${esc(d.pedido || "")}</textarea>
         ${d.error ? `<p class="mal-txt">${esc(tr(d.error))}</p>` : ""}
@@ -618,6 +694,9 @@
         else { const p = E.propuestas.lista[Number(d.pQuitar)]; if (!p.error) p.quitada = !p.quitada; }
         api.pintar(); return true;
       }
+      if (d.pFila !== undefined) { const f = pj.dialogo?.filas?.[Number(d.pFila)]; if (f) { f.elegido = !f.elegido; f.revisado = true; api.pintar(); } return true; }
+      if (d.pReemplazar !== undefined) { const f = pj.dialogo?.filas?.[Number(d.pReemplazar)]; if (f) { f.reemplazar = !f.reemplazar; if (f.reemplazar) f.elegido = true; api.pintar(); } return true; }
+      if (d.pVerDif !== undefined) { const x = pj.dialogo; x.abierta = x.abierta === Number(d.pVerDif) ? null : Number(d.pVerDif); api.pintar(); return true; }
       if (d.pVersion !== undefined) { const v = pj.versiones; v.sel = v.sel === d.pVersion ? null : d.pVersion; v.abierto = null; if (v.sel) { if (!v.archivos[v.sel]) enviar("ver", { id: v.sel }); enviar("ver", { id: v.contra }); } api.pintar(); return true; }
       if (d.pDif !== undefined) { const v = pj.versiones; v.abierto = v.abierto === d.pDif ? null : d.pDif; api.pintar(); return true; }
       if (d.pVerCambio !== undefined) { const c = pj.dialogo; c.abierto = c.abierto === Number(d.pVerCambio) ? null : Number(d.pVerCambio); api.pintar(); return true; }
@@ -635,8 +714,20 @@
           E.nuevo = null; E.lateral = false; E.sel = null;
           if (E.proyecto) { pedirIA("inicial", { docs: docsDir() }); return true; }
           if (!E.carpeta) { pj.pedido = true; host.enviar("elegirCarpeta", { proyecto: true }); return true; }
-          E.panel = "proyecto"; E.encontrado = { cargando: true, docs: docsDir() }; enviar("leer"); api.pintar(); return true;
+          if (vinculado()) { E.panel = "proyecto"; E.encontrado = { cargando: true, docs: "" }; enviar("leer"); api.pintar(); return true; }
+          enviar("vincular"); return true;  // la documentación va aparte: después se abre «Lo que encontré»
+        case "p-agregar": E.nuevo = null; E.lateral = false; pj.pedido = true; host.enviar("elegirCarpeta", { proyecto: true }); return true;
+        case "p-mover": enviar("mover"); toast("Copiando la documentación a ~/Esquema…"); return true;
+        case "p-pasar": abrirPasar(); return true;
+        case "p-pasar-enviar": {
+          const d = pj.dialogo, elegidos = d.filas.filter((f) => f.elegido && f.valido !== false);
+          if (!elegidos.length) { d.error = "Elige al menos un archivo."; api.pintar(); return true; }
+          d.enviando = true; api.guardarTodo(); api.pintar();
+          setTimeout(() => enviar("pasar", { archivos: elegidos.map((f) => ({ ruta: f.ruta, destino: f.destino, reemplazar: !!f.reemplazar })) }), 700);
+          return true;
+        }
         case "p-generar-inicial": {
+          if (vinculado()) { pedirIA("inicial", {}); return true; }
           const docs = ($("#p-docs")?.value || "docs/esquema").trim().replace(/^\/+|\/+$/g, "");
           if (!/^[\w][\w.-]*(\/[\w][\w.-]*){0,3}$/.test(docs)) { toast("Esa carpeta para la documentación no sirve. Usa algo como docs/esquema."); return true; }
           E.encontrado.docs = docs;
@@ -742,7 +833,7 @@
 
     // ───────────── Lo que avisa app.js ─────────────
     function alCambiarCarpeta(r) {
-      E.proyecto = null; E.encontrado = null; E.propuestas = null; pj.versiones = null; pj.elemento = null; pj.ultimo = null; pj.dialogo = null;
+      E.proyecto = null; E.encontrado = null; E.vinculo = null; pj.ofrecerPasar = false; E.propuestas = null; pj.versiones = null; pj.elemento = null; pj.ultimo = null; pj.dialogo = null;
       if (E.panel) E.panel = null;
       if (r && r.proyecto) { pj.pedido = true; E.panel = "proyecto"; }
       if (E.carpeta) enviar("abrir", { docs: undefined });
@@ -768,10 +859,26 @@
       const responder = (r, ms = 120) => luego(ms, () => A.proyectoRespuesta({ orden: d.orden, ...r }));
       const enDocsSim = () => Object.fromEntries(Object.entries(memoria).filter(([k]) => k.startsWith(docs + "/")).map(([k, v]) => [k.slice(docs.length + 1), v]));
       const leerEsquema = () => { try { return JSON.parse(memoria[docs + "/esquema.json"]); } catch { return null; } };
-      const recientes = () => (leerEsquema() ? [{ nombre: leerEsquema().nombre, ruta: DEMO.carpeta.ruta }] : []);
+      const recientes = () => (leerEsquema() || sim.vinculado ? [{ nombre: leerEsquema()?.nombre || DEMO.carpeta.nombre, ruta: DEMO.carpeta.ruta, ubicacion: "~/Esquema/" + DEMO.carpeta.nombre, codigo: DEMO.carpeta.nombre }] : []);
+      // El repo del código, para «Pasar al proyecto» (en memoria; ya trae una arquitectura vieja para mostrar «Ya existe»).
+      sim.repo = sim.repo || { "docs/arquitectura.md": "# Arquitectura\n\nLa versión que estaba en el repo.\n" };
+      const lugar = () => (sim.vinculado ? { vinculado: true, ubicacion: "~/Esquema/" + DEMO.carpeta.nombre, codigo: DEMO.carpeta.nombre } : {});
       const pr = DEMO.proyecto;
       switch (d.orden) {
-        case "abrir": { const x = leerEsquema(); return responder({ ok: true, existe: !!x, docs, esquema: x, git: { hay: true }, cambios: sim.cambios || null, pendiente: sim.pendiente !== false && !!x && !sim.versiones.length, recientes: recientes() }); }
+        case "abrir": { const x = leerEsquema(); return responder({ ok: true, existe: !!x, docs, esquema: x, git: { hay: true }, cambios: sim.cambios || null, pendiente: sim.pendiente !== false && !!x && !sim.versiones.length, recientes: recientes(), ...lugar() }); }
+        case "vincular": sim.vinculado = true; return responder({ ok: true, indice: 0, ubicacion: lugar().ubicacion, recientes: recientes() });
+        case "mover": sim.vinculado = true; return responder({ ok: true, indice: 0, desde: docs, ubicacion: lugar().ubicacion, recientes: recientes() });
+        case "destinos": return responder({ ok: true, codigo: DEMO.carpeta.nombre, estados: Object.fromEntries((d.rutas || []).map((x) => [x, sim.repo[x] != null ? { valido: true, existe: true, texto: sim.repo[x] } : { valido: /^[\w.-]+(\/[\w.-]+)*\.(md|mmd)$/.test(x), existe: false }])) });
+        case "pasar": {
+          const escritos = [], saltados = [];
+          for (const a of d.archivos || []) {
+            const t = memoria[docs + "/" + a.ruta];
+            if (t == null) saltados.push({ ruta: a.ruta, motivo: "no-existe" });
+            else if (sim.repo[a.destino] != null && !a.reemplazar) saltados.push({ ruta: a.ruta, destino: a.destino, motivo: "existe" });
+            else { sim.repo[a.destino] = t; escritos.push({ ruta: a.ruta, destino: a.destino }); }
+          }
+          return responder({ ok: true, escritos, saltados, codigo: DEMO.carpeta.nombre });
+        }
         case "leer": return responder({ ok: true, encontrado: { ...pr.encontrado, docs: d.docs || docs } }, 300);
         case "preparar": {
           const piezas = [], rechazados = [];

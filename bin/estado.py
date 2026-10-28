@@ -13,7 +13,7 @@ import proyecto
 
 
 def estado():
-    recientes = [{"nombre": p["nombre"], "ruta": p["ruta"]} for p in proyecto.recientes()]
+    recientes = proyecto.para_interfaz(proyecto.recientes())
     return {"config": comun.config(), "ias": ia.lista(), "version": comun.VERSION, "plantillas": plantillas.listar(), "proyectos": recientes}
 
 

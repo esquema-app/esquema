@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Proyectos: la documentación de un repositorio, dentro del mismo repo (docs/esquema/), conectada por elementos y con versiones.
+"""Proyectos: la documentación de un repositorio, conectada por elementos y con versiones.
+
+Cada proyecto tiene su documentación APARTE del código, en ~/Esquema/<proyecto>/ (con su propio git), vinculada a la carpeta del
+código en proyectos.json (en la carpeta de Esquema, nunca en la del proyecto). Lo que la persona quiera llevar al repo lo pasa con
+«pasar». Los proyectos de antes, con la documentación dentro del repo (docs/esquema/), siguen funcionando y se pueden «mover».
 
 Uso (lo de la persona llega en un JSON de entrada; el último argumento siempre es el JSON de salida):
   proyecto.py <orden> <entrada.json> <salida.json>      entrada {carpeta, docs?, …}
@@ -13,10 +17,15 @@ Uso (lo de la persona llega en un JSON de entrada; el último argumento siempre 
   versiones  la historia → {ok, modo, lista, pendiente}
   ver        los archivos de la carpeta de docs en una versión (o «actual») → {ok, id, archivos: {ruta: texto}}
   restaurar  escribe los archivos de una versión (no borra nada) → {ok, escritos, sobran}
+  vincular   la carpeta actual (el código) queda vinculada a ~/Esquema/<nombre>/ → {ok, indice, ubicacion}
+  mover      copia la documentación de <repo>/docs/esquema a ~/Esquema/<nombre>/ y la vincula (no borra nada) → {ok, indice}
+  destinos   para «Pasar al proyecto»: qué rutas ya existen en el repo y su texto → {ok, estados: {destino: {existe, texto}}}
+  pasar      escribe en el repo los documentos elegidos (solo .md/.mmd; reemplaza solo si se pide) → {ok, escritos, saltados}
 
 Seguridad: solo se lee lo que comun.recorrer deja (respeta .gitignore, sin secretos ni carpetas pesadas), nada binario y con
 tope de tamaño; lo que va a la IA pasa además por `ocultar_secretos`. git se llama con argumentos fijos (nunca un shell), sin
-hooks, sin pedir nada por la terminal y sin empujar. Solo se escribe dentro de la carpeta de docs.
+hooks, sin pedir nada por la terminal y sin empujar. Solo se escribe dentro de la carpeta de docs y, con «pasar», los .md/.mmd que
+la persona eligió dentro de la carpeta del código vinculada (la ruta del código sale de proyectos.json, nunca de la interfaz).
 """
 import datetime
 import gzip
@@ -26,6 +35,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 
 import asistente
 import carpeta as carpeta_mod
@@ -40,6 +50,7 @@ MAX_COPIAS = 100
 MAX_LEER = 60_000          # por archivo que va a la IA
 MAX_ENVIO = 260_000        # todo lo que va a la IA en un pedido
 MAX_DOC = 200_000          # un documento propuesto o enviado
+MAX_PROYECTOS = 30
 TIPOS_ELEMENTO = ("pantalla", "boton", "accion", "servicio", "modulo", "dato", "actor", "otro")
 TIPOS_DOCUMENTO = ("vision", "arquitectura", "flujo", "glosario", "otro")
 ID = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -81,6 +92,38 @@ def base_de(e):
     if not isinstance(c, str) or not c or not os.path.isdir(c):
         raise ValueError("No encontré la carpeta del proyecto.")
     return os.path.realpath(c)
+
+
+def biblioteca():
+    """Donde viven las documentaciones de Esquema: ~/Esquema (una carpeta por proyecto)."""
+    return os.path.join(os.path.expanduser("~"), "Esquema")
+
+
+def vinculo(base):
+    """Si la carpeta es la documentación de un proyecto vinculado, la carpeta de su código; si no, None."""
+    for p in recientes():
+        if p.get("codigo") and os.path.realpath(p["ruta"]) == base:
+            c = os.path.realpath(p["codigo"])
+            if not os.path.isdir(c):
+                raise ValueError(f"No encontré la carpeta del código de este proyecto ({os.path.basename(c)}). ¿La moviste?")
+            return c
+    return None
+
+
+def lugares(e):
+    """Dónde está cada cosa: {codigo, dir_docs, docs, repo, spec, vinculado}. «repo» y «spec» son dónde y qué versiona git."""
+    base = base_de(e)
+    cod = vinculo(base)
+    if cod:
+        return {"codigo": cod, "dir_docs": base, "docs": "", "repo": base, "spec": ".", "vinculado": True}
+    docs = docs_de(base, e)
+    return {"codigo": base, "dir_docs": ruta_docs(base, docs), "docs": docs, "repo": base, "spec": docs, "vinculado": False}
+
+
+def ubicacion(ruta):
+    """La ruta para mostrar, con «~» en vez de la carpeta de la persona."""
+    casa = os.path.realpath(os.path.expanduser("~"))
+    return "~" + ruta[len(casa):] if ruta == casa or ruta.startswith(casa + os.sep) else ruta
 
 
 def doc_valido(r):
@@ -195,19 +238,31 @@ def recientes():
     r = []
     for p in d.get("recientes", []) if isinstance(d, dict) else []:
         if isinstance(p, dict) and isinstance(p.get("ruta"), str) and os.path.isabs(p["ruta"]) and isinstance(p.get("nombre"), str):
+            if isinstance(p.get("codigo"), str) and os.path.isabs(p["codigo"]):
+                r.append({"ruta": p["ruta"], "nombre": p["nombre"][:80], "docs": "", "codigo": p["codigo"]})
+                continue
             try:
                 docs = carpeta_docs(p.get("docs"))
             except ValueError:
                 docs = DOCS_DEFECTO
             r.append({"ruta": p["ruta"], "nombre": p["nombre"][:80], "docs": docs})
-    return r[:8]
+    return r[:MAX_PROYECTOS]
 
 
-def recordar(base, nombre, docs):
+def recordar(base, nombre, docs, codigo=None):
+    """El proyecto queda primero en la lista (conserva su vínculo con el código si ya lo tenía)."""
+    anterior = next((p for p in recientes() if os.path.realpath(p["ruta"]) == base), None)
+    codigo = codigo or (anterior or {}).get("codigo")
     lista = [p for p in recientes() if os.path.realpath(p["ruta"]) != base]
-    lista.insert(0, {"ruta": base, "nombre": str(nombre)[:80], "docs": docs})
+    lista.insert(0, {"ruta": base, "nombre": str(nombre)[:80], "docs": "" if codigo else docs, **({"codigo": codigo} if codigo else {})})
     comun.carpeta_privada(comun.carpeta_app())
-    comun.escribir_json(_ruta_recientes(), {"recientes": lista[:8]})
+    comun.escribir_json(_ruta_recientes(), {"recientes": lista[:MAX_PROYECTOS]})
+
+
+def para_interfaz(lista):
+    """Los proyectos como los ve la interfaz: nombre, dónde está la documentación y el nombre de la carpeta del código."""
+    return [{"nombre": p["nombre"], "ruta": p["ruta"], "ubicacion": ubicacion(os.path.realpath(p["ruta"])),
+             **({"codigo": os.path.basename(p["codigo"].rstrip("/\\"))} if p.get("codigo") else {})} for p in lista]
 
 
 def docs_de(base, e):
@@ -299,6 +354,39 @@ def cambios_codigo(base, docs):
     return {"n": n, "desde": ultimo[:12], "commits": commits}
 
 
+def cambios_vinculado(codigo, dir_docs):
+    """Commits del código desde la última versión de la documentación (que vive en otro repo): se comparan por fecha."""
+    if not es_repo(codigo):
+        return None
+    fecha = None
+    if es_repo(dir_docs):
+        c, s, _ = git(dir_docs, "log", "-1", "--format=%cI")
+        fecha = s.strip() if c == 0 and s.strip() else None
+    else:
+        copias = _copias(dir_docs)
+        if copias:
+            fecha = datetime.datetime.strptime(copias[0][:15], "%Y%m%dT%H%M%S").isoformat()
+    if not fecha or not re.fullmatch(r"[0-9T:+.\-Z]{10,40}", fecha):
+        return None
+    c, s, _ = git(codigo, "rev-list", "--count", f"--since={fecha}", "HEAD")
+    n = int(s.strip()) if c == 0 and s.strip().isdigit() else 0
+    if not n:
+        return {"n": 0, "desde": fecha[:10], "commits": []}
+    _, s, _ = git(codigo, "log", "-n30", "--name-only", f"--since={fecha}", "--format=%x1e%H%x1f%aI%x1f%s")
+    commits = []
+    for bloque in s.split("\x1e"):
+        lineas = [l for l in bloque.split("\n") if l.strip()]
+        if not lineas or lineas[0].count("\x1f") != 2:
+            continue
+        h, f, msg = lineas[0].split("\x1f")
+        commits.append({"id": h[:12], "fecha": f[:10], "mensaje": msg[:200], "archivos": [a[:200] for a in lineas[1:41]]})
+    return {"n": n, "desde": fecha[:10], "commits": commits}
+
+
+def cambios(L):
+    return cambios_vinculado(L["codigo"], L["dir_docs"]) if L["vinculado"] else cambios_codigo(L["codigo"], L["docs"])
+
+
 # ───────────── Leer el proyecto (sin IA) ─────────────
 
 
@@ -350,8 +438,8 @@ def archivos_del_repo(base):
 
 
 def leer(e):
-    base = base_de(e)
-    docs = docs_de(base, e)
+    L = lugares(e)
+    base, docs = L["codigo"], L["docs"]
     rutas, omitidos = archivos_del_repo(base)
     conjunto = set(rutas)
     lenguajes, carpetas, binarios = {}, {}, 0
@@ -398,7 +486,7 @@ def leer(e):
         "carpeta": os.path.basename(base),
         "docs": docs,
         "readme": info_readme,
-        "guias": [g for g in GUIAS if g in conjunto] + sorted(r for r in rutas if r.startswith("docs/") and r.endswith(".md") and r.count("/") == 1 and not r.startswith(docs + "/"))[:10],
+        "guias": [g for g in GUIAS if g in conjunto] + sorted(r for r in rutas if r.startswith("docs/") and r.endswith(".md") and r.count("/") == 1 and not (docs and r.startswith(docs + "/")))[:10],
         "lenguajes": sorted(([k, v] for k, v in lenguajes.items()), key=lambda x: -x[1])[:8],
         "carpetas": sorted(([k, v] for k, v in carpetas.items()), key=lambda x: -x[1])[:12],
         "manifiestos": manifiestos,
@@ -407,23 +495,31 @@ def leer(e):
         "binarios": binarios,
         "omitidos": omitidos,
         "git": info_git(base),
-        "documentado": os.path.isfile(os.path.join(ruta_docs(base, docs), ESQUEMA)),
+        "documentado": os.path.isfile(os.path.join(L["dir_docs"], ESQUEMA)),
+        "vinculado": L["vinculado"],
+        "ubicacion": ubicacion(L["dir_docs"]),
     }
     return {"ok": True, "encontrado": encontrado}
 
 
 def abrir(e):
     base = base_de(e)
-    docs = docs_de(base, e)
-    dir_docs = ruta_docs(base, docs)
-    esquema, error = leer_esquema(dir_docs)
-    r = {"ok": True, "existe": esquema is not None, "docs": docs, "esquema": esquema, "error": error, "recientes": recientes()}
+    # ¿Es la carpeta del código de un proyecto que ya tiene su documentación aparte? Entonces se abre esa.
+    for i, p in enumerate(recientes()):
+        if p.get("codigo") and os.path.realpath(p["codigo"]) == base:
+            return {"ok": True, "existe": False, "vinculado_en": i, "recientes": para_interfaz(recientes())}
+    L = lugares(e)
+    esquema, error = leer_esquema(L["dir_docs"])
+    r = {"ok": True, "existe": esquema is not None, "docs": L["docs"], "esquema": esquema, "error": error, "vinculado": L["vinculado"],
+         "ubicacion": ubicacion(L["dir_docs"]), "codigo": os.path.basename(L["codigo"]), "recientes": para_interfaz(recientes())}
+    if L["vinculado"] and esquema is None:
+        r["vacio"] = True  # recién vinculado: falta escribir la documentación
     if esquema is not None:
-        recordar(base, esquema["nombre"], docs)
-        r["recientes"] = recientes()
-        r["git"] = {"hay": es_repo(base)}
-        r["cambios"] = cambios_codigo(base, docs) if r["git"]["hay"] else None
-        r["pendiente"] = versiones({**e, "docs": docs})["pendiente"]
+        recordar(base, esquema["nombre"], L["docs"])
+        r["recientes"] = para_interfaz(recientes())
+        r["git"] = {"hay": es_repo(L["codigo"])}
+        r["cambios"] = cambios(L) if r["git"]["hay"] else None
+        r["pendiente"] = versiones(e)["pendiente"]
     return r
 
 
@@ -457,17 +553,17 @@ def _archivo(base, rel, conjunto, maximo):
 
 def piezas(e):
     """Todo lo que se manda a la IA, en orden. «Ver lo que se envía» muestra exactamente esto."""
-    base = base_de(e)
-    docs = docs_de(base, e)
+    L = lugares(e)
+    base, docs = L["codigo"], L["docs"]
     tarea = e.get("tarea") if e.get("tarea") in TAREAS else "inicial"
     rutas, _ = archivos_del_repo(base)
     conjunto = set(rutas)
     r, rechazados = [], []
-    codigo = [x for x in rutas if not x.startswith(docs + "/")]
+    codigo = [x for x in rutas if not (docs and x.startswith(docs + "/"))]
     pedido = str(e.get("pedido") or "")[:3000]
     if pedido.strip():
         r.append(_pieza("pedido", "Lo que pides", ocultar_secretos(pedido)))
-    esquema, _ = leer_esquema(ruta_docs(base, docs))
+    esquema, _ = leer_esquema(L["dir_docs"])
     if tarea in ("inicial", "flujo"):
         r.append(_pieza("lista", "Lista de archivos del proyecto (solo nombres)", "\n".join(codigo[:400]), recortado=len(codigo) > 400))
         readme = next((x for x in rutas if x.lower() in ("readme.md", "readme.markdown")), None)
@@ -496,11 +592,11 @@ def piezas(e):
         r.append(_pieza("elementos", "Elementos del proyecto", json.dumps(els, ensure_ascii=False, indent=1)))
         r.append(_pieza("indice", "Documentos que ya existen", "\n".join(f"{d['ruta']} — {d['titulo']}" for d in esquema["documentos"])))
     if tarea == "revisar":
-        cam = cambios_codigo(base, docs) or {"commits": []}
+        cam = cambios(L) or {"commits": []}
         texto = "\n".join(f"{c['fecha']} {c['mensaje']}\n  " + "\n  ".join(c["archivos"][:15]) for c in cam["commits"])
         r.append(_pieza("commits", "Commits nuevos (mensaje y archivos, sin autores)", ocultar_secretos(texto)))
     if tarea in ("cambio", "revisar"):
-        dir_docs = ruta_docs(base, docs)
+        dir_docs = L["dir_docs"]
         for rel in list(e.get("documentos") or [])[:12]:
             if not doc_valido(rel):
                 rechazados.append({"ruta": str(rel)[:200], "motivo": "ruta"})
@@ -581,7 +677,8 @@ def prompt(e, tarea, docs, ps):
                       f"con un título, {asistente.tipo_diagrama(e.get('tipo'))} y entre 2 y 4 líneas que expliquen cómo leerlo. "
                       "Reutiliza los elementos que ya existen (mismos id) y agrega los nuevos que hagan falta. Si para hacerlo bien "
                       "necesitas leer archivos del código, pídelos en PIDE y no escribas el documento todavía.")
-    partes = [encabezado, asistente.SOLO_ESTO, asistente.SUBCONJUNTO, FORMATO, f"\nLa documentación vive en «{docs}/» dentro del repositorio."]
+    donde = f"La documentación vive en «{docs}/» dentro del repositorio." if docs else "La documentación vive en su propia carpeta, aparte del código."
+    partes = [encabezado, asistente.SOLO_ESTO, asistente.SUBCONJUNTO, FORMATO, "\n" + donde]
     for p in ps:
         etiqueta = {"archivo": "archivo", "documento": "documento"}.get(p["clave"], p["clave"])
         attr = f' ruta="{p["ruta"]}"' if p.get("ruta") else ""
@@ -663,19 +760,19 @@ def generar(e):
 
 def guardar(e):
     base = base_de(e)
-    docs = docs_de(base, e)
+    L = lugares(e)
+    docs, dir_docs = L["docs"], L["dir_docs"]
     x = e.get("esquema")
     errores = validar_esquema(x)
     if errores:
         return {"ok": False, "error": "No guardé esquema.json: " + "; ".join(errores[:3])}
-    dir_docs = ruta_docs(base, docs)
     try:
         os.makedirs(dir_docs, exist_ok=True)
         comun.escribir_atomico(os.path.join(dir_docs, ESQUEMA), texto_esquema(x))
     except OSError:
         return {"ok": False, "error": "No pude guardar esquema.json."}
     recordar(base, x["nombre"], docs)
-    return {"ok": True, "docs": docs, "esquema": comun.leer_json(os.path.join(dir_docs, ESQUEMA)), "recientes": recientes()}
+    return {"ok": True, "docs": docs, "esquema": comun.leer_json(os.path.join(dir_docs, ESQUEMA)), "recientes": para_interfaz(recientes())}
 
 
 # ───────────── Versiones ─────────────
@@ -719,12 +816,13 @@ def mensaje_version(m):
 
 
 def version(e):
-    base = base_de(e)
-    docs = docs_de(base, e)
-    dir_docs = ruta_docs(base, docs)
+    L = lugares(e)
+    base, docs, dir_docs = L["repo"], L["spec"], L["dir_docs"]
     if not os.path.isdir(dir_docs):
         return {"ok": False, "error": "Todavía no hay documentación que guardar."}
     msg = mensaje_version(e.get("mensaje"))
+    if L["vinculado"] and not es_repo(base) and git_disponible():
+        git(base, "init", "-q")  # la documentación aparte tiene su propio git (nunca el del código)
     if es_repo(base):
         c, _, err = git(base, "add", "-A", "--", docs)
         if c != 0:
@@ -766,9 +864,8 @@ def version(e):
 
 
 def versiones(e):
-    base = base_de(e)
-    docs = docs_de(base, e)
-    dir_docs = ruta_docs(base, docs)
+    L = lugares(e)
+    base, docs, dir_docs = L["repo"], L["spec"], L["dir_docs"]
     if es_repo(base):
         _, s, _ = git(base, "log", "-n200", "--format=%H%x1f%aI%x1f%s", "--", docs)
         lista = [{"id": h, "fecha": f, "mensaje": m[:300]} for h, f, m in (l.split("\x1f", 2) for l in s.split("\n") if l.count("\x1f") == 2)]
@@ -791,8 +888,8 @@ def versiones(e):
     return {"ok": True, "modo": "copias", "lista": lista, "pendiente": pendiente}
 
 
-def archivos_version(base, docs, ident):
-    dir_docs = ruta_docs(base, docs)
+def archivos_version(L, ident):
+    base, docs, dir_docs = L["repo"], L["spec"], L["dir_docs"]
     if ident == "actual":
         return archivos_docs(dir_docs) if os.path.isdir(dir_docs) else {}
     if isinstance(ident, str) and re.fullmatch(r"[0-9a-f]{7,64}", ident) and es_repo(base):
@@ -801,7 +898,7 @@ def archivos_version(base, docs, ident):
             raise ValueError("No encontré esa versión.")
         r = {}
         for ruta in [x for x in s.split("\x00") if x][:400]:
-            rel = ruta[len(docs) + 1:] if ruta.startswith(docs + "/") else None
+            rel = ruta if docs == "." else ruta[len(docs) + 1:] if ruta.startswith(docs + "/") else None
             if not rel or rel.startswith(VERSIONES + "/") or not (rel.endswith((".md", ".mmd")) or rel == ESQUEMA):
                 continue
             c, t, _ = git(base, "show", f"{ident}:./{ruta}")
@@ -820,22 +917,20 @@ def archivos_version(base, docs, ident):
 
 
 def ver(e):
-    base = base_de(e)
-    docs = docs_de(base, e)
+    L = lugares(e)
     ident = e.get("id")
-    return {"ok": True, "id": ident, "docs": docs, "archivos": archivos_version(base, docs, ident)}
+    return {"ok": True, "id": ident, "docs": L["docs"], "archivos": archivos_version(L, ident)}
 
 
 def restaurar(e):
     """Escribe los archivos de una versión encima de los de ahora. No borra nada: lo que no estaba en esa versión se queda."""
-    base = base_de(e)
-    docs = docs_de(base, e)
+    L = lugares(e)
+    docs, dir_docs = L["docs"], L["dir_docs"]
     if e.get("id") == "actual":
         raise ValueError("Elige una versión anterior.")
-    viejos = archivos_version(base, docs, e.get("id"))
+    viejos = archivos_version(L, e.get("id"))
     if not viejos:
         raise ValueError("Esa versión no tiene documentos.")
-    dir_docs = ruta_docs(base, docs)
     ahora = archivos_docs(dir_docs) if os.path.isdir(dir_docs) else {}
     escritos = []
     for rel, texto in viejos.items():
@@ -855,8 +950,131 @@ def restaurar(e):
     return {"ok": True, "docs": docs, "escritos": escritos, "sobran": sorted(set(ahora) - set(viejos))}
 
 
+# ───────────── La documentación aparte, vinculada al código ─────────────
+
+
+def _slug(nombre):
+    s = re.sub(r"[^a-z0-9]+", "-", unicodedata.normalize("NFD", nombre).encode("ascii", "ignore").decode().lower()).strip("-")
+    return s[:50].strip("-") or "proyecto"
+
+
+def _crear_vinculo(codigo, nombre):
+    """Crea ~/Esquema/<nombre>/ (con su git) para el código, o devuelve la que ya tenía. → (indice, carpeta)."""
+    for i, p in enumerate(recientes()):
+        if p.get("codigo") and os.path.realpath(p["codigo"]) == codigo and os.path.isdir(p["ruta"]):
+            return i, os.path.realpath(p["ruta"])
+    raiz = biblioteca()
+    os.makedirs(raiz, exist_ok=True)
+    s = base = _slug(nombre)
+    k = 2
+    while os.path.exists(os.path.join(raiz, s)):
+        s = f"{base}-{k}"
+        k += 1
+    destino = os.path.join(raiz, s)
+    os.makedirs(destino)
+    if git_disponible():
+        git(destino, "init", "-q")
+    recordar(os.path.realpath(destino), nombre, "", codigo=codigo)
+    return 0, os.path.realpath(destino)
+
+
+def _es_codigo_valido(base):
+    raiz = os.path.realpath(biblioteca())
+    casa = os.path.realpath(os.path.expanduser("~"))
+    if base == raiz or base.startswith(raiz + os.sep):
+        raise ValueError("Esta carpeta ya es documentación de Esquema: elige la carpeta del código.")
+    if base in (casa, os.path.realpath(os.sep)):
+        raise ValueError("Elige la carpeta de un proyecto, no tu carpeta personal entera.")
+
+
+def vincular(e):
+    """La carpeta actual es el código: su documentación queda aparte, en ~/Esquema/<nombre>/."""
+    base = base_de(e)
+    _es_codigo_valido(base)
+    i, destino = _crear_vinculo(base, os.path.basename(base))
+    return {"ok": True, "indice": i, "ubicacion": ubicacion(destino), "recientes": para_interfaz(recientes())}
+
+
+def mover(e):
+    """La documentación que estaba dentro del repo (docs/esquema) pasa a ~/Esquema/<nombre>/. No se borra nada del repo."""
+    base = base_de(e)
+    _es_codigo_valido(base)
+    docs = docs_de(base, e)
+    dir_docs = ruta_docs(base, docs)
+    esquema, _ = leer_esquema(dir_docs)
+    if esquema is None:
+        raise ValueError("Esta carpeta no tiene documentación de Esquema que mover.")
+    i, destino = _crear_vinculo(base, esquema["nombre"])
+    for rel, texto in archivos_docs(dir_docs).items():
+        ruta = os.path.join(destino, *rel.split("/"))
+        if not os.path.exists(ruta):
+            comun.escribir_atomico(ruta, texto)
+    recordar(destino, esquema["nombre"], "", codigo=base)
+    version({"carpeta": destino, "mensaje": f"Traje la documentación desde {docs}/ del proyecto"})
+    return {"ok": True, "indice": 0, "desde": docs, "ubicacion": ubicacion(destino), "recientes": para_interfaz(recientes())}
+
+
+def _destino(codigo, rel):
+    """La ruta en el repo donde quedaría un documento, o None si no sirve (solo .md/.mmd, sin carpetas ocultas, dentro del código)."""
+    if not codigo_valido(rel) or not re.search(r"\.(md|mmd)$", rel, re.I) or len(rel) > 200:
+        return None
+    partes = rel.replace("\\", "/").split("/")
+    if any(x.startswith(".") for x in partes) or partes[0] in comun.SIEMPRE_FUERA:
+        return None
+    ruta = os.path.realpath(os.path.join(codigo, *partes))
+    if os.path.commonpath([codigo, ruta]) != codigo or ruta == codigo:
+        return None
+    return ruta
+
+
+def destinos(e):
+    L = lugares(e)
+    if not L["vinculado"]:
+        raise ValueError("Esta documentación ya está dentro del proyecto.")
+    estados = {}
+    for rel in list(e.get("rutas") or [])[:200]:
+        ruta = _destino(L["codigo"], rel) if isinstance(rel, str) else None
+        if not ruta:
+            estados[str(rel)[:200]] = {"valido": False}
+        elif os.path.isfile(ruta) and not os.path.islink(ruta):
+            t, rec = leer_texto(ruta, MAX_DOC)
+            estados[rel] = {"valido": True, "existe": True, "texto": t, "recortado": rec}
+        else:
+            estados[rel] = {"valido": True, "existe": os.path.exists(ruta)}
+    return {"ok": True, "codigo": os.path.basename(L["codigo"]), "estados": estados}
+
+
+def pasar(e):
+    """Copia al repo los documentos que la persona eligió. Lo que ya existe se reemplaza solo si lo pidió."""
+    L = lugares(e)
+    if not L["vinculado"]:
+        raise ValueError("Esta documentación ya está dentro del proyecto.")
+    escritos, saltados = [], []
+    for a in list(e.get("archivos") or [])[:200]:
+        if not isinstance(a, dict):
+            continue
+        rel, dest = a.get("ruta"), a.get("destino")
+        if not doc_valido(rel):
+            saltados.append({"ruta": str(rel)[:200], "motivo": "ruta"})
+            continue
+        origen = os.path.join(L["dir_docs"], *rel.split("/"))
+        ruta = _destino(L["codigo"], dest) if isinstance(dest, str) else None
+        if not os.path.isfile(origen) or os.path.islink(origen):
+            saltados.append({"ruta": rel, "motivo": "no-existe"})
+        elif not ruta or os.path.islink(ruta) or os.path.isdir(ruta):
+            saltados.append({"ruta": rel, "destino": str(dest)[:200], "motivo": "destino"})
+        elif os.path.exists(ruta) and not a.get("reemplazar"):
+            saltados.append({"ruta": rel, "destino": dest, "motivo": "existe"})
+        else:
+            t, _ = leer_texto(origen, comun.MAXIMO_ARCHIVO)
+            comun.escribir_atomico(ruta, t)
+            escritos.append({"ruta": rel, "destino": dest})
+    return {"ok": True, "escritos": escritos, "saltados": saltados, "codigo": os.path.basename(L["codigo"])}
+
+
 ORDENES = {"abrir": abrir, "leer": leer, "preparar": preparar, "generar": generar, "guardar": guardar, "version": version,
-           "versiones": versiones, "ver": ver, "restaurar": restaurar}
+           "versiones": versiones, "ver": ver, "restaurar": restaurar, "vincular": vincular, "mover": mover, "destinos": destinos,
+           "pasar": pasar}
 
 
 def main(args):

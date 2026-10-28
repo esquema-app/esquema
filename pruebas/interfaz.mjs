@@ -487,6 +487,18 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   if (ini.els !== 7 || !ini.docs.includes("elementos.md") || !ini.arch.includes(D + "flujos/pagar-una-cuenta.md")) falla("Guardar las propuestas no deja los documentos y elementos: " + JSON.stringify(ini));
   if (!(await texto(D + "elementos.md"))?.includes('<a id="el-boton-pagar"></a>')) falla("El glosario no tiene el ancla de cada elemento");
   await etapa("inicio");
+  // Pasar al proyecto: se elige qué va al repo; lo que ya existe no va marcado y solo se reemplaza si se pide
+  if (!(await estado("return E.proyecto.vinculado"))) falla("Un proyecto nuevo no queda con su documentación aparte");
+  await p.click('.p-acciones [data-accion="p-pasar"]'); await p.waitForSelector(".p-pasar-fila");
+  const k = await p.$$eval(".p-pasar-fila b", (l) => l.findIndex((x) => x.textContent === "arquitectura.md"));
+  if (k < 0 || (await p.isChecked(`[data-p-fila="${k}"]`))) falla("«Pasar al proyecto» marca un archivo que ya existe en el repo");
+  await p.click(`[data-p-ver-dif="${k}"]`); await p.waitForSelector(".p-pasar .p-dif");
+  await etapa("pasar");
+  await p.click(`[data-p-reemplazar="${k}"]`);
+  if (!(await p.isChecked(`[data-p-fila="${k}"]`))) falla("«Reemplazar» no marca el archivo para pasarlo");
+  await p.click('[data-accion="p-pasar-enviar"]');
+  await p.waitForFunction(() => !document.querySelector(".p-pasar"), null, { timeout: 4000 });
+  await p.waitForFunction(() => /Pasé|copied/.test(document.querySelector("#toast")?.textContent || ""), null, { timeout: 4000 });
   // El lienzo: un nodo enlazado muestra su elemento; uno sin enlace se enlaza (con un elemento nuevo)
   await p.evaluate((r) => window.Esquema._pruebas.abrir(r), D + "flujos/recibir-el-comprobante.md");
   await p.waitForFunction(() => document.querySelector("#texto")?.value.length > 0);

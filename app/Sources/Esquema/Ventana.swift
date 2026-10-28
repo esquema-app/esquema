@@ -15,7 +15,7 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
 
     static let maximoExportar = 50 * 1024 * 1024
     /// Proyectos: lo que bin/proyecto.py sabe hacer (la interfaz no puede pedir otra cosa).
-    static let ordenesProyecto: Set<String> = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar"]
+    static let ordenesProyecto: Set<String> = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar"]
 
     func mostrar() {
         if ventana == nil { crear() }
@@ -150,7 +150,7 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
     /// Un proyecto reciente: la ruta sale de <carpeta de Esquema>/proyectos.json (lo escribe bin/proyecto.py), nunca de la interfaz.
     private func abrirProyecto(_ indice: Int) {
         let todos = Archivos.leerJSON(Rutas.datos.appendingPathComponent("proyectos.json"))["recientes"] as? [[String: Any]] ?? []
-        let lista = Array(todos.filter { ($0["ruta"] as? String)?.hasPrefix("/") == true && $0["nombre"] is String }.prefix(8))
+        let lista = Array(todos.filter { ($0["ruta"] as? String)?.hasPrefix("/") == true && $0["nombre"] is String }.prefix(30))
         var dir: ObjCBool = false
         guard indice >= 0, indice < lista.count, let ruta = lista[indice]["ruta"] as? String,
               FileManager.default.fileExists(atPath: ruta, isDirectory: &dir), dir.boolValue else {

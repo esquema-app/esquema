@@ -5,6 +5,11 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Varios proyectos, con la documentación aparte:** agrega los proyectos que quieras; la documentación de cada uno vive en
+  `~/Esquema/<proyecto>/`, con su propio historial, y tu repo no cambia. Con «Pasar al proyecto» eliges qué documentos copiar al
+  repo y si reemplazas los que ya existen, viendo la diferencia. Los proyectos de antes se pueden mover aparte sin borrar nada.
+  · *Several projects, with documentation kept apart: each project's docs live in `~/Esquema/<project>/` with their own history,
+  and your repo doesn't change. “Copy to project” lets you choose what goes into the repo and whether to replace what exists.*
 - **Tu IA dibuja tu proyecto, no otros:** si pides algo sobre «este proyecto», Esquema le muestra el proyecto a tu IA (antes ves qué
   se envía), y Claude ya no usa tu memoria personal ni tus notas, que lo llevaban a dibujar otros proyectos tuyos. · *Your AI draws
   your project, not others: asking about “this project” sends it the project (you see what goes first), and Claude no longer uses

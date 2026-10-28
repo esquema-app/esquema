@@ -58,11 +58,24 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
 - Nada más se guarda: ni base de datos, ni archivos ocultos en la carpeta de la persona (salvo lo de un proyecto, abajo, que la
   persona pide). La config de la app va en la carpeta de Esquema del sistema (`comun.carpeta_app()`: `~/Library/Application
   Support/Esquema`, `%APPDATA%\Esquema` o `~/.config/esquema`, 0700; las apps se la pasan a los scripts en `ESQUEMA_DATOS`):
-  `config.json` (`idioma_ui`, `ia`, `tema`, `bienvenida`, `carpeta`) y `proyectos.json` (`{"recientes": [{ruta, nombre, docs}]}`,
-  hasta 8; lo escribe `bin/proyecto.py`).
+  `config.json` (`idioma_ui`, `ia`, `tema`, `bienvenida`, `carpeta`) y `proyectos.json` (`{"recientes": [{ruta, nombre, docs,
+  codigo?}]}`, hasta 30; lo escribe `bin/proyecto.py`). La documentación de los proyectos va en `~/Esquema/<proyecto>/` (abajo).
 
-### Proyectos (`docs/esquema/` dentro del repo)
-- **Carpeta:** `docs/esquema/` por defecto (se elige al documentar: relativa, sin `..` ni carpetas ocultas, hasta 4 niveles). Adentro,
+### Proyectos: la documentación aparte, en `~/Esquema/<proyecto>/`
+- **Aparte del código:** cada proyecto tiene su documentación en `~/Esquema/<proyecto>/` (`proyecto.biblioteca()`), con **su propio
+  git** (`git init` al vincular; las versiones nunca tocan el git del código). El vínculo con la carpeta del código vive en
+  `proyectos.json` de la carpeta de Esquema (`{ruta: <la documentación>, nombre, docs: "", codigo: <la carpeta del código>}`, hasta
+  30), nunca en la carpeta de la persona ni en lo que manda la interfaz. La carpeta abierta en la app es la de documentación;
+  `proyecto.lugares` resuelve dónde está el código (`vinculo`) y lo que se lee para la IA sale de ahí. `vincular` (la carpeta actual
+  es el código; abrir la carpeta del código de un proyecto vinculado lleva a su documentación con `vinculado_en`), `mover` (copia
+  la documentación de antes, `<repo>/docs/esquema`, sin borrar nada del repo, y guarda una versión) y **«Pasar al proyecto»**:
+  `destinos` (qué rutas del repo ya existen, con su texto) y `pasar` (copia al repo solo los `.md`/`.mmd` elegidos, dentro de la
+  carpeta del código, sin carpetas ocultas; lo que existe solo con `reemplazar`). En la interfaz: «Agregar proyecto» (`p-agregar`),
+  la lista de proyectos en el lateral, «Moverla aparte» (`p-mover`) y el diálogo `pasar` (casilla, destino `docs/<ruta>`, estado
+  Nuevo/Igual/Ya existe, «Ver diferencia» con `difHTML`, «Reemplazar»). `docsDir()` es `""` en un proyecto vinculado.
+  Cambios del código desde la última versión: por fecha (`cambios_vinculado`), porque son dos repos.
+- **Los de antes (`docs/esquema/` dentro del repo)** siguen funcionando igual y muestran «Moverla aparte».
+- **Carpeta (los de antes):** `docs/esquema/` por defecto (se elige al documentar: relativa, sin `..` ni carpetas ocultas, hasta 4 niveles). Adentro,
   Markdown y diagramas que GitHub muestra tal cual: `README.md` (visión general; GitHub lo muestra al abrir la carpeta),
   `arquitectura.md`, `flujos/<nombre>.md`, lo que la persona agregue, y dos archivos de Esquema:
   - `esquema.json` (formato abierto, versionado con la documentación; claves en este orden para diffs chicos):

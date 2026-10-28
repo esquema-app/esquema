@@ -1340,6 +1340,8 @@
     if (/^http:\/\//.test(url)) return host.enviar("abrirEnlace", { url });
   }
   document.addEventListener("input", (e) => {
+    // Casillas de «Pasar al proyecto» (los clics solo llegan a botones): el estado vive en E.pj.dialogo.
+    if (e.target.dataset?.pFila !== undefined || e.target.dataset?.pReemplazar !== undefined) { P.clic(e.target, e.target.dataset, e); return; }
     // «la secuencia de…» marca Secuencia mientras se escribe (si la persona no eligió el tipo a mano).
     if (e.target.id === "pedido-dibujo" && E.dibujar && !E.dibujar.tipoManual) {
       const tipo = tipoDelPedido(e.target.value);

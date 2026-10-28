@@ -27,9 +27,11 @@ formato que GitHub ya muestra (Markdown con bloques ```` ```mermaid ```` y archi
   exactamente qué va) o solo tu descripción, y «Dibújame» cambia el diagrama que tienes abierto. El
   asistente **README para GitHub** escribe el README de tu proyecto con la lista de archivos (solo nombres, respetando `.gitignore`,
   nunca secretos). Cada cambio de la IA tiene su tarjeta con **«Quitar este cambio»**.
-- **Proyectos: documentación que crece con tu código.** Elige la carpeta de un repositorio: Esquema lee el README, las guías, los
-  archivos y la historia de git (sin IA, nada sale de tu computador) y tu IA escribe la visión general, la arquitectura y los flujos
-  principales en `docs/esquema/`, como Markdown y Mermaid que GitHub muestra tal cual. Después pídele un flujo específico («cómo se
+- **Proyectos: documentación que crece con tu código, aparte del código.** Agrega los proyectos que quieras (cada uno es la carpeta
+  de un repositorio): Esquema lee el README, las guías, los archivos y la historia de git (sin IA, nada sale de tu computador) y tu
+  IA escribe la visión general, la arquitectura y los flujos principales en **su propia carpeta**, `~/Esquema/<proyecto>/`, con su
+  propio historial de versiones: tu repo no cambia. Con **«Pasar al proyecto»** eliges qué documentos copiar al repo (y si
+  reemplazas los que ya existen, viendo la diferencia). Después pídele un flujo específico («cómo se
   graba una reunión»): si necesita leer archivos del código te pregunta cuáles, y antes de cada envío ves exactamente qué se manda.
 - **Todo conectado.** Pantallas, botones y servicios son **elementos** (`esquema.json`); los diagramas y los textos los enlazan. Si
   renombras o quitas un botón, Esquema muestra cada documento y diagrama que cambia (antes y después, lo que queda suelto) y lo
@@ -184,9 +186,11 @@ already renders (Markdown with ```` ```mermaid ```` blocks and `.mmd` files), pl
   goes before sending) or just your description, and “Draw it” changes the diagram you have open. The
   **README for GitHub** assistant writes your project's README from the file list (names only, respecting `.gitignore`, never
   secrets). Every AI change has a card with **“Remove this change”**.
-- **Projects: documentation that grows with your code.** Pick a repository folder: Esquema reads the README, guides, files and git
-  history (no AI, nothing leaves your computer) and your AI writes the overview, architecture and main flows in `docs/esquema/` as
-  Markdown and Mermaid that GitHub shows as is. Ask for a specific flow later; if it needs to read code files it asks which ones, and
+- **Projects: documentation that grows with your code, kept apart from it.** Add as many projects as you want (each one is a
+  repository folder): Esquema reads the README, guides, files and git history (no AI, nothing leaves your computer) and your AI
+  writes the overview, architecture and main flows in **their own folder**, `~/Esquema/<project>/`, with its own version history:
+  your repo doesn't change. With **“Copy to project”** you choose which documents go into the repo (and whether to replace the ones
+  that exist, seeing the difference). Ask for a specific flow later; if it needs to read code files it asks which ones, and
   before every request you see exactly what gets sent.
 - **Everything connected.** Screens, buttons and services are **elements** (`esquema.json`) that diagrams and text link to. Rename
   or remove a button and Esquema previews every document and diagram that changes, then applies it all as one version you can undo.

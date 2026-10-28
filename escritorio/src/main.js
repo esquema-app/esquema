@@ -121,7 +121,7 @@ async function enviarEstado() {
 }
 
 /** Proyectos: lo que bin/proyecto.py sabe hacer (la interfaz no puede pedir otra cosa). */
-const ORDENES_PROYECTO = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar"];
+const ORDENES_PROYECTO = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar"];
 
 /** Deja `c` como la carpeta, la lista, la vigila y responde carpetaElegida (con proyecto: true si viene de un proyecto). */
 async function usarCarpeta(c, proyecto) {
@@ -135,7 +135,7 @@ async function usarCarpeta(c, proyecto) {
 /** Un proyecto reciente: la ruta sale de <carpeta de Esquema>/proyectos.json (lo escribe bin/proyecto.py), nunca de la interfaz. */
 async function abrirProyecto(indice) {
   const d = leerJSON(path.join(datos(), "proyectos.json"), {}) || {};
-  const lista = (Array.isArray(d.recientes) ? d.recientes : []).filter((p) => p && typeof p.ruta === "string" && path.isAbsolute(p.ruta) && typeof p.nombre === "string").slice(0, 8);
+  const lista = (Array.isArray(d.recientes) ? d.recientes : []).filter((p) => p && typeof p.ruta === "string" && path.isAbsolute(p.ruta) && typeof p.nombre === "string").slice(0, 30);
   const p = Number.isInteger(indice) && indice >= 0 && indice < lista.length ? lista[indice] : null;
   let c = null;
   try { if (p && fs.statSync(p.ruta).isDirectory()) c = fs.realpathSync(p.ruta); } catch {}

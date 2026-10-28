@@ -35,6 +35,8 @@ def demo_proyecto():
     """Lo que la vista previa del navegador necesita para «Documentar un proyecto» con la carpeta de ejemplo (todo ficticio)."""
     proyecto.info_git = lambda base, commits=15: GIT_FICTICIO
     encontrado = proyecto.leer({"carpeta": EJEMPLO, "docs": "docs/esquema"})["encontrado"]
+    for k in ("vinculado", "ubicacion"):  # dónde vive en este computador: no va en la demo (la vista previa lo simula)
+        encontrado.pop(k, None)
     rutas, _ = comun.recorrer(EJEMPLO, maximo=400)
     codigo = {r: leer_texto(EJEMPLO, *r.split("/")) for r in rutas if r.startswith("src/")}
     ia = {}

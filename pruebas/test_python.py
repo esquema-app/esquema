@@ -269,6 +269,85 @@ class Proyecto(unittest.TestCase):
         for c in CASOS["proyecto_elemento"]:
             self.assertEqual(not proyecto_mod.validar_elemento(c["elemento"]), c["valido"], json.dumps(c["elemento"])[:120])
 
+    def test_documentacion_aparte_vinculada_al_codigo(self):
+        """Cada proyecto tiene su documentación en ~/Esquema/<nombre>/ (con su propio git), vinculada al código; «pasar» lleva al
+        repo solo lo que la persona elige, y «mover» trae la de antes (docs/esquema) sin borrar nada del repo."""
+        codigo = tempfile.mkdtemp(prefix="codigo-")
+        with open(os.path.join(codigo, "README.md"), "w", encoding="utf-8") as f:
+            f.write("# Pagos\n\nUna app de pagos.\n")
+        os.makedirs(os.path.join(codigo, "docs"))
+        with open(os.path.join(codigo, "docs", "existe.md"), "w", encoding="utf-8") as f:
+            f.write("# Mío\n")
+        hay_git = proyecto_mod.git_disponible() is not None
+        if hay_git:
+            proyecto_mod.git(codigo, "init", "-q")
+            proyecto_mod.git(codigo, "-c", "user.name=Ana", "-c", "user.email=ana@x.cl", "add", "-A")
+            proyecto_mod.git(codigo, "-c", "user.name=Ana", "-c", "user.email=ana@x.cl", "commit", "-qm", "Primero")
+        # Vincular: la documentación queda aparte, y abrir la carpeta del código lleva a ella.
+        v = proyecto_mod.vincular({"carpeta": codigo})
+        self.assertTrue(v["ok"] and v["ubicacion"].startswith("~/Esquema/codigo-"), v)
+        docs = os.path.realpath(os.path.join(os.path.expanduser("~"), v["ubicacion"][2:]))
+        self.assertEqual(proyecto_mod.vincular({"carpeta": codigo})["indice"], v["indice"], "vincular dos veces no crea otra carpeta")
+        self.assertEqual(proyecto_mod.abrir({"carpeta": codigo})["vinculado_en"], v["indice"])
+        a = proyecto_mod.abrir({"carpeta": docs})
+        self.assertTrue(a["vinculado"] and a["vacio"] and a["docs"] == "")
+        # Lo que va a la IA sale del código, no de la carpeta de documentación.
+        _, _, ps, _ = proyecto_mod.piezas({"carpeta": docs, "tarea": "inicial"})
+        self.assertIn("Una app de pagos.", "".join(x["texto"] for x in ps))
+        self.assertIn("La documentación vive en su propia carpeta", proyecto_mod.prompt({}, "inicial", "", ps))
+        # Guardar y versionar: su propio git (o copias), nunca el del código.
+        x = {"formato": 1, "nombre": "Pagos", "documentos": [{"ruta": "README.md", "titulo": "Visión", "tipo": "vision"}], "elementos": []}
+        with open(os.path.join(docs, "README.md"), "w", encoding="utf-8") as f:
+            f.write("# Pagos\n\nVisión general.\n")
+        with open(os.path.join(docs, "existe.md"), "w", encoding="utf-8") as f:
+            f.write("# Nuevo\n")
+        self.assertTrue(proyecto_mod.guardar({"carpeta": docs, "esquema": x})["ok"])
+        r = proyecto_mod.version({"carpeta": docs, "mensaje": "Primera"})
+        self.assertTrue(r["ok"], r)
+        if hay_git:
+            self.assertEqual(r["modo"], "git")
+            self.assertTrue(proyecto_mod.es_repo(docs))
+            _, s, _ = proyecto_mod.git(codigo, "log", "--format=%s")
+            self.assertEqual(s.split(), ["Primero"], "el git del código no se toca")
+        vs = proyecto_mod.versiones({"carpeta": docs})
+        self.assertEqual(vs["lista"][0]["mensaje"], "Primera")
+        self.assertEqual(proyecto_mod.ver({"carpeta": docs, "id": vs["lista"][0]["id"]})["archivos"]["README.md"], "# Pagos\n\nVisión general.\n")
+        # Pasar al proyecto: lo nuevo se escribe; lo que existe solo si se pide reemplazar; nada fuera del repo ni oculto.
+        d = proyecto_mod.destinos({"carpeta": docs, "rutas": ["docs/README.md", "docs/existe.md", "../fuera.md", ".git/x.md", "docs/x.py"]})["estados"]
+        self.assertFalse(d["docs/README.md"]["existe"])
+        self.assertEqual(d["docs/existe.md"]["texto"], "# Mío\n")
+        self.assertFalse(d["../fuera.md"]["valido"] or d[".git/x.md"]["valido"] or d["docs/x.py"]["valido"])
+        p = proyecto_mod.pasar({"carpeta": docs, "archivos": [{"ruta": "README.md", "destino": "docs/README.md"},
+                                                              {"ruta": "existe.md", "destino": "docs/existe.md"},
+                                                              {"ruta": "README.md", "destino": "../fuera.md"}]})
+        self.assertEqual([x["destino"] for x in p["escritos"]], ["docs/README.md"])
+        self.assertEqual(sorted(x["motivo"] for x in p["saltados"]), ["destino", "existe"])
+        with open(os.path.join(codigo, "docs", "existe.md"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "# Mío\n")
+        proyecto_mod.pasar({"carpeta": docs, "archivos": [{"ruta": "existe.md", "destino": "docs/existe.md", "reemplazar": True}]})
+        with open(os.path.join(codigo, "docs", "existe.md"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "# Nuevo\n")
+        self.assertFalse(os.path.exists(os.path.join(os.path.dirname(codigo), "fuera.md")))
+        # Mover la documentación de antes (docs/esquema dentro del repo): se copia y se vincula, y en el repo queda todo igual.
+        viejo = tempfile.mkdtemp(prefix="viejo-")
+        os.makedirs(os.path.join(viejo, "docs", "esquema"))
+        with open(os.path.join(viejo, "docs", "esquema", "esquema.json"), "w", encoding="utf-8") as f:
+            json.dump({"formato": 1, "nombre": "Viejo", "documentos": [], "elementos": []}, f)
+        with open(os.path.join(viejo, "docs", "esquema", "README.md"), "w", encoding="utf-8") as f:
+            f.write("# Viejo\n")
+        m = proyecto_mod.mover({"carpeta": viejo})
+        self.assertTrue(m["ok"] and m["desde"] == "docs/esquema", m)
+        nuevo = os.path.realpath(os.path.join(os.path.expanduser("~"), m["ubicacion"][2:]))
+        with open(os.path.join(nuevo, "README.md"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "# Viejo\n")
+        self.assertTrue(os.path.isfile(os.path.join(viejo, "docs", "esquema", "README.md")), "no se borra nada del repo")
+        self.assertTrue(proyecto_mod.abrir({"carpeta": nuevo})["existe"])
+        # La carpeta de Esquema o la carpeta personal no se vinculan.
+        with self.assertRaises(ValueError):
+            proyecto_mod.vincular({"carpeta": nuevo})
+        with self.assertRaises(ValueError):
+            proyecto_mod.vincular({"carpeta": os.path.expanduser("~")})
+
     def test_el_tipo_pedido_llega_al_prompt(self):
         """«la secuencia de…» pide un diagrama de secuencia; «Crear diagrama» con el código deja un documento corto en diagramas/."""
         e = {"pedido": "la secuencia de pagar", "tipo": "secuencia", "idioma": "es"}
@@ -404,7 +483,7 @@ class Proyecto(unittest.TestCase):
         self.assertEqual(a["esquema"], ESQUEMA_MIN)
         self.assertEqual(a["recientes"][0]["ruta"], os.path.realpath(p))
         e = correr("estado.py")
-        self.assertEqual(e["proyectos"][0], {"nombre": "Minutero", "ruta": os.path.realpath(p)})
+        self.assertEqual(e["proyectos"][0], {"nombre": "Minutero", "ruta": os.path.realpath(p), "ubicacion": os.path.realpath(p)})
         # Un esquema.json roto no tumba nada: se avisa.
         with open(os.path.join(p, "docs", "esquema", "esquema.json"), "w", encoding="utf-8") as f:
             f.write('{"formato": 1, "nombre": "x", "documentos": [], "elementos": [{"id": "MAL"}]}')

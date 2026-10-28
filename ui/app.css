@@ -425,3 +425,15 @@ button { cursor: pointer; }
   .p-pie { bottom: -40px; }
   .p-acciones .boton { min-height: 44px; }
 }
+/* Pasar al proyecto: una fila por documento, con su casilla, adónde va y si ya existe en el repo. */
+.p-pasar { display: flex; flex-direction: column; gap: 6px; max-height: min(52vh, 460px); overflow: auto; margin: 10px 0; }
+.p-pasar-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--borde); border-radius: 9px; }
+.p-pasar-fila .marcar b { font-weight: 600; overflow-wrap: anywhere; }
+.p-pasar-fila .marcar small { overflow-wrap: anywhere; }
+.p-pasar-acc { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-left: 26px; }
+.p-pasar-fila .p-dif { grid-column: 1 / -1; }
+.marcar.chico { font-size: 13px; gap: 6px; }
+.p-estado { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--suave); color: var(--gris); white-space: nowrap; }
+.p-estado.ok { background: var(--acento-suave); color: var(--acento); }
+.p-estado.aviso { color: var(--texto); }
+.p-estado.mal { background: var(--rojo-suave); color: var(--rojo); }
