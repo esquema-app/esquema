@@ -74,7 +74,7 @@ if (await v.evaluate(() => { let a; window.Esquema._probar((E) => { a = E.ajuste
 // Respuestas de la app que la prueba quiere esperar.
 await v.evaluate(() => {
   window._r = {};
-  for (const f of ["estado", "carpetaElegida", "archivoAbierto", "archivoGuardado", "archivoCambiado", "archivos", "iaProbada", "dibujoListo", "estructuraLista", "copiado", "proyectoRespuesta"]) {
+  for (const f of ["estado", "carpetaElegida", "archivoAbierto", "archivoGuardado", "archivoCambiado", "archivos", "iaProbada", "dibujoListo", "estructuraLista", "copiado", "proyectoRespuesta", "proyectoProgreso"]) {
     const antes = window.Esquema[f];
     window.Esquema[f] = (x) => { (window._r[f] ||= []).push(x); return antes.call(window.Esquema, x); };
   }
@@ -235,28 +235,37 @@ gitR("init", "-q", "-b", "main"); gitR("add", "-A"); gitR("commit", "-qm", "Cód
   await v.evaluate(() => window.Esquema._pruebas.proyectos().alCambiarCarpeta({ proyecto: true }));
   await v.waitForSelector('[data-accion="p-generar-inicial"]', { timeout: 15000 });
   await v.click('[data-accion="p-generar-inicial"]'); await v.waitForSelector(".p-envio details", { timeout: 15000 });
-  await v.click('[data-accion="p-enviar"]'); await v.waitForSelector(".p-prop", { timeout: 30000 });
-  await v.click('[data-accion="p-aplicar"]');
-  const log = () => gitR("log", "--format=%s");
-  for (let i = 0; i < 100 && !log().includes("Documentación inicial"); i++) await espera(150);
-  const docs = path.join(REPO, "docs", "esquema");
-  if (!log().includes("Documentación inicial") || !fs.existsSync(path.join(docs, "elementos.md")) || !fs.existsSync(path.join(docs, "flujos", "grabar.md"))) falla("documentar el proyecto no dejó los archivos y la versión: " + log());
+  // Documentar es un trabajo por etapas: el progreso llega en vivo (proyectoProgreso) y cada documento queda en el disco.
+  await v.evaluate(() => { const antes = window.Esquema.proyectoProgreso; window._progreso = []; window.Esquema.proyectoProgreso = (x) => { window._progreso.push(...(x.eventos || [])); return antes.call(window.Esquema, x); }; });
+  await v.click('[data-accion="p-enviar"]'); await v.waitForSelector(".p-trabajo", { timeout: 30000 });
+  await v.waitForSelector(".p-trabajo.listo", { timeout: 60000 });
+  // La documentación vive aparte, en ~/Esquema/repo-git (con su propio git); el git del código no se toca.
+  const docs = path.join(CASA, "Esquema", "repo-git");
+  const gitD = (...a) => execFileSync("git", ["-C", docs, ...a], { encoding: "utf8" });
+  const log = () => { try { return gitD("log", "--format=%s"); } catch { return ""; } };
+  for (let i = 0; i < 100 && !log().includes("Documentación hecha con"); i++) await espera(150);
+  if (gitR("log", "--format=%s").trim() !== "Código") falla("documentar tocó el git del código: " + gitR("log", "--format=%s"));
+  if (!log().includes("Documentación hecha con") || !fs.existsSync(path.join(docs, "elementos.md")) || !fs.existsSync(path.join(docs, "flujos", "grabar-reunion.md"))) falla("documentar el proyecto no dejó los archivos y la versión: " + log());
+  const prog = await v.evaluate(() => window._progreso);
+  if (!prog.some((x) => x.t === "lee" && x.ruta === "src/grabar.py") || !prog.some((x) => x.t === "estado" && x.trabajo.etapa === "escribir")) falla("el progreso no llegó en vivo: " + JSON.stringify(prog).slice(0, 300));
+  else bien("documentar por etapas: el progreso llega en vivo (proyectoProgreso) y cada documento queda en el disco");
+  await v.click('[data-accion="p-trabajo-visto"]');
   await v.click('.lateral [data-p="elementos"]'); await v.click('[data-p-elemento="boton-grabar"]');
   await v.click('[data-accion="p-renombrar"]'); await v.fill("#p-valor", "Empezar a grabar"); await v.click('[data-accion="p-ver-cambio"]');
   await v.waitForSelector(".p-cambio-lista .p-prop"); await v.screenshot({ path: path.join(salida, "5-proyecto-renombrar.png") });
   await v.click('[data-accion="p-aplicar-cambio"]');
   for (let i = 0; i < 100 && !log().includes("Renombré"); i++) await espera(150);
-  const archivosCommit = gitR("show", "--name-only", "--format=", "HEAD").trim().split("\n").sort();
-  if (!fs.readFileSync(path.join(docs, "README.md"), "utf8").includes("[Empezar a grabar](elementos.md#el-boton-grabar)") || !fs.readFileSync(path.join(docs, "flujos", "grabar.md"), "utf8").includes("G[Empezar a grabar]")) falla("renombrar no cambió los archivos en el disco");
-  if (archivosCommit.some((r) => !r.startsWith("docs/esquema/"))) falla("la versión tocó archivos fuera de docs/esquema: " + archivosCommit.join(", "));
+  const archivosCommit = gitD("show", "--name-only", "--format=", "HEAD").trim().split("\n").sort();
+  if (!fs.readFileSync(path.join(docs, "README.md"), "utf8").includes("[Empezar a grabar](elementos.md#el-boton-grabar)") || !fs.readFileSync(path.join(docs, "flujos", "grabar-reunion.md"), "utf8").includes("G[Empezar a grabar]")) falla("renombrar no cambió los archivos en el disco");
+  if (!archivosCommit.length || archivosCommit.some((r) => !/\.(md|mmd|json)$/.test(r))) falla("la versión tocó algo que no es documentación: " + archivosCommit.join(", "));
   await v.click('.lateral [data-p="versiones"]'); await v.waitForSelector("[data-p-version]");
   await v.click("[data-p-version] >> nth=-1"); await v.waitForSelector("[data-p-dif]", { timeout: 15000 });
   await v.screenshot({ path: path.join(salida, "6-proyecto-versiones.png") });
   await v.click('[data-accion="p-restaurar"]'); await v.click('[data-accion="p-restaurar-si"]');
   for (let i = 0; i < 100 && !log().includes("Restauré"); i++) await espera(150);
   if (!fs.readFileSync(path.join(docs, "README.md"), "utf8").includes("[Grabar](elementos.md#el-boton-grabar)") || !log().includes("Restauré")) falla("restaurar no volvió los archivos o no guardó la versión: " + log());
-  else bien("proyecto con git: documentar, renombrar en todas partes, versiones y restaurar (solo commits de docs/esquema)");
-  if (gitR("status", "--porcelain").trim()) falla("quedaron cambios sin versión después de restaurar: " + gitR("status", "--porcelain"));
+  else bien("proyecto con git: documentar, renombrar en todas partes, versiones y restaurar (en el git propio de la documentación)");
+  if (gitD("status", "--porcelain").trim()) falla("quedaron cambios sin versión después de restaurar: " + gitD("status", "--porcelain"));
   await v.evaluate(() => window.Esquema._probar((E) => { E.panel = null; }));
   await app.evaluate((_e, p) => global.esquemaPruebas.Config.guardarCarpeta(p), fs.realpathSync(PROYECTO));
   await app.evaluate(() => global.esquemaPruebas.enviarEstado());

@@ -447,3 +447,61 @@ button { cursor: pointer; }
 .p-estado.ok { background: var(--acento-suave); color: var(--acento); }
 .p-estado.aviso { color: var(--texto); }
 .p-estado.mal { background: var(--rojo-suave); color: var(--rojo); }
+
+/* ── Trabajos largos (documentar por etapas) ── */
+.giro.chico { width: 12px; height: 12px; border-width: 2px; display: inline-block; vertical-align: -2px; }
+.p-trabajo { border-left: 3px solid var(--acento); }
+.p-trabajo.listo { border-left-color: var(--verde); }
+.p-trabajo.error, .p-trabajo.con-fallas { border-left-color: var(--rojo); }
+.p-trabajo.detenido, .p-trabajo.interrumpido { border-left-color: var(--gris); }
+.t-cab { display: flex; align-items: baseline; gap: 12px; }
+.p-tarjeta .t-titulo { flex: 1; margin: 0; font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--texto); min-width: 0; }
+.t-tiempo { font: 13px var(--mono); color: var(--gris); font-variant-numeric: tabular-nums; }
+.t-etapas { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 0; margin: 12px 0 6px; color: var(--gris); font-size: 13px; }
+.t-etapas li { display: flex; align-items: center; gap: 6px; }
+.t-etapas li.hecha { color: var(--texto); }
+.t-etapas li.hecha .ic { color: var(--verde); }
+.t-etapas li.actual { color: var(--texto); font-weight: 600; }
+.t-etapas .punto { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--borde); margin: 0 2px; }
+.t-lee { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 6px 0; font-size: 13px; color: var(--gris); min-width: 0; }
+.t-lee-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-lee code { font: 12px var(--mono); color: var(--texto); }
+.t-docs { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 2px; }
+.t-doc { display: flex; gap: 10px; align-items: center; padding: 6px 4px; border-top: 1px solid var(--borde); min-width: 0; }
+.t-doc:first-child { border-top: 0; }
+.t-doc .p-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.t-doc .p-txt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.t-doc .p-txt small { color: var(--gris); font-size: 12px; overflow-wrap: anywhere; }
+.t-doc .t-ic { flex: none; width: 20px; display: grid; place-items: center; color: var(--gris); }
+.t-doc.listo .t-ic { color: var(--verde); }
+.t-doc.fallo .t-ic { color: var(--rojo); }
+.t-doc.cola { opacity: .75; }
+.t-doc.quitado b { text-decoration: line-through; color: var(--gris); }
+.t-acc { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.t-sigue { margin: 0; align-self: center; }
+.p-nuevo { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--acento); background: var(--acento-suave); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+/* El lateral: «Documentación» con un punto que late mientras la IA escribe. */
+.trabajando-punto { width: 7px; height: 7px; border-radius: 50%; background: var(--acento); margin-left: auto; flex: none; animation: latido 1.4s ease-in-out infinite; }
+.trabajando-punto + small { margin-left: 6px; }
+@keyframes latido { 50% { opacity: .25; } }
+
+/* ── «Código»: todos los archivos, con lo que leyó la IA ── */
+.c-resumen { margin: 2px 0 4px; padding-left: calc(8px + var(--n, 0) * 14px); font-size: 11.5px; color: var(--gris); }
+.c-archivo .ic { opacity: .8; }
+.c-archivo span { color: var(--gris); }
+.c-archivo[data-abrir] span { color: var(--texto); }
+.c-marca { margin-left: auto; flex: none; width: 6px; height: 6px; border-radius: 50%; }
+.c-archivo.leido .c-marca { background: var(--verde); opacity: .7; }
+.c-archivo.cambio .c-marca { background: transparent; border: 1.5px solid #c98a12; }
+.c-archivo.leyendo { background: var(--acento-suave); }
+.c-archivo.leyendo .c-marca { background: var(--acento); opacity: 1; animation: latido 1s ease-in-out infinite; }
+.c-carpeta.leyendo > .ic:nth-child(2) { color: var(--acento); }
+@media (prefers-reduced-motion: reduce) { .trabajando-punto, .c-archivo.leyendo .c-marca { animation: none; } }
+@media (max-width: 760px) {
+  .t-doc { flex-wrap: wrap; }
+  .t-acc { width: 100%; justify-content: flex-start; padding-left: 30px; }
+  .t-acc .boton { min-height: 40px; }
+}
+.p-chip { background: var(--panel); color: var(--texto); display: inline-flex; gap: 4px; align-items: center; }
+.t-abrir { border: 0; background: transparent; padding: 0; text-align: left; font-weight: 600; color: var(--texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.t-abrir:hover { color: var(--acento); text-decoration: underline; }

@@ -117,7 +117,9 @@
     volver: "M10 3 5 8l5 5", ajustes: "M8 10.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4",
     persona: "M8 7.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 14.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5", github: "M5.5 2.5 1.5 8l4 5.5M10.5 2.5l4 5.5-4 5.5",
     proyecto: "M2 4.5 8 1.5l6 3v7l-6 3-6-3zM2 4.5l6 3 6-3M8 7.5v7", elemento: "M8 1.5 14.5 8 8 14.5 1.5 8z", historia: "M8 14.5a6.5 6.5 0 1 0-6.2-8.5M1.5 2.5v3.5H5M8 4.5V8l2.5 2",
-    flecha: "M3 8h10M9 4l4 4-4 4", inicio: "M2 7.5 8 2.5l6 5M3.5 6.5v7.5h9V6.5M6.5 14v-4h3v4", abajo: "M4 6l4 4 4-4", derecha: "M6 4l4 4-4 4",
+    flecha: "M3 8h10M9 4l4 4-4 4", codigo: "M5.5 4.5 2 8l3.5 3.5M10.5 4.5 14 8l-3.5 3.5M9 3l-2 10", config: "M2.5 4.5h11M2.5 11.5h11M5.5 3v3M10.5 10v3",
+    imagen: "M2 2.5h12v11H2zM2 11l3.5-3.5 3 3 2-2L14 12M10.5 6a1 1 0 1 0 0-.01", datos: "M2.5 2.5h11v11h-11zM2.5 6.5h11M2.5 10h11M6.5 2.5v11",
+    archivo: "M4 1.5h5.5L12.5 4.5v10h-8.5zM9.5 1.5v3h3", candado: "M4 7.5h8v6.5H4zM5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5", detener: "M4.5 4.5h7v7h-7z", inicio: "M2 7.5 8 2.5l6 5M3.5 6.5v7.5h9V6.5M6.5 14v-4h3v4", abajo: "M4 6l4 4 4-4", derecha: "M6 4l4 4-4 4",
   };
   const ic = (n) => `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
 
@@ -214,7 +216,7 @@
   const P = window.EsquemaProyectos({
     E, M, host, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA,
     pintar: () => pintar(), abrir: (r) => abrir(r), cambiarTextoDe: (r, t, op) => cambiarTextoDe(r, t, op), guardarTodo: () => guardarTodo(),
-    textoLienzo: () => textoLienzo(), ponerTextoLienzo: (t, op) => ponerTextoLienzo(t, op), resultadoBloque: (t, p) => resultadoBloque(t, p),
+    textoLienzo: () => textoLienzo(), traducirDOM: (r) => traducirDOM(r), nombreDe: (r) => nombreDe(r), ponerTextoLienzo: (t, op) => ponerTextoLienzo(t, op), resultadoBloque: (t, p) => resultadoBloque(t, p),
     abrirMenu: (tipo, b) => abrirMenu(tipo, b), pintarMenu: () => pintarMenu(), esDiagrama: (r) => esDiagrama(r), porRuta,
     registrarCambioIA: (c) => { E.cambiosIA.push(c); }, accionesInicioHTML: () => accionesInicioHTML(), tipoDelPedido: (x) => tipoDelPedido(x),
   });
@@ -275,7 +277,8 @@
     if (ruta in E.abiertas) return E.abiertas[ruta];
     // Las carpetas del proyecto en el lateral: el proyecto y su documentación abiertos; el código, cerrado salvo que tenga lo abierto.
     if (ruta === "#p" || ruta === "#docs") return true;
-    if (ruta === "#codigo") return P.esDeCodigo(E.sel);
+    if (ruta === "#codigo") return P.esDeCodigo(E.sel) || E.panel === "ficha" || P.leyendoCodigo();
+    if (ruta.startsWith("#c:")) return P.codigoAbierta(ruta.slice(3));
     if (P.esCodigo(ruta)) return !!E.sel && E.sel.startsWith(ruta + "/");
     const dentro = (r) => r && (r === ruta || r.startsWith(ruta + "/"));
     return E.archivos.length <= 20 || (E.sel && dentro(carpetaDe(E.sel))) || (E.proyecto && dentro(E.proyecto.docs));
@@ -357,7 +360,7 @@
     const tarjeta = (accion, icono, titulo, texto) => `<button class="tarjeta-inicio" data-accion="${accion}"><span class="ti-icono">${ic(icono)}</span><span class="ti-txt"><b>${titulo}</b><small>${texto}</small></span></button>`;
     return `<div class="acciones-inicio">
       ${tarjeta("crear-diagrama", "chispa", "Crear diagrama", "Pídele a tu IA «el flujo de…», «la secuencia de…» o «la arquitectura de…». Puede leer tu código.")}
-      ${tarjeta("p-documentar", "proyecto", "Documentación completa", E.proyecto ? "Tu IA la vuelve a escribir desde el código. Revisas cada cambio antes de guardarlo." : "Tu IA lee el proyecto y escribe la visión general, la arquitectura y los flujos principales.")}
+      ${tarjeta("p-documentar", "proyecto", "Documentación completa", E.proyecto ? "Tu IA la vuelve a escribir desde el código, por etapas. Cada documento nuevo se puede quitar con un toque." : "Tu IA lee el proyecto y escribe la visión general, la arquitectura y los flujos principales.")}
       ${tarjeta("p-flujo", "diagrama", "Documentar un flujo", "Un flujo explicado paso a paso, con su diagrama. Tú apruebas qué archivos lee.")}
       ${tarjeta("nuevo", "doc", "Escribir un documento", "Desde una plantilla o en blanco: README, decisión, guía…")}
     </div>`;
@@ -903,7 +906,7 @@
     if (E.bv !== null) return capa("t-bv", bienvenida(), "bienvenida");
     // titulo y texto llegan como HTML ya escapado (frase() o esc() del texto en español; traducirDOM lo traduce); los botones, como texto.
     const dp = P.dialogoHTML(capa); if (dp && !E.confirmar) return dp;
-    if (E.confirmar) return capa("t-conf", `<h2 id="t-conf">${E.confirmar.titulo}</h2><p>${E.confirmar.texto}</p><div class="pie-dialogo"><button class="boton" data-accion="confirmar-no">${esc(E.confirmar.no)}</button><button class="boton principal" data-accion="confirmar-si" data-autofoco>${esc(E.confirmar.si)}</button></div>`);
+    if (E.confirmar) return capa("t-conf", `<h2 id="t-conf" ${E.confirmar.traducido ? "data-sin-traducir" : ""}>${E.confirmar.titulo}</h2><p ${E.confirmar.traducido ? "data-sin-traducir" : ""}>${E.confirmar.texto}</p><div class="pie-dialogo" ${E.confirmar.traducido ? "data-sin-traducir" : ""}><button class="boton" data-accion="confirmar-no">${esc(E.confirmar.no)}</button><button class="boton principal" data-accion="confirmar-si" data-autofoco>${esc(E.confirmar.si)}</button></div>`);
     if (E.ajustes) return capa("t-aj", dialogoAjustes(), "ajustes");
     if (E.readme) return capa("t-rm", dialogoReadme(), "ancho");
     if (E.dibujar) return capa("t-dj", dialogoDibujar());
@@ -1513,6 +1516,8 @@
     archivos(r) { E.archivos = (r.archivos || []).slice().sort(porRuta); P.alCambiarArchivos(); pintar(); },
     /** Proyectos: la respuesta de bin/proyecto.py (r.orden dice cuál: abrir, leer, preparar, generar, guardar, version…). */
     proyectoRespuesta(r) { P.respuesta(r || {}); },
+    /** Proyectos: cómo va un trabajo largo (documentar), mientras corre: {eventos: [{t: "estado", trabajo} | {t: "lee", ruta, n} | {t: "busca", patron}]}. */
+    proyectoProgreso(r) { P.progreso(r || {}); },
     iaProbada(r) { delete E.probando[r.ia]; E.resultadoIA[r.ia] = r; if (r.ok) toast("Lista para usar"); pintar(); },
     estructuraLista(r) { if (E.readme?.envio) { E.readme.envio = r.ok ? r : { archivos: [], error: r.error }; pintar(); } },
     readmeListo(r) {

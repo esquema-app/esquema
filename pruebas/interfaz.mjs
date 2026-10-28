@@ -336,9 +336,9 @@ console.log("Dibújame: revisado");
   const tarjetas = await p.$$eval(".tarjeta-inicio", (l) => l.map((x) => x.dataset.accion));
   if (tarjetas.join() !== "crear-diagrama,p-documentar,p-flujo,nuevo") falla("El inicio no ofrece las cuatro acciones: " + tarjetas.join());
   // El árbol: «docs» se cierra y se abre; lo de adentro desaparece y vuelve.
-  await p.click('[data-arbol="docs"]'); await espera(p);
+  await p.click('[data-arbol="#c:docs"]'); await espera(p);
   if (await p.$('[data-abrir="docs/pago.mmd"]')) falla("Cerrar la carpeta del árbol no esconde sus archivos");
-  await p.click('[data-arbol="docs"]'); await espera(p);
+  await p.click('[data-arbol="#c:docs"]'); await espera(p);
   if (!(await p.$('[data-abrir="docs/pago.mmd"]'))) falla("Abrir la carpeta del árbol no muestra sus archivos");
   // «la secuencia de…» marca Secuencia mientras se escribe; sin el código, crea un diagrama nuevo en diagramas/.
   await p.click('[data-accion="crear-diagrama"]');
@@ -360,7 +360,7 @@ console.log("Dibújame: revisado");
   if (datos?.forma !== "diagrama" || datos?.tipo !== "flujo") falla("«Crear diagrama» con el código no pide un diagrama de flujo: " + JSON.stringify(datos));
   // «Dibújame» con un archivo abierto: un pedido sobre «este proyecto» marca «Que lea el código» y va por lo que se envía.
   await p.evaluate(() => window.Esquema._probar((E) => { E.pj.dialogo = null; }));
-  await abrir(p, "docs/pago.mmd");
+  await p.evaluate(() => window.Esquema._pruebas.abrir("docs/pago.mmd")); await p.waitForFunction(() => document.querySelector("#texto")?.value.length > 0); await espera(p, 200);
   await p.click('[data-accion="dibujame"]');
   if (await p.isChecked("#usar-codigo")) falla("«Dibújame» lee el código sin que se lo pidan");
   await p.fill("#pedido-dibujo", "quiero el diagrama de secuencia de este proyecto, explicando lo de git");
@@ -483,17 +483,18 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.click("[data-p-fondo]"); if (await p.isChecked("[data-p-fondo]")) falla("«Revisión a fondo» no se desmarca");
   await p.click("[data-p-fondo]");
   await p.click(".p-envio summary"); await etapa("envio");
-  // Propuestas: tarjetas con «Quitar este cambio»
-  await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-prop", { timeout: 5000 });
-  await etapa("propuestas");
-  await p.click('[data-p-ver="1"]'); await p.waitForSelector(".p-previa .md-diagrama svg"); await etapa("propuesta-vista");
-  await p.click('[data-p-quitar="1"]'); if (!(await p.$(".p-prop.quitada"))) falla("«Quitar este cambio» no marca la propuesta");
-  await p.click('[data-p-quitar="1"]'); if (await p.$(".p-prop.quitada")) falla("«Volver a agregar» no vuelve la propuesta");
-  await p.click('[data-accion="p-aplicar"]');
+  // El trabajo por etapas: en segundo plano, cada documento al disco apenas termina. Escape no lo cancela.
+  await p.evaluate(() => { window._simVelocidad = 0.08; });
+  await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-trabajo", { timeout: 5000 });
+  if (await p.$(".capa")) falla("Documentar abre un diálogo que bloquea (debe ser una tarjeta en el panel)");
+  await p.keyboard.press("Escape");
+  await p.waitForFunction(() => /listo/.test(document.querySelector(".p-trabajo")?.className || ""), null, { timeout: 15000 });
+  await etapa("trabajo-listo");
+  await p.click('[data-accion="p-trabajo-visto"]');
   await p.waitForFunction(() => document.querySelectorAll(".p-doc").length >= 5, null, { timeout: 5000 });
-  await p.waitForFunction(() => !document.querySelector(".p-aviso .giro"), null, { timeout: 5000 });
   const ini = await estado(`return { els: E.proyecto.esquema.elementos.length, docs: E.proyecto.esquema.documentos.map((d) => d.ruta), arch: E.archivos.map((a) => a.ruta) }`);
-  if (ini.els !== 7 || !ini.docs.includes("elementos.md") || !ini.arch.includes(D + "flujos/pagar-una-cuenta.md")) falla("Guardar las propuestas no deja los documentos y elementos: " + JSON.stringify(ini));
+  if (ini.els !== 7 || !ini.docs.includes("elementos.md") || !ini.arch.includes(D + "flujos/pagar-una-cuenta.md")) falla("Documentar no deja los documentos y elementos: " + JSON.stringify(ini));
+  if (ini.docs.join() !== "README.md,arquitectura.md,flujos/pagar-una-cuenta.md,flujos/recibir-el-comprobante.md,elementos.md") falla("Los documentos no quedan ordenados (visión, arquitectura, flujos, elementos): " + ini.docs.join());
   if (!(await texto(D + "elementos.md"))?.includes('<a id="el-boton-pagar"></a>')) falla("El glosario no tiene el ancla de cada elemento");
   await etapa("inicio");
   // Pasar al proyecto: se elige qué va al repo; lo que ya existe no va marcado y solo se reemplaza si se pide
@@ -523,6 +524,7 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.click('[data-accion="p-completar"]'); await p.waitForSelector(".p-envio details");
   if (!(await p.$eval(".p-envio", (x) => /arquitectura\.md/.test(x.textContent)))) falla("«Completar lo que falta» no pide la arquitectura");
   await p.click('.pie-dialogo [data-accion="cerrar"]');
+  // Propuestas (lo que la IA cambia en documentos que ya existen): tarjetas con «Quitar este cambio»; se ven más abajo con «Cambió cómo funciona».
   await probar(p, "E.proyecto.esquema.documentos=E._docs;delete E._docs");
   // El lienzo: un nodo enlazado muestra su elemento; uno sin enlace se enlaza (con un elemento nuevo)
   await p.evaluate((r) => window.Esquema._pruebas.abrir(r), D + "flujos/recibir-el-comprobante.md");
@@ -553,6 +555,9 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.fill("#p-pedido", "pide confirmación"); await p.click('[data-accion="p-comportamiento-enviar"]'); await p.waitForSelector(".p-envio details");
   if ((await p.$$eval(".p-envio summary", (x) => x.filter((s) => /\.md/.test(s.textContent)).length)) < 3) falla("Un cambio de comportamiento no manda los documentos que usan el elemento");
   await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-prop"); await etapa("propuestas-cambio");
+  await p.click('[data-p-quitar="0"]'); if (!(await p.$(".p-prop.quitada"))) falla("«Quitar este cambio» no marca la propuesta");
+  await p.click('[data-p-quitar="0"]'); if (await p.$(".p-prop.quitada")) falla("«Volver a agregar» no vuelve la propuesta");
+  await p.click('[data-p-ver="0"]'); await p.waitForSelector(".p-prop .p-dif"); await etapa("propuesta-vista");
   await p.click('[data-accion="p-descartar"]');
   await p.click('.p-panel [data-p="elementos"]'); await p.click('[data-accion="p-elemento-nuevo"]'); await p.waitForSelector("#p-el-nombre"); await etapa("elemento-nuevo"); await p.click('.capa [data-accion="cerrar"]');
   // Versiones, comparar y restaurar
@@ -591,6 +596,84 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.click('[data-accion="p-revisar-ia"]'); await p.waitForSelector(".p-envio"); await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-prop"); await p.click('[data-accion="p-descartar"]');
   await p.close();
 }
+// ── 15) Documentar por etapas y el árbol «Código» (todo el código, sin abrirlo; lo que la IA leyó) ──
+async function recorridoTrabajo({ idioma, ancho, oscuro = false }) {
+  const p = await pagina({ ancho, alto: ancho < 500 ? 844 : 800, idioma, oscuro });
+  const etapa = async (nombre) => { await espera(p, 120); if (idioma === "en") await sinTraducir(p, "trabajo " + nombre + " " + ancho); if (ancho < 500) await desborde(p, "trabajo " + nombre + ` (${idioma})`); await captura(p, `trabajo-${nombre}-${idioma}-${ancho}${oscuro ? "-oscuro" : ""}`); };
+  const estado = (f) => p.evaluate((src) => { let x; window.Esquema._probar((E) => { x = new Function("E", src)(E); }); return x; }, f);
+  const lateral = async () => { if (ancho < 500 && !(await p.$(".lateral.abierto"))) { await p.click('[data-accion="abrir-lateral"]'); await espera(p, 150); } };
+  await p.evaluate(() => { window._simVelocidad = 0.25; window._simFallar = "arquitectura.md"; });
+  await lateral();
+  await p.click('[data-accion="nuevo"]'); await p.click('.plantilla[data-accion="p-nuevo"]');
+  await p.waitForSelector('[data-accion="p-generar-inicial"]'); await p.click('[data-accion="p-generar-inicial"]');
+  await p.waitForSelector(".p-envio details"); await p.click('[data-accion="p-enviar"]');
+  // Mientras lee: etapas, el archivo que lee, cuántos lleva; Escape y tocar fuera no cancelan nada.
+  await p.waitForSelector("[data-t-leyendo]", { timeout: 8000 });
+  await p.keyboard.press("Escape"); await p.mouse.click(5, 790);
+  if (!(await estado("return E.pj.trabajo?.estado === 'corriendo'"))) falla("Escape o tocar fuera cancelaron el trabajo");
+  if (!(await p.$(".t-etapas li.hecha")) || !(await p.$(".t-etapas li.actual"))) falla("La tarjeta del trabajo no muestra las etapas");
+  await etapa("leyendo");
+  // El árbol «Código»: todos los archivos (no solo .md), con lo que la IA va leyendo.
+  await lateral();
+  await p.waitForSelector('.lateral [data-c="src/api/pagos.py"]', { timeout: 5000 });
+  const filas = await p.$$eval(".lateral [data-c]", (x) => x.map((b) => b.dataset.c));
+  for (const r of ["package.json", "src/web/pagar.js", "src/api/correo.py", "README.md"]) if (!filas.includes(r)) falla("El árbol «Código» no muestra " + r);
+  if (filas.some((r) => r.startsWith("docs/esquema/"))) falla("El árbol «Código» muestra la documentación");
+  const orden = await p.$$eval(".lateral [data-c], .lateral .c-carpeta", (x) => x.map((b) => b.dataset.c || "/" + b.dataset.arbol.slice(3)));
+  if (orden.indexOf("/src") > orden.indexOf("package.json")) falla("El árbol «Código» no pone las carpetas primero: " + orden.join(" "));
+  await p.waitForSelector(".lateral .c-archivo.leido", { timeout: 8000 });
+  await etapa("arbol-leyendo");
+  if (ancho < 500) await p.keyboard.press("Escape");
+  // Mientras escribe, cada documento listo ya está en la documentación (antes de terminar el trabajo).
+  await p.waitForFunction(() => document.querySelectorAll(".t-doc.listo").length >= 1, null, { timeout: 15000 });
+  await p.waitForFunction(() => { let x; window.Esquema._probar((E) => { x = E.archivos.some((a) => a.ruta === "docs/esquema/README.md"); }); return x; }, null, { timeout: 3000 }).catch(() => {});
+  if (!(await estado("return E.pj.trabajo.estado === 'corriendo' && E.archivos.some((a) => a.ruta === 'docs/esquema/README.md')"))) falla("Un documento listo no aparece en la documentación mientras el trabajo sigue");
+  if (!(await p.$(".lateral [data-p-docs] .trabajando-punto"))) falla("«Documentación» no muestra que la IA está trabajando");
+  await etapa("escribiendo");
+  // Un documento que falla queda con «Reintentar» y los demás siguen.
+  await p.waitForFunction(() => /con-fallas/.test(document.querySelector(".p-trabajo")?.className || ""), null, { timeout: 20000 });
+  const est = await estado("return Object.fromEntries(E.pj.trabajo.items.map((i) => [i.ruta, i.estado]))");
+  if (est["arquitectura.md"] !== "fallo" || Object.values(est).filter((x) => x === "listo").length !== 3) falla("Un documento que falla afecta a los demás: " + JSON.stringify(est));
+  await etapa("con-fallas");
+  await p.click('[data-t-reintentar="arquitectura.md"]');
+  await p.waitForFunction(() => /\blisto\b/.test(document.querySelector(".p-trabajo")?.className || ""), null, { timeout: 15000 });
+  if (!(await estado("return E.archivos.some((a) => a.ruta === 'docs/esquema/arquitectura.md')"))) falla("«Reintentar» no escribe el documento");
+  await etapa("listo");
+  // «Quitar este cambio» de un documento nuevo: se va (con confirmación).
+  await p.click('[data-t-quitar="flujos/recibir-el-comprobante.md"]'); await p.waitForSelector('[data-accion="confirmar-si"]');
+  await p.click('[data-accion="confirmar-si"]');
+  await p.waitForFunction(() => { let x; window.Esquema._probar((E) => { x = !E.archivos.some((a) => a.ruta === "docs/esquema/flujos/recibir-el-comprobante.md"); }); return x; }, null, { timeout: 4000 });
+  await p.waitForSelector(".t-doc.quitado", { timeout: 3000 }).catch(() => falla("«Quitar este cambio» no marca el documento como quitado"));
+  // La ficha de un archivo de código: sin su contenido, con si la IA lo leyó y dónde aparece.
+  await lateral();
+  if ((await p.getAttribute('.lateral [data-arbol="#codigo"]', "aria-expanded")) !== "true") await p.click('.lateral [data-arbol="#codigo"]');
+  await p.click('.lateral [data-p-ficha="src/api/pagos.py"]'); await p.waitForSelector(".p-panel .p-fila");
+  const ficha = await p.$eval(".p-panel", (x) => x.textContent);
+  if (/def |import /.test(ficha)) falla("La ficha de un archivo de código muestra su contenido");
+  if (!/(leyó|Read on)/.test(ficha)) falla("La ficha no dice que la IA leyó el archivo: " + ficha.slice(0, 200));
+  if (!(await p.$('.p-panel [data-p-elemento="api-pagos"]'))) falla("La ficha no muestra el elemento que usa el archivo");
+  await etapa("ficha");
+  // Un .md del código se sigue abriendo en el editor.
+  await lateral();
+  await p.click('.lateral [data-c="docs/decisiones/0001-usar-cola.md"]');
+  await p.waitForFunction(() => (document.querySelector("#texto")?.value || "").length > 0, null, { timeout: 4000 });
+  // Detener: pide confirmación y lo escrito se queda.
+  await probar(p, "E.panel='proyecto';E.sel=null;E.pj.trabajo.visto=false");
+  await p.evaluate(() => window.Esquema._pruebas.proyectos().pedirIA("inicial", {}));
+  await p.waitForSelector(".p-envio details"); await p.click('[data-accion="p-enviar"]');
+  await p.waitForSelector('[data-accion="p-detener"]', { timeout: 5000 });
+  await p.click('[data-accion="p-detener"]'); await p.waitForSelector('[data-accion="confirmar-si"]'); await etapa("detener");
+  await p.click('[data-accion="confirmar-si"]');
+  await p.waitForFunction(() => /detenido/.test(document.querySelector(".p-trabajo")?.className || ""), null, { timeout: 8000 });
+  if (!(await estado("return E.archivos.some((a) => a.ruta === 'docs/esquema/README.md')"))) falla("Detener borró lo que ya estaba escrito");
+  await p.close();
+}
+await recorridoTrabajo({ idioma: "es", ancho: 1280 });
+await recorridoTrabajo({ idioma: "en", ancho: 390, oscuro: true });
+await recorridoTrabajo({ idioma: "en", ancho: 1280, oscuro: true });
+await recorridoTrabajo({ idioma: "es", ancho: 390 });
+console.log("Documentar por etapas y el árbol «Código»: revisado");
+
 await recorridoProyecto({ idioma: "es", ancho: 1280 });
 await recorridoProyecto({ idioma: "en", ancho: 390, oscuro: true });
 await recorridoProyecto({ idioma: "en", ancho: 1280 });

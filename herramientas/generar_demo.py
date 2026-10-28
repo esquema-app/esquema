@@ -13,6 +13,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(RAIZ, "bin"))
 import carpeta  # noqa: E402
 import comun  # noqa: E402
+import inventario  # noqa: E402
 import plantilla_formato  # noqa: E402
 import plantillas  # noqa: E402
 import proyecto  # noqa: E402
@@ -46,7 +47,9 @@ def demo_proyecto():
         inicial = [{"ruta": r, "titulo": t, "tipo": tipo, "texto": leer_texto(base, *r.split("/"))} for r, (t, tipo) in datos["titulos"].items()]
         ia[idioma] = {"inicial": inicial, "elementos": datos["elementos"], "nota": datos["nota"], "pide": datos["pide"], "notaPide": datos["notaPide"],
                       "flujo": {**datos["flujo"], "texto": leer_texto(base, "flujo.md")}}
-    return {"encontrado": encontrado, "archivos": rutas, "codigo": codigo, "ia": ia}
+    # Todo el código del ejemplo para el árbol «Código» (bin/inventario.py, lo mismo que la orden `arbol`).
+    x = inventario.inventario(EJEMPLO)
+    return {"encontrado": encontrado, "archivos": rutas, "codigo": codigo, "ia": ia, "arbol": {"archivos": x["archivos"], "perfil": x["perfil"]}}
 
 
 def demo():
