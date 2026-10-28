@@ -249,9 +249,66 @@ class Plantillas(unittest.TestCase):
         shutil.rmtree(d)
 
     def test_indice(self):
-        r = correr("plantillas.py", "indice", os.path.join(RAIZ, "plantillas"))
+        r = correr("plantillas.py", "indice", RAIZ)
         self.assertEqual(r["formato"], 1)
-        self.assertTrue(all(len(p["sha256"]) == 64 and p["ruta"].count("/") == 1 for p in r["plantillas"]))
+        self.assertEqual(len(r["plantillas"]), len(plantillas.incluidas()))
+        self.assertTrue(all(len(p["sha256"]) == 64 and plantilla_formato.RUTA.fullmatch(p["ruta"]) for p in r["plantillas"]))
+        # Lo que arma indice() es exactamente lo que acepta validar_indice() (la app no descarta nada bueno).
+        self.assertEqual(plantilla_formato.validar_indice(r), r["plantillas"])
+
+    def test_indice_rechaza(self):
+        raiz = tempfile.mkdtemp(dir=TMP)
+        buena = dict(CASOS["plantillas"][0]["plantilla"])
+        os.makedirs(os.path.join(raiz, "plantillas", buena["categoria"]))
+        os.makedirs(os.path.join(raiz, "plantillas", "inventada"))
+        escribir = lambda rel, d: json.dump(d, open(os.path.join(raiz, "plantillas", *rel.split("/")), "w"))
+        escribir(f"{buena['categoria']}/{buena['id']}.json", buena)
+        escribir(f"{buena['categoria']}/otro-nombre.json", buena)                       # no se llama como su id
+        escribir(f"{buena['categoria']}/con-script.json", dict(buena, id="con-script", script="x"))
+        open(os.path.join(raiz, "plantillas", buena["categoria"], "nota.txt"), "w").write("x")
+        datos, problemas = plantilla_formato.indice(raiz)
+        self.assertEqual([p["id"] for p in datos["plantillas"]], [buena["id"]])
+        self.assertEqual(len(problemas), 4, problemas)
+
+    def test_validar_indice_descarta(self):
+        datos, _ = plantilla_formato.indice(RAIZ)
+        bien = datos["plantillas"][0]
+        malos = [dict(bien, ruta="https://otro.com/x.json"), dict(bien, ruta="plantillas/../../x.json"), dict(bien, sha256="abc"),
+                 dict(bien, tamano=10 ** 9), dict(bien, tamano=True), dict(bien, categoria="secuencia" if bien["categoria"] != "secuencia" else "proceso"),
+                 dict(bien, contenido={"es": "<script>" * 5000}), "texto", dict(bien, ruta=bien["ruta"].replace(".json", "-x.json"))]
+        self.assertEqual(plantilla_formato.validar_indice({"formato": 1, "plantillas": malos}), [])
+        self.assertEqual(plantilla_formato.validar_indice({"formato": 2, "plantillas": [bien]}), [])
+        self.assertEqual(len(plantilla_formato.validar_indice({"formato": 1, "plantillas": [bien, bien]})), 1)  # id repetido
+        r = correr("plantillas.py", "catalogo", entrada({"formato": 1, "plantillas": [bien] + malos}))
+        self.assertEqual([p["id"] for p in r["plantillas"]], [bien["id"]])
+        self.assertFalse(correr("plantillas.py", "catalogo", entrada([1, 2]))["ok"])
+
+    def test_instalar(self):
+        import hashlib
+        pl = dict(CASOS["plantillas"][0]["plantilla"], id="desde-catalogo")
+        crudo = json.dumps(pl).encode()
+        archivo = os.path.join(TMP, "bajada.json")
+        open(archivo, "wb").write(crudo)
+        huella = hashlib.sha256(crudo).hexdigest()
+        r = correr("plantillas.py", "instalar", entrada({"archivo": archivo, "id": "desde-catalogo", "sha256": huella}))
+        self.assertTrue(r["ok"], r)
+        guardada = os.path.join(os.environ["ESQUEMA_DATOS"], "plantillas", "desde-catalogo.json")
+        self.assertEqual(stat.S_IMODE(os.stat(guardada).st_mode), 0o600)
+        self.assertIn("desde-catalogo", {p["id"] for p in plantillas.listar()})
+        self.assertIn("dañada", correr("plantillas.py", "instalar", entrada({"archivo": archivo, "id": "desde-catalogo", "sha256": "0" * 64}))["error"])
+        self.assertFalse(correr("plantillas.py", "instalar", entrada({"archivo": archivo, "id": "otro-id", "sha256": huella}))["ok"])
+        malo = json.dumps(dict(pl, html="<b>")).encode()
+        open(archivo, "wb").write(malo)
+        self.assertFalse(correr("plantillas.py", "instalar", entrada({"archivo": archivo, "id": "desde-catalogo", "sha256": hashlib.sha256(malo).hexdigest()}))["ok"])
+        os.remove(guardada)
+
+    def test_mismo_formato_que_el_catalogo(self):
+        """bin/plantilla_formato.py es el MISMO archivo que herramientas/plantilla_formato.py de esquema-catalogo (si está al lado)."""
+        otro = os.path.join(os.path.dirname(RAIZ), "esquema-catalogo", "herramientas", "plantilla_formato.py")
+        if not os.path.exists(otro):
+            self.skipTest("esquema-catalogo no está al lado de este repo")
+        self.assertEqual(open(otro, "rb").read(), open(os.path.join(BIN, "plantilla_formato.py"), "rb").read(),
+                         "copia bin/plantilla_formato.py a esquema-catalogo/herramientas/ (o al revés)")
 
 
 class Repo(unittest.TestCase):

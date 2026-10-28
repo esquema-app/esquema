@@ -1,0 +1,29 @@
+{
+  "formato": 1,
+  "id": "sitio-estatico",
+  "categoria": "arquitectura",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Sitio estático con CDN",
+    "en": "Static site with a CDN"
+  },
+  "descripcion": {
+    "es": "Del repositorio a la CDN: integración continua, almacenamiento, certificado y caché.",
+    "en": "From the repository to the CDN: CI, storage, certificate and cache."
+  },
+  "archivo": {
+    "es": "sitio-estatico.mmd",
+    "en": "static-site.mmd"
+  },
+  "contenido": {
+    "es": "flowchart LR\n    Dev([Persona que escribe]) -->|git push| Repo[Repositorio]\n    Repo --> CI[[Integración continua]]\n    CI -->|archivos generados| S3[(Almacenamiento)]\n    S3 --> CDN{{CDN}}\n    Cert[Certificado TLS] -.-> CDN\n    Lector([Visitante]) -->|HTTPS| CDN\n%% esquema: {\"iconos\":{\"CDN\":\"red\",\"CI\":\"engranaje\",\"Cert\":\"candado\",\"Dev\":\"persona\",\"Lector\":\"navegador\",\"S3\":\"almacenamiento\"}}\n",
+    "en": "flowchart LR\n    Dev([Writer]) -->|git push| Repo[Repository]\n    Repo --> CI[[Continuous integration]]\n    CI -->|built files| S3[(Storage)]\n    S3 --> CDN{{CDN}}\n    Cert[TLS certificate] -.-> CDN\n    Lector([Visitor]) -->|HTTPS| CDN\n%% esquema: {\"iconos\":{\"CDN\":\"red\",\"CI\":\"engranaje\",\"Cert\":\"candado\",\"Dev\":\"persona\",\"Lector\":\"navegador\",\"S3\":\"almacenamiento\"}}\n"
+  },
+  "autor": "esquema-app",
+  "etiquetas": [
+    "web",
+    "cdn",
+    "jamstack",
+    "static"
+  ]
+}

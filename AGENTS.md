@@ -31,15 +31,15 @@ Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y en la de Windows
 |---|---|
 | `ui/motor/` | El motor, JS sin dependencias; cada archivo se suma a `globalThis.EsquemaMotor` (igual en el navegador y en Node). `texto.js` (medir con caché, partir etiquetas, escapar, errores con marcadores, línea `%% esquema:`), `flujo.js` (leer/escribir/editar flowchart conservando el texto), `secuencia.js` (leer/acomodar/dibujar/editar sequenceDiagram), `capas.js` (acomodo por capas), `formas.js` (formas e íconos propios), `dibujo.js` (elige el tipo, acomoda con caché, SVG por partes con clave, SVG independiente para exportar), `markdown.js` (bloques de un `.md` y Markdown → HTML seguro). |
 | `ui/` | Interfaz única (`index.html` con CSP, `app.js`, `app.css`, `favicon.svg`), `demo.json` (ficticio, sale de `herramientas/generar_demo.py`) e `idiomas/en.json`. |
-| `bin/` | Python **solo biblioteca estándar**, lo que corren las apps: `comun.py` (versión, carpeta de Esquema, config, escritura atómica, `ruta_en`, `.gitignore`, secretos, `recorrer`), `carpeta.py` (listar, leer, guardar, estructura para el README), `ia.py` (la IA del usuario, sin herramientas; `probar`), `asistente.py` (README y Dibújame: prompts y limpieza de la respuesta), `plantilla_formato.py` (formato de una plantilla; el MISMO archivo que en el catálogo), `plantillas.py` (incluidas + descargadas, validar, índice del catálogo), `estado.py` (lo que pide la interfaz al abrir; guardar config). El último argumento siempre es el JSON de salida; lo de la persona llega en un JSON de entrada. |
+| `bin/` | Python **solo biblioteca estándar**, lo que corren las apps: `comun.py` (versión, carpeta de Esquema, config, escritura atómica, `ruta_en`, `.gitignore`, secretos, `recorrer`), `carpeta.py` (listar, leer, guardar, estructura para el README), `ia.py` (la IA del usuario, sin herramientas; `probar`), `asistente.py` (README y Dibújame: prompts y limpieza de la respuesta), `plantilla_formato.py` (formato de una plantilla y del índice del catálogo: `validar`, `indice`, `validar_indice`; el MISMO archivo que `herramientas/plantilla_formato.py` del catálogo), `plantillas.py` (incluidas + descargadas, validar, índice, `catalogo` e `instalar` para lo que baja la app), `estado.py` (lo que pide la interfaz al abrir; guardar config). El último argumento siempre es el JSON de salida; lo de la persona llega en un JSON de entrada. |
 | `plantillas/` | Plantillas incluidas (`<categoria>/<id>.json`) y `README.md` con el formato. |
-| `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo) y scripts para construir encima del formato (`listar_diagramas.py`). |
+| `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo), `catalogo-ejemplo/` (copia de las plantillas del catálogo de la comunidad: «Comunidad» en la demo y las pruebas) y scripts para construir encima del formato (`listar_diagramas.py`). |
 | `pruebas/` | `correr.sh` (todo), `motor.mjs` (motor en Node), `interfaz.mjs` (Playwright), `test_python.py`, `contrato.py` + `puente.json` (contrato del puente), `casos.json` (casos compartidos), `compat/` (ejemplos Mermaid que se leen y se escriben igual; `variantes/`: formas no canónicas), `ia_falsa.py`. |
 | `herramientas/` | `revisar_privacidad.sh`, `generar_demo.py`, `comparar_mermaid.mjs` (rendimiento y compatibilidad contra Mermaid real, instalado aparte), `empaquetar.sh` (arma `dist/Esquema.app` + zip + `.sha256`, en un Mac), `generar_icono.mjs` (íconos de las apps desde `ui/favicon.svg`). |
-| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (arranque, menús), `Ventana.swift` (WKWebView + puente: un `case` por acción), `Carpeta.swift` (elegir la carpeta con marcador, rutas, `Vigilante` con FSEvents), `Servicios.swift` (rutas, config, idioma, `Procesador`, `EnOrden`), `Actualizaciones.swift`; `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
-| `escritorio/` | App de Windows y Linux (Electron): `src/main.js` (ventana, puente `ACCIONES`, menú, protocolo `esquema://ui/`), `src/preload.js`, `src/rutas.js`, `src/servicios.js`, `src/vigilante.js` (`fs.watch`), `src/actualizaciones.js`; `herramientas/` (Python portátil, instalador NSIS), `pruebas/` (`arranque.mjs` con Xvfb, `vigilante.mjs`), `iconos/`. Ver «Windows y Linux». |
+| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (arranque, menús), `Ventana.swift` (WKWebView + puente: un `case` por acción), `Carpeta.swift` (elegir la carpeta con marcador, rutas, `Vigilante` con FSEvents), `Servicios.swift` (rutas, config, idioma, `Procesador`, `EnOrden`), `Catalogo.swift` (plantillas de la comunidad), `Actualizaciones.swift`; `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
+| `escritorio/` | App de Windows y Linux (Electron): `src/main.js` (ventana, puente `ACCIONES`, menú, protocolo `esquema://ui/`), `src/preload.js`, `src/rutas.js`, `src/servicios.js`, `src/vigilante.js` (`fs.watch`), `src/catalogo.js` (plantillas de la comunidad), `src/actualizaciones.js`; `herramientas/` (Python portátil, instalador NSIS), `pruebas/` (`arranque.mjs` con Xvfb, `vigilante.mjs`, `catalogo.mjs`), `iconos/`. Ver «Windows y Linux». |
 | `build.sh`, `instalar.sh`, `instalar.ps1` | Compilar e instalar en el Mac de desarrollo; instaladores de un comando (Mac/Linux y Windows) que verifican la huella. |
-| `docs/` | Capturas (`docs/img/`) y, más adelante, la página pública. |
+| `docs/` | La página pública (GitHub Pages, `pagina.yml` la publica con `ui/` en `/demo/`): `index.html` bilingüe (es/en), `pagina.css`, `pagina.js`, `sitemap.xml`, `apple-touch-icon.png`, `favicon.svg` e `img/` (capturas y `compartir.png`). Ver «Página pública». |
 
 ## Formato de los archivos
 - **Documento** `.md`: Markdown de GitHub. Cada diagrama es un bloque ```` ```mermaid ````. GitHub lo muestra igual que Esquema.
@@ -130,6 +130,9 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
   cambios», guardar (o reemplazar, queda como cambio de la IA).
 - **Plantillas** (diálogo «Nuevo»): búsqueda, categorías, en blanco, README con IA; sin resultados → «Pídesela a tu IA».
   Nombre sugerido en el idioma elegido, validado (`validarNombre`: relativo, sin `..`, `.md`/`.mmd`, que no exista).
+  **Comunidad** (mismo diálogo, `E.nuevo.fuente`): pide `catalogoPlantillas` → `catalogoListo` (vista previa dibujada por el motor;
+  la interfaz vuelve a validar cada una con `validarPlantilla`); tocar una la descarga (`descargarPlantilla` → `plantillaDescargada`),
+  queda en «Plantillas» y elegida. «¿Hiciste una buena?» abre el formulario de propuesta del catálogo.
 - **Exportar:** SVG independiente (colores adentro, `M.svgCompleto` + `M.estiloSVG`), PNG (ese SVG en un canvas al doble, fondo
   blanco), Markdown con el bloque mermaid y «Copiar para GitHub».
 - **Diseño:** base neutra, un color de acción (azul tinta `--acento`), rojo solo para errores, verde solo para «lista». Claro/oscuro
@@ -147,9 +150,10 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
 ## Puente interfaz ↔ app (contrato en `pruebas/puente.json`)
 La UI llama `host.enviar(accion, datos)` y la app responde con `window.Esquema.<funcion>(json)`. En el navegador responde `simular()`
 con `ui/demo.json` (la carpeta vive en memoria). Acciones: `listo, config, elegirCarpeta, abrirArchivo, guardarArchivo, probarIA,
-estructura, crearReadme, dibujar, exportar, copiar, abrirEnlace, buscarActualizacion, actualizar`. Respuestas: `estado,
-carpetaElegida, archivoAbierto, archivoGuardado, archivoCambiado, archivos, iaProbada, estructuraLista, readmeListo, dibujoListo,
-exportado, copiado, actualizacionRevisada, actualizacionProgreso` y `menu` (los menús nativos). `puente.json` dice qué script corre
+estructura, crearReadme, dibujar, exportar, copiar, abrirEnlace, catalogoPlantillas, descargarPlantilla, buscarActualizacion,
+actualizar`. Respuestas: `estado, carpetaElegida, archivoAbierto, archivoGuardado, archivoCambiado, archivos, iaProbada,
+estructuraLista, readmeListo, dibujoListo, exportado, copiado, catalogoListo, plantillaDescargada, actualizacionRevisada,
+actualizacionProgreso` y `menu` (los menús nativos). `puente.json` dice qué script corre
 cada acción. `pruebas/contrato.py` revisa que interfaz, contrato y simulación coincidan, que existan los scripts, que
 `app/Sources/Esquema/Ventana.swift` (un `case` por acción) y `escritorio/src/main.js` (objeto `ACCIONES`) atiendan todo, manden
 todas las respuestas y solo llamen funciones que la interfaz tiene, y la seguridad de las dos apps (abajo). Una acción nueva va en
@@ -216,6 +220,32 @@ o con `..` (cada ruta se revisa como `comun.ruta_en` antes de llamar a bin/, que
   navegación y protocolo; con `ELECTRON=dist/linux-unpacked/esquema APP=1` prueba la empaquetada. **Windows no se puede probar
   aquí:** pídelo a la comunidad con un issue `probar`.
 
+## Catálogo de la comunidad (`esquema-app/esquema-catalogo`)
+- **Solo datos** (CC0 1.0): `plantillas/<categoria>/<id>.json` + `index.json` en la raíz (`{formato, plantillas: [{…plantilla, ruta,
+  sha256, tamano}]}`), que arma `herramientas/generar_indice.py` con `plantilla_formato.indice` (aquí: `bin/plantillas.py indice <raíz>`).
+  `herramientas/plantilla_formato.py` es **idéntico** a `bin/plantilla_formato.py` (`test_python.py` lo revisa si el catálogo está al
+  lado; el workflow del catálogo lo compara con `main` de este repo y dibuja cada diagrama con este motor). Un cambio de formato entra
+  primero aquí, se publica una versión y después se copia allá.
+- **La app** (`Catalogo.swift`, `escritorio/src/catalogo.js`, iguales): baja `index.json` solo de
+  `https://raw.githubusercontent.com/esquema-app/esquema-catalogo/main/`, sin seguir redirecciones, hasta 1 MB; `plantillas.py
+  catalogo` lo valida (`validar_indice`: solo entradas válidas, ruta `plantillas/<categoria>/<id>.json` que calza con su id y
+  categoría, huella de 64 hex, tamaño ≤ 100 KB, sin ids repetidos). Para descargar usa **solo** ese índice validado (el id que manda
+  la interfaz se busca ahí), baja la ruta del mismo dominio, compara tamaño y SHA-256 y `plantillas.py instalar` la vuelve a validar y
+  la guarda en `<carpeta de Esquema>/plantillas/<id>.json` (0600). Nunca toca la carpeta de la persona. `contrato.py` revisa todo esto
+  en las dos apps; `escritorio/pruebas/catalogo.mjs` lo prueba con un servidor falso.
+- **Propuestas:** issue con el formulario `plantilla.yml` del catálogo (descrita en palabras o con el JSON); quien mantiene arma el
+  JSON, corre `generar_indice.py` y abre el pull request. `ejemplos/catalogo-ejemplo/` es una copia para la demo y las pruebas.
+
+## Página pública (`docs/`, https://esquema-app.github.io/esquema/)
+- Una sola página bilingüe (`index.html`; el inglés con `?lang=en` o el idioma del navegador, `pagina.js`), sin dependencias ni
+  scripts en línea (CSP con `script-src 'self'`). Descarga según el sistema (`pagina.js` detecta Mac, Windows o Linux) con los
+  nombres fijos de `publicar.yml` (`releases/latest/download/Esquema-…`). La demo en vivo es `ui/` con `simular()` en `/demo/`.
+- SEO: title y description con lo que la gente busca, canonical, `hreflang`, Open Graph/Twitter con `img/compartir.png` (1200×630,
+  captura real con datos ficticios), JSON-LD `SoftwareApplication` + `FAQPage` (las mismas preguntas que se ven), `sitemap.xml`.
+  `robots.txt` va en el repo `esquema-app.github.io`.
+- Nada inventado: la cifra de rendimiento sale de la tabla del README; la comparación solo dice lo comprobado. Si cambia la tabla,
+  cambia la página. `herramientas/pagina_capturas.mjs` arma `img/compartir.png` y las capturas de la página.
+
 ## Publicar una versión
 1. Sube la versión en `app/Info.plist` y `escritorio/package.json` (iguales; el contrato lo revisa) y haz push a `main`.
 2. `publicar.yml` corre las pruebas rápidas, compila Mac (macos-15), Linux y Windows (ubuntu, con la app de Linux empaquetada
@@ -246,10 +276,7 @@ explorador; varias carpetas recientes; firma y notarización si algún día hay 
 - Después: clases (`classDiagram`), C4. Cada tipo nuevo: casos en `pruebas/casos.json`, ejemplos en `pruebas/compat/` validados con
   Mermaid real, plantillas y su fila en la tabla de rendimiento.
 
-**Catálogo comunitario** `esquema-app/esquema-catalogo`: `plantillas/<categoria>/<id>.json` + `index.json` (`bin/plantillas.py
-indice`, con SHA-256 y tamaño). La app lo baja solo de `raw.githubusercontent.com/esquema-app/esquema-catalogo`, sin redirecciones,
-con tamaño máximo y huella, y valida con `plantilla_formato.py` antes de guardarlo en la carpeta de Esquema (`plantillas/`). Votos =
-reacciones en un issue por plantilla; propuestas = issue con el JSON o descrita en palabras (la IA de quien mantiene la arma).
+**Catálogo:** votos = reacciones en un issue por plantilla.
 
 ## Reglas al cambiar cosas
 - Código, comentarios, commits y textos en **español** (de Chile neutro). Todo texto nuevo visible va con su traducción en

@@ -130,8 +130,9 @@ function revisarAcomodo(nombre, t) {
   ok(!pisadas, `${nombre}: ${pisadas} etiquetas de flechas encima de nodos`);
 }
 for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".mmd"))) revisarAcomodo(f, fs.readFileSync(path.join(dir, f), "utf8"));
-for (const f of fs.readdirSync(path.join(RAIZ, "plantillas")).filter((x) => !x.includes("."))) for (const p of fs.readdirSync(path.join(RAIZ, "plantillas", f))) {
-  const pl = JSON.parse(fs.readFileSync(path.join(RAIZ, "plantillas", f, p), "utf8"));
+// Las plantillas incluidas y la copia del catálogo de la comunidad (ejemplos/catalogo-ejemplo) se dibujan bien.
+for (const base of [path.join(RAIZ, "plantillas"), path.join(RAIZ, "ejemplos", "catalogo-ejemplo", "plantillas")]) for (const f of fs.readdirSync(base).filter((x) => !x.includes("."))) for (const p of fs.readdirSync(path.join(base, f))) {
+  const pl = JSON.parse(fs.readFileSync(path.join(base, f, p), "utf8"));
   for (const [idioma, t] of Object.entries(pl.contenido)) {
     if (pl.tipo === "diagrama") { ok(!M.dibujar(t).errores.length, `plantilla ${pl.id} (${idioma}) sin errores`); revisarAcomodo(`plantilla ${pl.id}`, t); }
     else for (const b of M.bloquesMermaid(t)) ok(!M.dibujar(b.contenido).errores.length, `plantilla ${pl.id} (${idioma}): diagrama sin errores`);

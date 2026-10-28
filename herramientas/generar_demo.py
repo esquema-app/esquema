@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Arma ui/demo.json (la vista previa en el navegador) desde ejemplos/proyecto-ejemplo y plantillas/. Todo ficticio.
+"""Arma ui/demo.json (la vista previa en el navegador) desde ejemplos/proyecto-ejemplo, plantillas/ y ejemplos/catalogo-ejemplo (una
+copia de las plantillas del catálogo de la comunidad, para «Comunidad» en «Nuevo»). Todo ficticio.
 
 Uso: python3 herramientas/generar_demo.py            (escribe ui/demo.json)
      python3 herramientas/generar_demo.py --revisar  (sale con 1 si ui/demo.json no está al día; lo usan las pruebas)
@@ -12,9 +13,11 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(RAIZ, "bin"))
 import carpeta  # noqa: E402
 import comun  # noqa: E402
+import plantilla_formato  # noqa: E402
 import plantillas  # noqa: E402
 
 EJEMPLO = os.path.join(RAIZ, "ejemplos", "proyecto-ejemplo")
+CATALOGO = os.path.join(RAIZ, "ejemplos", "catalogo-ejemplo")
 
 
 def demo():
@@ -32,6 +35,7 @@ def demo():
         "carpeta": {"nombre": "proyecto-ejemplo", "ruta": "~/Proyectos/proyecto-ejemplo"},
         "archivos": archivos,
         "plantillas": sorted(plantillas.incluidas(), key=lambda p: (p["categoria"], p["id"])),
+        "catalogo": plantilla_formato.indice(CATALOGO)[0]["plantillas"],
         "estructura": {"archivos": est["archivos"], "omitidos": est["omitidos"], "manifiestos": est["manifiestos"]},
     }
 

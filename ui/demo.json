@@ -274,6 +274,264 @@
    "autor": "Esquema"
   }
  ],
+ "catalogo": [
+  {
+   "formato": 1,
+   "id": "cola-de-trabajos",
+   "categoria": "arquitectura",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Cola de trabajos con reintentos",
+    "en": "Job queue with retries"
+   },
+   "descripcion": {
+    "es": "La API encola, los trabajadores procesan y lo que falla tres veces va a una cola aparte para revisarlo.",
+    "en": "The API enqueues, workers process, and what fails three times goes to a separate queue for review."
+   },
+   "archivo": {
+    "es": "cola-de-trabajos.mmd",
+    "en": "job-queue.mmd"
+   },
+   "contenido": {
+    "es": "flowchart LR\n    API{{API}} -->|encola| Q[[Cola de trabajos]]\n    subgraph trabajadores [Trabajadores]\n        W1[Trabajador 1]\n        W2[Trabajador 2]\n    end\n    Q --> W1\n    Q --> W2\n    W1 --> DB[(Base de datos)]\n    W2 --> DB\n    W1 -.->|falló 3 veces| DLQ[[Cola de revisión]]\n    W2 -.->|falló 3 veces| DLQ\n    DLQ -.-> Alerta[Aviso al equipo]\n%% esquema: {\"iconos\":{\"API\":\"api\",\"Alerta\":\"correo\",\"DB\":\"base-de-datos\",\"DLQ\":\"cola\",\"Q\":\"cola\",\"W1\":\"servidor\",\"W2\":\"servidor\"}}\n",
+    "en": "flowchart LR\n    API{{API}} -->|enqueue| Q[[Job queue]]\n    subgraph trabajadores [Workers]\n        W1[Worker 1]\n        W2[Worker 2]\n    end\n    Q --> W1\n    Q --> W2\n    W1 --> DB[(Database)]\n    W2 --> DB\n    W1 -.->|failed 3 times| DLQ[[Dead-letter queue]]\n    W2 -.->|failed 3 times| DLQ\n    DLQ -.-> Alerta[Team alert]\n%% esquema: {\"iconos\":{\"API\":\"api\",\"Alerta\":\"correo\",\"DB\":\"base-de-datos\",\"DLQ\":\"cola\",\"Q\":\"cola\",\"W1\":\"servidor\",\"W2\":\"servidor\"}}\n"
+   },
+   "autor": "esquema-app",
+   "etiquetas": [
+    "cola",
+    "queue",
+    "workers",
+    "dlq"
+   ],
+   "ruta": "plantillas/arquitectura/cola-de-trabajos.json",
+   "sha256": "4ffee218f850692d212a6bd9fd640ef06d2a2a1a5d1f794afc7731c18149f9a1",
+   "tamano": 1709
+  },
+  {
+   "formato": 1,
+   "id": "sitio-estatico",
+   "categoria": "arquitectura",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Sitio estático con CDN",
+    "en": "Static site with a CDN"
+   },
+   "descripcion": {
+    "es": "Del repositorio a la CDN: integración continua, almacenamiento, certificado y caché.",
+    "en": "From the repository to the CDN: CI, storage, certificate and cache."
+   },
+   "archivo": {
+    "es": "sitio-estatico.mmd",
+    "en": "static-site.mmd"
+   },
+   "contenido": {
+    "es": "flowchart LR\n    Dev([Persona que escribe]) -->|git push| Repo[Repositorio]\n    Repo --> CI[[Integración continua]]\n    CI -->|archivos generados| S3[(Almacenamiento)]\n    S3 --> CDN{{CDN}}\n    Cert[Certificado TLS] -.-> CDN\n    Lector([Visitante]) -->|HTTPS| CDN\n%% esquema: {\"iconos\":{\"CDN\":\"red\",\"CI\":\"engranaje\",\"Cert\":\"candado\",\"Dev\":\"persona\",\"Lector\":\"navegador\",\"S3\":\"almacenamiento\"}}\n",
+    "en": "flowchart LR\n    Dev([Writer]) -->|git push| Repo[Repository]\n    Repo --> CI[[Continuous integration]]\n    CI -->|built files| S3[(Storage)]\n    S3 --> CDN{{CDN}}\n    Cert[TLS certificate] -.-> CDN\n    Lector([Visitor]) -->|HTTPS| CDN\n%% esquema: {\"iconos\":{\"CDN\":\"red\",\"CI\":\"engranaje\",\"Cert\":\"candado\",\"Dev\":\"persona\",\"Lector\":\"navegador\",\"S3\":\"almacenamiento\"}}\n"
+   },
+   "autor": "esquema-app",
+   "etiquetas": [
+    "web",
+    "cdn",
+    "jamstack",
+    "static"
+   ],
+   "ruta": "plantillas/arquitectura/sitio-estatico.json",
+   "sha256": "fa629064d43c1328d7dd4be7ebe13bc692a0d53590d81b1893a672f52ad9ad43",
+   "tamano": 1450
+  },
+  {
+   "formato": 1,
+   "id": "diseno-tecnico",
+   "categoria": "documentacion",
+   "tipo": "documento",
+   "nombre": {
+    "es": "Diseño técnico (RFC)",
+    "en": "Technical design (RFC)"
+   },
+   "descripcion": {
+    "es": "Contexto, propuesta con su diagrama, alternativas descartadas, riesgos y preguntas abiertas.",
+    "en": "Context, proposal with its diagram, discarded alternatives, risks and open questions."
+   },
+   "archivo": {
+    "es": "diseno-tecnico.md",
+    "en": "technical-design.md"
+   },
+   "contenido": {
+    "es": "# RFC: avisos por correo cuando un pedido cambia de estado\n\n> Autora: Ana Pérez · Estado: en revisión · Comentarios hasta: 2026-04-10\n\n## Contexto\n\nHoy la persona tiene que entrar a la app para saber si su pedido salió. Queremos avisarle por correo sin frenar la API.\n\n## Propuesta\n\n```mermaid\nflowchart LR\n    API{{API de pedidos}} -->|pedido cambió| E[[Eventos]]\n    E --> N[Servicio de avisos]\n    N --> P[(Preferencias)]\n    N --> C[Proveedor de correo]\n%% esquema: {\"iconos\":{\"API\":\"api\",\"C\":\"correo\",\"E\":\"cola\",\"N\":\"servidor\",\"P\":\"base-de-datos\"}}\n```\n\n1. La API publica un evento y sigue (no espera el correo).\n2. El servicio de avisos revisa si la persona quiere correos.\n3. Si falla el proveedor, reintenta con espera creciente.\n\n## Alternativas descartadas\n\n- **Mandar el correo desde la API:** más simple, pero un proveedor lento frena cada pedido.\n- **Revisar cambios cada minuto:** no necesita eventos, pero avisa tarde y carga la base de datos.\n\n## Riesgos\n\n| Riesgo | Cómo lo cuidamos |\n|---|---|\n| Correos repetidos | Cada evento tiene un id y se procesa una sola vez |\n| Muchos correos juntos | Límite por persona: uno cada 10 minutos |\n\n## Preguntas abiertas\n\n- ¿Avisamos también por notificación en el celular?\n",
+    "en": "# RFC: email notifications when an order changes status\n\n> Author: Ana Pérez · Status: in review · Comments until: 2026-04-10\n\n## Context\n\nToday people have to open the app to know whether their order shipped. We want to email them without slowing down the API.\n\n## Proposal\n\n```mermaid\nflowchart LR\n    API{{Orders API}} -->|order changed| E[[Events]]\n    E --> N[Notification service]\n    N --> P[(Preferences)]\n    N --> C[Email provider]\n%% esquema: {\"iconos\":{\"API\":\"api\",\"C\":\"correo\",\"E\":\"cola\",\"N\":\"servidor\",\"P\":\"base-de-datos\"}}\n```\n\n1. The API publishes an event and moves on (it doesn't wait for the email).\n2. The notification service checks whether the person wants emails.\n3. If the provider fails, it retries with growing waits.\n\n## Discarded alternatives\n\n- **Send the email from the API:** simpler, but a slow provider slows down every order.\n- **Check for changes every minute:** no events needed, but it notifies late and loads the database.\n\n## Risks\n\n| Risk | How we handle it |\n|---|---|\n| Duplicate emails | Each event has an id and is processed only once |\n| Many emails at once | Per-person limit: one every 10 minutes |\n\n## Open questions\n\n- Should we also send a push notification?\n"
+   },
+   "autor": "esquema-app",
+   "etiquetas": [
+    "rfc",
+    "diseño",
+    "design",
+    "propuesta"
+   ],
+   "ruta": "plantillas/documentacion/diseno-tecnico.json",
+   "sha256": "222acb7de6a707dac42285f9f3c2e99be61dedd550b4cfa5e012258adf4d1d72",
+   "tamano": 3228
+  },
+  {
+   "formato": 1,
+   "id": "informe-de-incidente",
+   "categoria": "documentacion",
+   "tipo": "documento",
+   "nombre": {
+    "es": "Informe de incidente",
+    "en": "Incident report"
+   },
+   "descripcion": {
+    "es": "Qué pasó, a quién afectó, la línea de tiempo, la causa y lo que haremos para que no se repita. Sin culpables.",
+    "en": "What happened, who it affected, the timeline, the cause and what we'll do so it doesn't happen again. Blameless."
+   },
+   "archivo": {
+    "es": "informe-de-incidente.md",
+    "en": "incident-report.md"
+   },
+   "contenido": {
+    "es": "# Incidente: los pagos fallaron por 40 minutos\n\n> Fecha: 2026-03-12 · Gravedad: alta · Estado: cerrado · Escrito sin buscar culpables.\n\n## Resumen\n\nEntre las 10:05 y las 10:45, el 30 % de los pagos con tarjeta falló. Nadie perdió dinero: los pagos rechazados no se cobraron.\n\n## Línea de tiempo\n\n```mermaid\nsequenceDiagram\n    participant M as Monitoreo\n    participant T as Persona de turno\n    participant E as Equipo de pagos\n    M->>T: 10:08 Alerta: errores al pagar\n    T->>E: 10:15 Abre el canal del incidente\n    E->>E: 10:25 Encuentra el certificado vencido\n    E->>M: 10:45 Certificado renovado, errores en cero\n```\n\n## Causa\n\nEl certificado del servicio de pagos venció y la renovación automática estaba desactivada desde una migración.\n\n```mermaid\nflowchart LR\n    A[Migración del servidor] --> B[Renovación automática apagada]\n    B --> C[Certificado vencido]\n    C --> D[Pagos rechazados]\n```\n\n## Qué haremos\n\n| Acción | Responsable | Para cuándo |\n|---|---|---|\n| Alerta 14 días antes de que venza un certificado | Plataforma | 2026-03-19 |\n| Revisar la renovación en la lista de cada migración | Pagos | 2026-03-26 |\n",
+    "en": "# Incident: payments failed for 40 minutes\n\n> Date: 2026-03-12 · Severity: high · Status: closed · Written blameless.\n\n## Summary\n\nBetween 10:05 and 10:45, 30% of card payments failed. Nobody lost money: rejected payments were not charged.\n\n## Timeline\n\n```mermaid\nsequenceDiagram\n    participant M as Monitoring\n    participant T as On-call person\n    participant E as Payments team\n    M->>T: 10:08 Alert: payment errors\n    T->>E: 10:15 Opens the incident channel\n    E->>E: 10:25 Finds the expired certificate\n    E->>M: 10:45 Certificate renewed, errors at zero\n```\n\n## Cause\n\nThe payment service's certificate expired, and automatic renewal had been disabled since a migration.\n\n```mermaid\nflowchart LR\n    A[Server migration] --> B[Automatic renewal turned off]\n    B --> C[Certificate expired]\n    C --> D[Payments rejected]\n```\n\n## What we'll do\n\n| Action | Owner | Due |\n|---|---|---|\n| Alert 14 days before a certificate expires | Platform | 2026-03-19 |\n| Add renewal to every migration checklist | Payments | 2026-03-26 |\n"
+   },
+   "autor": "esquema-app",
+   "etiquetas": [
+    "incidente",
+    "postmortem",
+    "incident",
+    "sre"
+   ],
+   "ruta": "plantillas/documentacion/informe-de-incidente.json",
+   "sha256": "ceb3ee30cce9e648e48c37875b78b2ce7060fdbbfa4eb94f8e6a3f8b9213e1c4",
+   "tamano": 2975
+  },
+  {
+   "formato": 1,
+   "id": "recuperar-contrasena",
+   "categoria": "flujo-de-usuario",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Recuperar la contraseña",
+    "en": "Reset a password"
+   },
+   "descripcion": {
+    "es": "Desde «Olvidé mi contraseña» hasta entrar de nuevo, con enlace que vence y sin revelar si el correo existe.",
+    "en": "From “Forgot my password” to signing in again, with an expiring link and without revealing whether the email exists."
+   },
+   "archivo": {
+    "es": "recuperar-contrasena.mmd",
+    "en": "password-reset.mmd"
+   },
+   "contenido": {
+    "es": "flowchart TD\n    A([Olvidé mi contraseña]) --> B[/Escribe su correo/]\n    B --> C[Mensaje: si el correo existe, te enviamos un enlace]\n    C --> D{¿Abre el enlace antes de 30 minutos?}\n    D -->|No| E[El enlace venció] --> A\n    D -->|Sí| F[/Escribe la contraseña nueva/]\n    F --> G{¿Es segura?}\n    G -->|No| F\n    G -->|Sí| H[Cierra las otras sesiones]\n    H --> I([Entra a su cuenta])\n",
+    "en": "flowchart TD\n    A([Forgot my password]) --> B[/Types their email/]\n    B --> C[Message: if the email exists, we sent you a link]\n    C --> D{Opens the link within 30 minutes?}\n    D -->|No| E[The link expired] --> A\n    D -->|Yes| F[/Types the new password/]\n    F --> G{Is it strong?}\n    G -->|No| F\n    G -->|Yes| H[Signs out other sessions]\n    H --> I([Signs in])\n"
+   },
+   "autor": "esquema-app",
+   "etiquetas": [
+    "contraseña",
+    "password",
+    "login",
+    "seguridad"
+   ],
+   "ruta": "plantillas/flujo-de-usuario/recuperar-contrasena.json",
+   "sha256": "1d13fb101149cc1340f4e6d65b78191fa9e167f375a3fcb9214fd75181722d19",
+   "tamano": 1513
+  },
+  {
+   "formato": 1,
+   "id": "despliegue",
+   "categoria": "proceso",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Del cambio a producción",
+    "en": "From change to production"
+   },
+   "descripcion": {
+    "es": "Pull request, revisión, pruebas, ambiente de prueba y producción, con vuelta atrás si algo falla.",
+    "en": "Pull request, review, tests, staging and production, with a rollback if something fails."
+   },
+   "archivo": {
+    "es": "despliegue.mmd",
+    "en": "deployment.mmd"
+   },
+   "contenido": {
+    "es": "flowchart LR\n    subgraph equipo [Equipo]\n        I((Inicio)) --> PR[Abre un pull request]\n        PR --> R{¿Aprobado?}\n        R -->|Cambios| PR\n    end\n    subgraph ci [Integración continua]\n        R -->|Sí| T[Pruebas automáticas]\n        T --> OK{¿Pasan?}\n        OK -->|No| PR\n    end\n    subgraph ambientes [Ambientes]\n        OK -->|Sí| ST[Ambiente de prueba]\n        ST --> P[Producción]\n        P --> V{¿Todo bien?}\n        V -->|No| RB[Volver a la versión anterior]\n        V -->|Sí| F(((Fin)))\n    end\n",
+    "en": "flowchart LR\n    subgraph equipo [Team]\n        I((Start)) --> PR[Opens a pull request]\n        PR --> R{Approved?}\n        R -->|Changes| PR\n    end\n    subgraph ci [Continuous integration]\n        R -->|Yes| T[Automated tests]\n        T --> OK{Passing?}\n        OK -->|No| PR\n    end\n    subgraph ambientes [Environments]\n        OK -->|Yes| ST[Staging]\n        ST --> P[Production]\n        P --> V{All good?}\n        V -->|No| RB[Roll back]\n        V -->|Yes| F(((End)))\n    end\n"
+   },
+   "autor": "esquema-app",
+   "etiquetas": [
+    "despliegue",
+    "deploy",
+    "ci",
+    "devops"
+   ],
+   "ruta": "plantillas/proceso/despliegue.json",
+   "sha256": "33ac672eb4a358afb989e804cec0759e950d7e546f3983ae31d951d6c81e3434",
+   "tamano": 1691
+  },
+  {
+   "formato": 1,
+   "id": "subida-de-archivo",
+   "categoria": "secuencia",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Subir un archivo con URL firmada",
+    "en": "Upload with a signed URL"
+   },
+   "descripcion": {
+    "es": "El navegador sube directo al almacenamiento con un permiso temporal; tu API solo firma y registra.",
+    "en": "The browser uploads straight to storage with a temporary permission; your API only signs and records."
+   },
+   "archivo": {
+    "es": "subida-de-archivo.mmd",
+    "en": "file-upload.mmd"
+   },
+   "contenido": {
+    "es": "sequenceDiagram\n    actor U as Persona\n    participant N as Navegador\n    participant A as API\n    participant S as Almacenamiento\n    U->>N: Elige un archivo\n    N->>+A: Pide permiso para subir\n    A-->>-N: URL firmada (5 minutos)\n    N->>+S: PUT archivo\n    S-->>-N: 200 OK\n    N->>A: Listo: guarda la referencia\n    A-->>N: Archivo registrado\n    N-->>U: Se ve en la lista\n",
+    "en": "sequenceDiagram\n    actor U as Person\n    participant N as Browser\n    participant A as API\n    participant S as Storage\n    U->>N: Picks a file\n    N->>+A: Asks for upload permission\n    A-->>-N: Signed URL (5 minutes)\n    N->>+S: PUT file\n    S-->>-N: 200 OK\n    N->>A: Done: save the reference\n    A-->>N: File recorded\n    N-->>U: Shows up in the list\n"
+   },
+   "autor": "esquema-app",
+   "etiquetas": [
+    "subida",
+    "upload",
+    "s3",
+    "archivos"
+   ],
+   "ruta": "plantillas/secuencia/subida-de-archivo.json",
+   "sha256": "73a1bd58c5765a7533dd76df69f523e4ceaef9cd19cd112eb2d94f20d8d6df7c",
+   "tamano": 1441
+  },
+  {
+   "formato": 1,
+   "id": "webhook-de-pago",
+   "categoria": "secuencia",
+   "tipo": "diagrama",
+   "nombre": {
+    "es": "Webhook de un pago",
+    "en": "Payment webhook"
+   },
+   "descripcion": {
+    "es": "La pasarela avisa a tu servidor: firma revisada, sin procesar dos veces y respuesta rápida.",
+    "en": "The payment provider notifies your server: signature checked, never processed twice, quick reply."
+   },
+   "archivo": {
+    "es": "webhook-de-pago.mmd",
+    "en": "payment-webhook.mmd"
+   },
+   "contenido": {
+    "es": "sequenceDiagram\n    autonumber\n    participant P as Pasarela de pago\n    participant W as Tu servidor\n    participant D as Base de datos\n    participant C as Cola de correos\n    P->>+W: POST /webhooks/pago\n    W->>W: Revisa la firma\n    alt Firma inválida\n        W-->>P: 400 Rechazado\n    else Firma válida\n        W->>D: ¿Ya procesé este evento?\n        alt Es nuevo\n            W->>D: Marca el pedido como pagado\n            W-)C: Correo de confirmación\n        end\n        W-->>-P: 200 OK\n    end\n    Note over P,W: Si no respondes 200, la pasarela reintenta\n",
+    "en": "sequenceDiagram\n    autonumber\n    participant P as Payment provider\n    participant W as Your server\n    participant D as Database\n    participant C as Email queue\n    P->>+W: POST /webhooks/payment\n    W->>W: Check the signature\n    alt Invalid signature\n        W-->>P: 400 Rejected\n    else Valid signature\n        W->>D: Did I already process this event?\n        alt It's new\n            W->>D: Mark the order as paid\n            W-)C: Confirmation email\n        end\n        W-->>-P: 200 OK\n    end\n    Note over P,W: Without a 200, the provider retries\n"
+   },
+   "autor": "esquema-app",
+   "etiquetas": [
+    "webhook",
+    "pago",
+    "payment",
+    "idempotencia"
+   ],
+   "ruta": "plantillas/secuencia/webhook-de-pago.json",
+   "sha256": "dd9899b34fe6334f220f09b878ca375ee09a3e9c822c144085bca27fa4eaee88",
+   "tamano": 1823
+  }
+ ],
  "estructura": {
   "archivos": [
    "README.md",

@@ -291,3 +291,10 @@ button { cursor: pointer; }
   .md { padding: 18px 16px 60px; }
   .archivo { min-height: 44px; }
 }
+/* «Nuevo» → Comunidad: plantillas del catálogo de la comunidad */
+.titulo-nuevo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.titulo-nuevo h2 { margin: 0; }
+.plantilla .estado-catalogo small { color: var(--acento); font-weight: 600; margin-top: 4px; }
+.plantilla[aria-busy="true"] { opacity: .7; }
+.proponer { margin: 14px 0 0; text-align: center; }
+.enlace { border: 0; background: none; padding: 6px 4px; min-height: 32px; color: var(--acento); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font: inherit; }

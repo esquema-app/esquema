@@ -5,7 +5,7 @@
 // AA del botón principal, el gris y el rojo, en claro y oscuro; 5) lo primero es elegir el idioma (con teclado) y lo que sigue sale en
 // ese idioma; 6) el lienzo edita el texto: crear, renombrar, conectar arrastrando, mover (queda fijado), borrar, deshacer y rehacer;
 // 7) el texto edita el lienzo, con errores claros y autocompletar; 8) el documento muestra sus diagramas y se editan en el lugar;
-// 9) Dibújame aplica y «Quitar este cambio» lo saca; 10) README para GitHub; 11) plantillas; 12) exportar SVG, PNG y para GitHub;
+// 9) Dibújame aplica y «Quitar este cambio» lo saca; 10) README para GitHub; 11) plantillas (también las de la comunidad); 12) exportar SVG, PNG y para GitHub;
 // 13) la misma regla de plantillas que Python (pruebas/casos.json). Con CAPTURAS=carpeta guarda capturas.
 import http from "node:http";
 import fs from "node:fs";
@@ -39,7 +39,7 @@ async function pagina({ ancho = 1280, alto = 800, idioma = "es", oscuro = false,
   p.on("pageerror", (e) => falla(`JS (${idioma}, ${ancho}px): ${e.message}`));
   p.on("console", (m) => { if (/Content Security Policy/i.test(m.text())) falla("CSP: " + m.text().slice(0, 200)); else if (m.type() === "error" && !/favicon|404/.test(m.text())) falla("Consola: " + m.text().slice(0, 200)); });
   if (config) await p.addInitScript((c) => { try { localStorage.setItem("esquema.config", JSON.stringify(c)); localStorage.removeItem("esquema.ultimo"); } catch { /* nada */ } }, config);
-  await p.addInitScript(() => { window._faltantes = new Set(); });
+  await p.addInitScript((c) => { window._faltantes = new Set(); window._demoCatalogo = c; }, demo.catalogo);
   await p.goto(BASE + query);
   await p.waitForFunction(() => window.Esquema && document.querySelector("#app").children.length);
   await p.waitForTimeout(150);
@@ -91,6 +91,10 @@ const VISTAS = [
   ["nuevo-categoria", "E=>{E.nuevo.categoria='documentacion';E.nuevo.elegida='adr';E.nuevo.nombre='0001-decision.md'}"],
   ["nuevo-nombre-malo", "E=>{E.nuevo.errorNombre='Ya hay un archivo con ese nombre.'}"],
   ["nuevo-nada", "E=>{E.nuevo={categoria:'todas',busqueda:'zzz',elegida:null}}"],
+  ["comunidad-cargando", "E=>{E.nuevo={fuente:'comunidad',categoria:'todas',busqueda:'',elegida:null};E.catalogo={estado:'cargando',plantillas:[],bajando:{}}}"],
+  ["comunidad-error", "E=>{E.catalogo={estado:'error',error:'',plantillas:[],bajando:{}}}"],
+  ["comunidad", "E=>{const c=JSON.parse(JSON.stringify(window._demoCatalogo));E.catalogo={estado:'listo',plantillas:c,bajando:{[c[0].id]:true}};E.plantillas.push(Object.fromEntries(Object.entries(c[1]).filter(([k])=>!['ruta','sha256','tamano'].includes(k))))}"],
+  ["comunidad-vacia", "E=>{E.nuevo.busqueda='zzz'}"],
   ["readme", "E=>{E.nuevo=null;E.readme={paso:'pedir',descripcion:'',estructura:true,envio:{archivos:['README.md','docs/pago.mmd'],omitidos:2}}}"],
   ["readme-error", "E=>{E.readme.error='Claude no respondió.';E.readme.envio={cargando:true}}"],
   ["readme-escribiendo", "E=>{E.readme.paso='escribiendo'}"],
@@ -359,6 +363,32 @@ console.log("README: revisado");
   await p.close();
 }
 console.log("Plantillas y exportar: revisado");
+
+// ── 11b) Plantillas de la comunidad: «Comunidad» pide el catálogo, tocar una la descarga, queda elegida y crea el archivo ──
+{
+  const p = await pagina();
+  await abrir(p, "README.md");
+  await p.click('[data-accion="nuevo"]');
+  await p.click('[data-fuente="comunidad"]');
+  await p.waitForSelector("[data-catalogo]");
+  const n = await p.$$eval("[data-catalogo] .previa svg", (x) => x.length);
+  if (n < 4) falla("Las plantillas de la comunidad no muestran su vista previa");
+  const id = demo.catalogo.find((x) => x.tipo === "diagrama").id;
+  await p.click(`[data-catalogo="${id}"]`);
+  await p.waitForSelector("#nombre-nuevo");
+  if (!(await p.evaluate((i) => { let ok; window.Esquema._probar((E) => { ok = E.plantillas.some((x) => x.id === i) && E.nuevo.elegida === i; }); return ok; }, id))) falla("La plantilla descargada no quedó en tus plantillas ni elegida");
+  const estado = await p.$eval(`[data-catalogo="${id}"] .estado-catalogo`, (x) => x.textContent);
+  if (estado !== "En tus plantillas") falla("La plantilla descargada no dice «En tus plantillas»: " + estado);
+  await p.fill("#nombre-nuevo", "docs/comunidad.mmd"); await p.click('[data-accion="crear"]');
+  await p.waitForSelector("#lienzo .nodo");
+  if (await p.$("#lienzo.con-error")) falla("La plantilla de la comunidad crea un diagrama con errores");
+  // Una respuesta inválida de la app no se muestra (la interfaz vuelve a validar).
+  await p.evaluate(() => window.Esquema.catalogoListo({ ok: true, plantillas: [{ id: "x", script: "alert(1)" }] }));
+  const malos = await p.evaluate(() => { let n; window.Esquema._probar((E) => { n = E.catalogo.plantillas.length; }); return n; });
+  if (malos) falla("La interfaz mostró una plantilla del catálogo que no es válida");
+  await p.close();
+}
+console.log("Plantillas de la comunidad: revisado");
 
 // ── 13) Misma regla de plantillas que Python ──
 {

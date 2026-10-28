@@ -9,6 +9,7 @@ const { ES_WIN, datos, prepararDatos, recursos, absoluta } = require("./rutas");
 const { configurar, Config, Idioma, Procesador, EnOrden } = require("./servicios");
 const { Vigilante } = require("./vigilante");
 const { Actualizaciones, SIN_CONEXION } = require("./actualizaciones");
+const { crearCatalogo } = require("./catalogo");
 
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 if (ES_WIN) app.setAppUserModelId("app.esquema.escritorio");
@@ -23,6 +24,8 @@ const ORIGEN = "esquema://ui/";
 const ICONOS = path.join(__dirname, "..", "iconos");
 const t = (s) => Idioma.t(s);
 const MAXIMO_EXPORTAR = 50 * 1024 * 1024;
+// Plantillas de la comunidad: solo de raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones (src/catalogo.js).
+const Catalogo = crearCatalogo({ fetch: (u, o) => net.fetch(u, o), procesador: Procesador, t, version: app.getVersion() });
 
 // ───────────────────────── Ventana (equivale a Ventana.swift) ─────────────────────────
 let ventana = null, lista = false, saliendo = false;
@@ -235,6 +238,12 @@ const ACCIONES = {
   },
   abrirEnlace(d) {
     abrirEnlace(d.url);
+  },
+  async catalogoPlantillas() {
+    llamar("catalogoListo", await Catalogo.listar());
+  },
+  async descargarPlantilla(d) {
+    llamar("plantillaDescargada", await Catalogo.descargar(texto(d, "id", 60)));
   },
   async buscarActualizacion() {
     const r = await Actualizaciones.revisar().catch(() => ({ hay: false, detalle: SIN_CONEXION }));

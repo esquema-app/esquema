@@ -1,0 +1,29 @@
+{
+  "formato": 1,
+  "id": "cola-de-trabajos",
+  "categoria": "arquitectura",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Cola de trabajos con reintentos",
+    "en": "Job queue with retries"
+  },
+  "descripcion": {
+    "es": "La API encola, los trabajadores procesan y lo que falla tres veces va a una cola aparte para revisarlo.",
+    "en": "The API enqueues, workers process, and what fails three times goes to a separate queue for review."
+  },
+  "archivo": {
+    "es": "cola-de-trabajos.mmd",
+    "en": "job-queue.mmd"
+  },
+  "contenido": {
+    "es": "flowchart LR\n    API{{API}} -->|encola| Q[[Cola de trabajos]]\n    subgraph trabajadores [Trabajadores]\n        W1[Trabajador 1]\n        W2[Trabajador 2]\n    end\n    Q --> W1\n    Q --> W2\n    W1 --> DB[(Base de datos)]\n    W2 --> DB\n    W1 -.->|falló 3 veces| DLQ[[Cola de revisión]]\n    W2 -.->|falló 3 veces| DLQ\n    DLQ -.-> Alerta[Aviso al equipo]\n%% esquema: {\"iconos\":{\"API\":\"api\",\"Alerta\":\"correo\",\"DB\":\"base-de-datos\",\"DLQ\":\"cola\",\"Q\":\"cola\",\"W1\":\"servidor\",\"W2\":\"servidor\"}}\n",
+    "en": "flowchart LR\n    API{{API}} -->|enqueue| Q[[Job queue]]\n    subgraph trabajadores [Workers]\n        W1[Worker 1]\n        W2[Worker 2]\n    end\n    Q --> W1\n    Q --> W2\n    W1 --> DB[(Database)]\n    W2 --> DB\n    W1 -.->|failed 3 times| DLQ[[Dead-letter queue]]\n    W2 -.->|failed 3 times| DLQ\n    DLQ -.-> Alerta[Team alert]\n%% esquema: {\"iconos\":{\"API\":\"api\",\"Alerta\":\"correo\",\"DB\":\"base-de-datos\",\"DLQ\":\"cola\",\"Q\":\"cola\",\"W1\":\"servidor\",\"W2\":\"servidor\"}}\n"
+  },
+  "autor": "esquema-app",
+  "etiquetas": [
+    "cola",
+    "queue",
+    "workers",
+    "dlq"
+  ]
+}

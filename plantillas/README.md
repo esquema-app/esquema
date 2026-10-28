@@ -2,7 +2,8 @@
 
 Una plantilla es **solo datos**: un JSON con el texto de un diagrama (Mermaid) o de un documento (Markdown), su nombre y su
 descripción en cada idioma. Nunca ejecuta nada. Las incluidas viven aquí (`plantillas/<categoria>/<id>.json`); las de la comunidad,
-en el catálogo `esquema-app/esquema-catalogo` (mismo formato, con un `index.json` que arma `bin/plantillas.py indice`).
+en el [catálogo](https://github.com/esquema-app/esquema-catalogo) `esquema-app/esquema-catalogo` (mismo formato, con un `index.json`
+que arma `plantilla_formato.indice`) y se descargan desde «Nuevo» → «Comunidad».
 
 ```json
 {

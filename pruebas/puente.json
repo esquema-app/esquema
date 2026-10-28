@@ -103,6 +103,18 @@
       "datos": {},
       "responde": "actualizacionProgreso",
       "como": "Baja Esquema-macOS.zip / Esquema-Windows.exe / Esquema-Linux.AppImage|tar.gz solo desde github.com/esquema-app/esquema/releases/download/, verifica su .sha256, espera a que la app se cierre, la reemplaza y la abre. Nunca con un guardado en curso."
+    },
+    "catalogoPlantillas": {
+      "datos": {},
+      "responde": "catalogoListo",
+      "como": "La app baja index.json solo de https://raw.githubusercontent.com/esquema-app/esquema-catalogo/main/ (sin seguir redirecciones, hasta 1 MB; Catalogo.swift / escritorio/src/catalogo.js) y lo valida con bin/plantillas.py catalogo <archivo> <salida> (plantilla_formato.validar_indice). Recuerda ese índice validado: de ahí salen la ruta, el tamaño y la huella de cada descarga, nunca de lo que manda la interfaz."
+    },
+    "descargarPlantilla": {
+      "datos": {
+        "id": "id de una plantilla del índice"
+      },
+      "responde": "plantillaDescargada",
+      "como": "Busca el id en el último índice validado, baja su ruta (plantillas/<categoria>/<id>.json) del mismo dominio sin redirecciones y hasta 100 KB, compara tamaño y SHA-256 con el índice y bin/plantillas.py instalar <entrada {archivo, id, sha256}> <salida> la vuelve a validar y la guarda en <carpeta de Esquema>/plantillas/<id>.json (nunca en la carpeta de la persona)."
     }
   },
   "respuestas": {
@@ -120,6 +132,8 @@
     "copiado": "{ok}",
     "actualizacionRevisada": "{hay, detalle, sinConexion}",
     "actualizacionProgreso": "{paso: \"1\" | \"2\" | \"3\" | \"error\", texto, total?, pct?}",
-    "menu": "{accion: guardar | deshacer | rehacer | acercar | alejar | ajustar | texto | ambos | dibujo | nuevo | ajustes}: los menús nativos de la app (Archivo, Edición, Ver)."
+    "menu": "{accion: guardar | deshacer | rehacer | acercar | alejar | ajustar | texto | ambos | dibujo | nuevo | ajustes}: los menús nativos de la app (Archivo, Edición, Ver).",
+    "catalogoListo": "{ok, plantillas: [{…plantilla, ruta, sha256, tamano}]} | {ok: false, error}",
+    "plantillaDescargada": "{ok, plantilla} | {ok: false, id, error}"
   }
 }

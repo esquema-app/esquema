@@ -1,0 +1,29 @@
+{
+  "formato": 1,
+  "id": "webhook-de-pago",
+  "categoria": "secuencia",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Webhook de un pago",
+    "en": "Payment webhook"
+  },
+  "descripcion": {
+    "es": "La pasarela avisa a tu servidor: firma revisada, sin procesar dos veces y respuesta rápida.",
+    "en": "The payment provider notifies your server: signature checked, never processed twice, quick reply."
+  },
+  "archivo": {
+    "es": "webhook-de-pago.mmd",
+    "en": "payment-webhook.mmd"
+  },
+  "contenido": {
+    "es": "sequenceDiagram\n    autonumber\n    participant P as Pasarela de pago\n    participant W as Tu servidor\n    participant D as Base de datos\n    participant C as Cola de correos\n    P->>+W: POST /webhooks/pago\n    W->>W: Revisa la firma\n    alt Firma inválida\n        W-->>P: 400 Rechazado\n    else Firma válida\n        W->>D: ¿Ya procesé este evento?\n        alt Es nuevo\n            W->>D: Marca el pedido como pagado\n            W-)C: Correo de confirmación\n        end\n        W-->>-P: 200 OK\n    end\n    Note over P,W: Si no respondes 200, la pasarela reintenta\n",
+    "en": "sequenceDiagram\n    autonumber\n    participant P as Payment provider\n    participant W as Your server\n    participant D as Database\n    participant C as Email queue\n    P->>+W: POST /webhooks/payment\n    W->>W: Check the signature\n    alt Invalid signature\n        W-->>P: 400 Rejected\n    else Valid signature\n        W->>D: Did I already process this event?\n        alt It's new\n            W->>D: Mark the order as paid\n            W-)C: Confirmation email\n        end\n        W-->>-P: 200 OK\n    end\n    Note over P,W: Without a 200, the provider retries\n"
+  },
+  "autor": "esquema-app",
+  "etiquetas": [
+    "webhook",
+    "pago",
+    "payment",
+    "idempotencia"
+  ]
+}

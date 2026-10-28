@@ -20,7 +20,8 @@
     menu: null,             // {tipo: "formas" | "exportar" | "flechas", x, y}
     bv: null,               // bienvenida: 0 idioma, 1 hola, 2 carpeta, 3 IA
     ajustes: false, probando: {}, resultadoIA: {},
-    nuevo: null,            // {categoria, busqueda, elegida, nombre}
+    nuevo: null,            // {fuente: "app" | "comunidad", categoria, busqueda, elegida, nombre}
+    catalogo: null,         // plantillas de la comunidad: {estado: "cargando" | "listo" | "error", plantillas, error, bajando: {id: true}}
     readme: null,           // {paso: "pedir" | "escribiendo" | "listo" | "error", descripcion, estructura, envio, texto, pedido, error}
     dibujar: null,          // {pedido, tipo, cambiar, enviando, error, propuesta}
     cambiosIA: [],          // [{id, ruta, pedido, resumen, antes, despues, estado}]
@@ -32,7 +33,8 @@
     sugerencias: [],
   };
   const ENLACES = { sitio: "https://esquema-app.github.io/esquema/", codigo: "https://github.com/esquema-app/esquema",
-    comunidad: "https://github.com/esquema-app/esquema/discussions", catalogo: "https://github.com/esquema-app/esquema-catalogo" };
+    comunidad: "https://github.com/esquema-app/esquema/discussions", catalogo: "https://github.com/esquema-app/esquema-catalogo",
+    proponer: "https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml" };
   const CATEGORIAS = ["arquitectura", "secuencia", "flujo-de-usuario", "proceso", "documentacion"];
   const $ = (s, r = document) => r.querySelector(s);
   const esc = M.esc;
@@ -870,21 +872,39 @@
   }
   const NOMBRE_CAT = { todas: "Todas", arquitectura: "Arquitectura", secuencia: "Secuencia de API", "flujo-de-usuario": "Flujo de usuario", proceso: "Proceso de negocio", documentacion: "Documentación" };
   function dialogoNuevo() {
-    const n = E.nuevo, lista = plantillasFiltradas(), el = E.plantillas.find((p) => p.id === n.elegida);
+    const n = E.nuevo, comunidad = n.fuente === "comunidad", lista = plantillasFiltradas(), el = E.plantillas.find((p) => p.id === n.elegida);
     const blancos = [["blanco-flujo", "Diagrama de flujo", "flowchart TD\n    A[Inicio] --> B[Siguiente paso]\n", "diagrama.mmd"], ["blanco-secuencia", "Diagrama de secuencia", "sequenceDiagram\n    participant A as Cliente\n    participant B as Servidor\n    A->>B: Pedido\n    B-->>A: Respuesta\n", "secuencia.mmd"], ["blanco-doc", "Documento", "# Título\n\nEscribe aquí.\n", "documento.md"]];
     const q = (n.busqueda || "").trim();
-    return `<h2 id="t-nv">Nuevo</h2>
+    return `<div class="titulo-nuevo"><h2 id="t-nv">Nuevo</h2><div class="seg" role="group" aria-label="Plantillas"><button data-fuente="app" aria-pressed="${!comunidad}">Plantillas</button><button data-fuente="comunidad" aria-pressed="${comunidad}">Comunidad</button></div></div>
       <div class="buscar-fila"><input type="search" id="buscar-plantilla" placeholder="Buscar plantillas" value="${esc(n.busqueda || "")}" aria-label="Buscar plantillas" data-sin-traducir data-autofoco></div>
       <div class="chips" style="margin-top:10px">${["todas", ...CATEGORIAS].map((c) => `<button class="chip" data-categoria="${c}" aria-pressed="${n.categoria === c}">${NOMBRE_CAT[c]}</button>`).join("")}</div>
-      <div class="plantillas">
+      ${comunidad ? catalogoHTML(q) : `<div class="plantillas">
         ${n.categoria === "todas" && !q ? `<button class="plantilla ia" data-accion="readme"><span class="previa">${ic("github")}</span><span class="info"><b>README para GitHub</b><small>Tu IA lo escribe desde lo que cuentas y la lista de archivos.</small></span></button>
           ${blancos.map(([id, nom, , ]) => `<button class="plantilla" data-plantilla="${id}" aria-pressed="${n.elegida === id}"><span class="previa">${ic(id === "blanco-doc" ? "doc" : "diagrama")}</span><span class="info"><b>${nom}</b><small>En blanco</small></span></button>`).join("")}` : ""}
         ${lista.map((p) => `<button class="plantilla" data-plantilla="${esc(p.id)}" aria-pressed="${n.elegida === p.id}" data-sin-traducir><span class="previa">${previaPlantilla(p)}</span><span class="info"><b>${esc(textoDe(p.nombre))}</b><small>${esc(textoDe(p.descripcion))}</small></span></button>`).join("")}
-      </div>
-      ${q && !lista.length ? `<div class="vacio">${frase("Aún no hay una plantilla de «{x}».", { x: q }, "p")}<button class="boton principal" data-accion="dibujame-busqueda">${ic("chispa")} Pídesela a tu IA</button></div>` : ""}
+      </div>`}
+      ${!comunidad && q && !lista.length ? `<div class="vacio">${frase("Aún no hay una plantilla de «{x}».", { x: q }, "p")}<button class="boton principal" data-accion="dibujame-busqueda">${ic("chispa")} Pídesela a tu IA</button></div>` : ""}
       ${n.elegida ? `<label for="nombre-nuevo">Nombre del archivo</label><input type="text" id="nombre-nuevo" value="${esc(n.nombre || "")}" data-sin-traducir>${n.errorNombre ? `<p class="mal-txt">${n.errorNombre}</p>` : ""}` : ""}
       <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="crear" ${n.elegida ? "" : "disabled"}>Crear</button></div>`;
     void el; void blancos;
+  }
+  /** «Comunidad» en «Nuevo»: el catálogo esquema-app/esquema-catalogo (la app lo baja y bin/plantillas.py lo valida). Tocar una
+   *  plantilla la descarga (huella revisada por la app) y la deja elegida; las descargadas quedan también en «Plantillas». */
+  const enMisPlantillas = (p) => E.plantillas.some((x) => x.id === p.id && textoDe(x.contenido) === textoDe(p.contenido));
+  function catalogoFiltrado() {
+    const n = E.nuevo, q = (n.busqueda || "").trim().toLowerCase();
+    return (E.catalogo?.plantillas || []).filter((p) => (n.categoria === "todas" || p.categoria === n.categoria)
+      && (!q || `${textoDe(p.nombre)} ${textoDe(p.descripcion)} ${p.categoria} ${(p.etiquetas || []).join(" ")}`.toLowerCase().includes(q)));
+  }
+  function catalogoHTML(q) {
+    const c = E.catalogo, n = E.nuevo;
+    if (!c || c.estado === "cargando") return `<div class="esperando"><span class="giro"></span>Buscando plantillas de la comunidad…</div>`;
+    if (c.estado === "error") return `<div class="vacio"><p data-sin-traducir>${esc(c.error || tr("No pude conectarme. Revisa tu conexión."))}</p><button class="boton" data-accion="explorar">Reintentar</button></div>`;
+    const lista = catalogoFiltrado();
+    const estado = (p) => c.bajando[p.id] ? frase("Descargando…", {}, "small") : enMisPlantillas(p) ? frase("En tus plantillas", {}, "small") : frase("Toca para descargarla", {}, "small");
+    return `<div class="plantillas">${lista.map((p) => `<button class="plantilla" data-catalogo="${esc(p.id)}" aria-pressed="${n.elegida === p.id}" ${c.bajando[p.id] ? "aria-busy=\"true\"" : ""} data-sin-traducir><span class="previa">${previaPlantilla(p)}</span><span class="info"><b>${esc(textoDe(p.nombre))}</b><small>${esc(textoDe(p.descripcion))}</small>${p.autor ? frase("por {x}", { x: p.autor }, "small") : ""}<span class="estado-catalogo">${estado(p)}</span></span></button>`).join("")}</div>
+      ${!lista.length ? `<div class="vacio">${q ? frase("Aún no hay una plantilla de «{x}».", { x: q }, "p") : `<p>Todavía no hay plantillas de la comunidad en esta categoría.</p>`}${q ? `<button class="boton principal" data-accion="dibujame-busqueda">${ic("chispa")} Pídesela a tu IA</button>` : ""}</div>` : ""}
+      <p class="proponer"><button class="enlace" data-enlace="${ENLACES.proponer}">¿Hiciste una buena? Compártela con la comunidad</button></p>`;
   }
   function contenidoBlanco(id) {
     return { "blanco-flujo": [tr("flowchart TD\n    A[Inicio] --> B[Siguiente paso]\n"), "diagrama.mmd"], "blanco-secuencia": [tr("sequenceDiagram\n    participant A as Cliente\n    participant B as Servidor\n    A->>B: Pedido\n    B-->>A: Respuesta\n"), "secuencia.mmd"], "blanco-doc": [tr("# Título\n\nEscribe aquí.\n"), "documento.md"] }[id];
@@ -904,6 +924,13 @@
     if (E.archivos.some((a) => a.ruta === n)) return "Ya hay un archivo con ese nombre.";
     return "";
   }
+  function elegirPlantilla(id) {
+    E.nuevo.elegida = id; E.nuevo.errorNombre = null;
+    const pl = E.plantillas.find((p) => p.id === id);
+    E.nuevo.nombre = nombreLibre(pl ? textoDe(pl.archivo) : contenidoBlanco(id)[1]);
+    pintar(); $("#nombre-nuevo")?.focus();
+  }
+  function pedirCatalogo() { E.catalogo = { estado: "cargando", plantillas: [], bajando: {} }; host.enviar("catalogoPlantillas"); }
   function crearDesdePlantilla() {
     const n = E.nuevo;
     const nombre = ($("#nombre-nuevo")?.value || n.nombre || "").trim();
@@ -1102,12 +1129,18 @@
     if (d.tema) { E.config.tema = d.tema; host.enviar("config", { tema: d.tema }); return pintar(); }
     if (d.enlace) { e.preventDefault(); return abrirEnlace(d.enlace); }
     if (d.categoria) { E.nuevo.categoria = d.categoria; return pintar(); }
-    if (d.plantilla) {
-      E.nuevo.elegida = d.plantilla; E.nuevo.errorNombre = null;
-      const pl = E.plantillas.find((p) => p.id === d.plantilla);
-      E.nuevo.nombre = nombreLibre(pl ? textoDe(pl.archivo) : contenidoBlanco(d.plantilla)[1]);
-      pintar(); $("#nombre-nuevo")?.focus(); return;
+    if (d.fuente && E.nuevo) {
+      E.nuevo.fuente = d.fuente; E.nuevo.elegida = null;
+      if (d.fuente === "comunidad" && E.catalogo?.estado !== "listo") pedirCatalogo();
+      return pintar();
     }
+    if (d.catalogo && E.catalogo?.estado === "listo") {
+      const p = E.catalogo.plantillas.find((x) => x.id === d.catalogo);
+      if (!p || E.catalogo.bajando[p.id]) return;
+      if (enMisPlantillas(p)) return elegirPlantilla(p.id);
+      E.catalogo.bajando[p.id] = true; host.enviar("descargarPlantilla", { id: p.id }); return pintar();
+    }
+    if (d.plantilla) return elegirPlantilla(d.plantilla);
     if (d.ejemploDibujo) { E.dibujar.pedido = tr(EJEMPLOS_DIBUJO[Number(d.ejemploDibujo)]); E.dibujar.cambiar = !!$("#cambiar-actual")?.checked; return pintar(); }
     if (d.tipoDibujo) { E.dibujar.pedido = $("#pedido-dibujo")?.value || ""; E.dibujar.cambiar = !!$("#cambiar-actual")?.checked; E.dibujar.tipo = d.tipoDibujo; return pintar(); }
     if (d.quitarIa) { E.dibujar = null; return quitarCambioIA(d.quitarIa); }
@@ -1123,7 +1156,8 @@
       case "abrir-lateral": E.lateral = true; return pintar();
       case "cerrar-lateral": E.lateral = false; return pintar();
       case "elegir-carpeta": return host.enviar("elegirCarpeta");
-      case "nuevo": E.lateral = false; E.nuevo = { categoria: "todas", busqueda: "", elegida: null, nombre: "" }; return pintar();
+      case "nuevo": E.lateral = false; E.nuevo = { fuente: "app", categoria: "todas", busqueda: "", elegida: null, nombre: "" }; return pintar();
+      case "explorar": pedirCatalogo(); return pintar();
       case "crear": return crearDesdePlantilla();
       case "readme": E.nuevo = null; E.lateral = false; E.readme = { paso: "pedir", descripcion: "", estructura: true, envio: null }; return pintar();
       case "ver-envio": {
@@ -1289,6 +1323,22 @@
       if (r.ruta === E.sel) { ultimoBueno = null; pintar(); }
       if (d.alAbrir) { const f = d.alAbrir; d.alAbrir = null; f(); }
     },
+    /** Respuesta a `catalogoPlantillas`: {ok, plantillas} (el índice ya validado por bin/plantillas.py) o {ok: false, error}. */
+    catalogoListo(r) {
+      const lista = r.ok && Array.isArray(r.plantillas) ? r.plantillas.filter((p) => p && typeof p === "object" && !validarPlantilla(sinIndice(p)).length) : [];
+      E.catalogo = r.ok ? { estado: "listo", plantillas: lista, bajando: {} } : { estado: "error", error: typeof r.error === "string" ? r.error : "", plantillas: [], bajando: {} };
+      if (E.nuevo?.fuente === "comunidad") pintar();
+    },
+    /** Respuesta a `descargarPlantilla`: {ok, plantilla} (revisada y guardada en la carpeta de Esquema) o {ok: false, id, error}. */
+    plantillaDescargada(r) {
+      const p = r.ok ? r.plantilla : null;
+      if (E.catalogo) delete E.catalogo.bajando[p?.id ?? r.id];
+      if (!p || validarPlantilla(p).length) { toast(typeof r.error === "string" && r.error ? r.error : tr("No pude descargarla. Intenta de nuevo."), true); return pintar(); }
+      E.plantillas = [...E.plantillas.filter((x) => x.id !== p.id), p];
+      toast(Tp("«{x}» quedó en tus plantillas", { x: textoDe(p.nombre) }), true);
+      if (E.nuevo && !E.nuevo.elegida) return elegirPlantilla(p.id);
+      pintar();
+    },
     archivoGuardado(r) {
       const d = E.docs[r.ruta];
       if (!d) return;
@@ -1359,7 +1409,7 @@
         case "texto": case "ambos": case "dibujo": if (E.sel) { E.vista = a; pintar(); } return;
       }
       if (E.bv !== null) return;  // en la bienvenida no se abren otros diálogos
-      if (a === "nuevo") { if (!E.carpeta) return toast("Elige una carpeta primero"); E.lateral = false; E.nuevo = { categoria: "todas", busqueda: "", elegida: null, nombre: "" }; return pintar(); }
+      if (a === "nuevo") { if (!E.carpeta) return toast("Elige una carpeta primero"); E.lateral = false; E.nuevo = { fuente: "app", categoria: "todas", busqueda: "", elegida: null, nombre: "" }; return pintar(); }
       if (a === "ajustes") { E.lateral = false; E.ajustes = true; return pintar(); }
     },
     _probar(f) { f(E); pintar(); },
@@ -1386,6 +1436,9 @@
     if (p.etiquetas !== undefined && (!Array.isArray(p.etiquetas) || p.etiquetas.length > 10 || !p.etiquetas.every((x) => typeof x === "string" && x.length <= 30))) e.push("etiquetas");
     return e;
   }
+
+  /** Una entrada del índice del catálogo sin lo propio del índice (ruta, huella y tamaño): la plantilla tal cual. */
+  const sinIndice = (p) => Object.fromEntries(Object.entries(p).filter(([k]) => !["ruta", "sha256", "tamano"].includes(k)));
 
   // ───────────── Vista previa en el navegador (sin app): responde con datos ficticios ─────────────
   let DEMO = null;
@@ -1422,6 +1475,11 @@
       case "abrirEnlace": return toast("En la app, aquí se abre el enlace en tu navegador");
       case "buscarActualizacion": return luego(300, () => A.actualizacionRevisada({ hay: false, detalle: "" }));
       case "actualizar": return luego(300, () => A.actualizacionProgreso({ paso: "error", texto: tr("En la vista previa no hay nada que actualizar.") }));
+      case "catalogoPlantillas": return luego(400, () => A.catalogoListo({ ok: true, plantillas: JSON.parse(JSON.stringify(DEMO.catalogo || [])) }));
+      case "descargarPlantilla": return luego(500, () => {  // en la app: Swift o Electron la bajan de raw.githubusercontent.com y bin/plantillas.py la valida
+        const x = (DEMO.catalogo || []).find((y) => y.id === d.id);
+        A.plantillaDescargada(x ? { ok: true, plantilla: sinIndice(JSON.parse(JSON.stringify(x))) } : { ok: false, id: d.id, error: tr("Esa plantilla no es válida.") });
+      });
     }
   }
   function readmeSimulado(d) {

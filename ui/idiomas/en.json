@@ -318,6 +318,21 @@
   "¿Quieres cambiar algo?": "Want to change anything?",
   "¿Quitar el cambio de la IA?": "Remove the AI's change?",
   "¿Qué hace tu proyecto y para quién?": "What does your project do, and for whom?",
-  "… y {n} más que quedan fuera (secretos o ignorados).": "… and {n} more left out (secrets or ignored)."
+  "… y {n} más que quedan fuera (secretos o ignorados).": "… and {n} more left out (secrets or ignored).",
+  "Buscando plantillas de la comunidad…": "Looking for community templates…",
+  "Descargando…": "Downloading…",
+  "En tus plantillas": "In your templates",
+  "Esa plantilla no es válida.": "That template isn't valid.",
+  "La plantilla llegó dañada. Intenta de nuevo.": "The template arrived damaged. Try again.",
+  "No pude conectarme. Revisa tu conexión.": "I couldn't connect. Check your connection.",
+  "No pude descargarla. Intenta de nuevo.": "I couldn't download it. Try again.",
+  "No pude leer el catálogo.": "I couldn't read the catalog.",
+  "Plantillas": "Templates",
+  "Reintentar": "Try again",
+  "Toca para descargarla": "Tap to download it",
+  "Todavía no hay plantillas de la comunidad en esta categoría.": "There are no community templates in this category yet.",
+  "por {x}": "by {x}",
+  "«{x}» quedó en tus plantillas": "“{x}” is now in your templates",
+  "¿Hiciste una buena? Compártela con la comunidad": "Made a good one? Share it with the community"
  }
 }

@@ -1,0 +1,29 @@
+{
+  "formato": 1,
+  "id": "diseno-tecnico",
+  "categoria": "documentacion",
+  "tipo": "documento",
+  "nombre": {
+    "es": "Diseño técnico (RFC)",
+    "en": "Technical design (RFC)"
+  },
+  "descripcion": {
+    "es": "Contexto, propuesta con su diagrama, alternativas descartadas, riesgos y preguntas abiertas.",
+    "en": "Context, proposal with its diagram, discarded alternatives, risks and open questions."
+  },
+  "archivo": {
+    "es": "diseno-tecnico.md",
+    "en": "technical-design.md"
+  },
+  "contenido": {
+    "es": "# RFC: avisos por correo cuando un pedido cambia de estado\n\n> Autora: Ana Pérez · Estado: en revisión · Comentarios hasta: 2026-04-10\n\n## Contexto\n\nHoy la persona tiene que entrar a la app para saber si su pedido salió. Queremos avisarle por correo sin frenar la API.\n\n## Propuesta\n\n```mermaid\nflowchart LR\n    API{{API de pedidos}} -->|pedido cambió| E[[Eventos]]\n    E --> N[Servicio de avisos]\n    N --> P[(Preferencias)]\n    N --> C[Proveedor de correo]\n%% esquema: {\"iconos\":{\"API\":\"api\",\"C\":\"correo\",\"E\":\"cola\",\"N\":\"servidor\",\"P\":\"base-de-datos\"}}\n```\n\n1. La API publica un evento y sigue (no espera el correo).\n2. El servicio de avisos revisa si la persona quiere correos.\n3. Si falla el proveedor, reintenta con espera creciente.\n\n## Alternativas descartadas\n\n- **Mandar el correo desde la API:** más simple, pero un proveedor lento frena cada pedido.\n- **Revisar cambios cada minuto:** no necesita eventos, pero avisa tarde y carga la base de datos.\n\n## Riesgos\n\n| Riesgo | Cómo lo cuidamos |\n|---|---|\n| Correos repetidos | Cada evento tiene un id y se procesa una sola vez |\n| Muchos correos juntos | Límite por persona: uno cada 10 minutos |\n\n## Preguntas abiertas\n\n- ¿Avisamos también por notificación en el celular?\n",
+    "en": "# RFC: email notifications when an order changes status\n\n> Author: Ana Pérez · Status: in review · Comments until: 2026-04-10\n\n## Context\n\nToday people have to open the app to know whether their order shipped. We want to email them without slowing down the API.\n\n## Proposal\n\n```mermaid\nflowchart LR\n    API{{Orders API}} -->|order changed| E[[Events]]\n    E --> N[Notification service]\n    N --> P[(Preferences)]\n    N --> C[Email provider]\n%% esquema: {\"iconos\":{\"API\":\"api\",\"C\":\"correo\",\"E\":\"cola\",\"N\":\"servidor\",\"P\":\"base-de-datos\"}}\n```\n\n1. The API publishes an event and moves on (it doesn't wait for the email).\n2. The notification service checks whether the person wants emails.\n3. If the provider fails, it retries with growing waits.\n\n## Discarded alternatives\n\n- **Send the email from the API:** simpler, but a slow provider slows down every order.\n- **Check for changes every minute:** no events needed, but it notifies late and loads the database.\n\n## Risks\n\n| Risk | How we handle it |\n|---|---|\n| Duplicate emails | Each event has an id and is processed only once |\n| Many emails at once | Per-person limit: one every 10 minutes |\n\n## Open questions\n\n- Should we also send a push notification?\n"
+  },
+  "autor": "esquema-app",
+  "etiquetas": [
+    "rfc",
+    "diseño",
+    "design",
+    "propuesta"
+  ]
+}

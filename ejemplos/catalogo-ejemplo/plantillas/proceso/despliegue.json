@@ -1,0 +1,29 @@
+{
+  "formato": 1,
+  "id": "despliegue",
+  "categoria": "proceso",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Del cambio a producción",
+    "en": "From change to production"
+  },
+  "descripcion": {
+    "es": "Pull request, revisión, pruebas, ambiente de prueba y producción, con vuelta atrás si algo falla.",
+    "en": "Pull request, review, tests, staging and production, with a rollback if something fails."
+  },
+  "archivo": {
+    "es": "despliegue.mmd",
+    "en": "deployment.mmd"
+  },
+  "contenido": {
+    "es": "flowchart LR\n    subgraph equipo [Equipo]\n        I((Inicio)) --> PR[Abre un pull request]\n        PR --> R{¿Aprobado?}\n        R -->|Cambios| PR\n    end\n    subgraph ci [Integración continua]\n        R -->|Sí| T[Pruebas automáticas]\n        T --> OK{¿Pasan?}\n        OK -->|No| PR\n    end\n    subgraph ambientes [Ambientes]\n        OK -->|Sí| ST[Ambiente de prueba]\n        ST --> P[Producción]\n        P --> V{¿Todo bien?}\n        V -->|No| RB[Volver a la versión anterior]\n        V -->|Sí| F(((Fin)))\n    end\n",
+    "en": "flowchart LR\n    subgraph equipo [Team]\n        I((Start)) --> PR[Opens a pull request]\n        PR --> R{Approved?}\n        R -->|Changes| PR\n    end\n    subgraph ci [Continuous integration]\n        R -->|Yes| T[Automated tests]\n        T --> OK{Passing?}\n        OK -->|No| PR\n    end\n    subgraph ambientes [Environments]\n        OK -->|Yes| ST[Staging]\n        ST --> P[Production]\n        P --> V{All good?}\n        V -->|No| RB[Roll back]\n        V -->|Yes| F(((End)))\n    end\n"
+  },
+  "autor": "esquema-app",
+  "etiquetas": [
+    "despliegue",
+    "deploy",
+    "ci",
+    "devops"
+  ]
+}

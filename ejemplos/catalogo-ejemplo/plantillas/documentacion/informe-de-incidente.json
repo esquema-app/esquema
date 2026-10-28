@@ -1,0 +1,29 @@
+{
+  "formato": 1,
+  "id": "informe-de-incidente",
+  "categoria": "documentacion",
+  "tipo": "documento",
+  "nombre": {
+    "es": "Informe de incidente",
+    "en": "Incident report"
+  },
+  "descripcion": {
+    "es": "Qué pasó, a quién afectó, la línea de tiempo, la causa y lo que haremos para que no se repita. Sin culpables.",
+    "en": "What happened, who it affected, the timeline, the cause and what we'll do so it doesn't happen again. Blameless."
+  },
+  "archivo": {
+    "es": "informe-de-incidente.md",
+    "en": "incident-report.md"
+  },
+  "contenido": {
+    "es": "# Incidente: los pagos fallaron por 40 minutos\n\n> Fecha: 2026-03-12 · Gravedad: alta · Estado: cerrado · Escrito sin buscar culpables.\n\n## Resumen\n\nEntre las 10:05 y las 10:45, el 30 % de los pagos con tarjeta falló. Nadie perdió dinero: los pagos rechazados no se cobraron.\n\n## Línea de tiempo\n\n```mermaid\nsequenceDiagram\n    participant M as Monitoreo\n    participant T as Persona de turno\n    participant E as Equipo de pagos\n    M->>T: 10:08 Alerta: errores al pagar\n    T->>E: 10:15 Abre el canal del incidente\n    E->>E: 10:25 Encuentra el certificado vencido\n    E->>M: 10:45 Certificado renovado, errores en cero\n```\n\n## Causa\n\nEl certificado del servicio de pagos venció y la renovación automática estaba desactivada desde una migración.\n\n```mermaid\nflowchart LR\n    A[Migración del servidor] --> B[Renovación automática apagada]\n    B --> C[Certificado vencido]\n    C --> D[Pagos rechazados]\n```\n\n## Qué haremos\n\n| Acción | Responsable | Para cuándo |\n|---|---|---|\n| Alerta 14 días antes de que venza un certificado | Plataforma | 2026-03-19 |\n| Revisar la renovación en la lista de cada migración | Pagos | 2026-03-26 |\n",
+    "en": "# Incident: payments failed for 40 minutes\n\n> Date: 2026-03-12 · Severity: high · Status: closed · Written blameless.\n\n## Summary\n\nBetween 10:05 and 10:45, 30% of card payments failed. Nobody lost money: rejected payments were not charged.\n\n## Timeline\n\n```mermaid\nsequenceDiagram\n    participant M as Monitoring\n    participant T as On-call person\n    participant E as Payments team\n    M->>T: 10:08 Alert: payment errors\n    T->>E: 10:15 Opens the incident channel\n    E->>E: 10:25 Finds the expired certificate\n    E->>M: 10:45 Certificate renewed, errors at zero\n```\n\n## Cause\n\nThe payment service's certificate expired, and automatic renewal had been disabled since a migration.\n\n```mermaid\nflowchart LR\n    A[Server migration] --> B[Automatic renewal turned off]\n    B --> C[Certificate expired]\n    C --> D[Payments rejected]\n```\n\n## What we'll do\n\n| Action | Owner | Due |\n|---|---|---|\n| Alert 14 days before a certificate expires | Platform | 2026-03-19 |\n| Add renewal to every migration checklist | Payments | 2026-03-26 |\n"
+  },
+  "autor": "esquema-app",
+  "etiquetas": [
+    "incidente",
+    "postmortem",
+    "incident",
+    "sre"
+  ]
+}

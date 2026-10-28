@@ -9,7 +9,7 @@ echo "Sintaxis"
 for f in ui/app.js ui/motor/*.js; do node --check "$f"; done
 for f in pruebas/*.mjs herramientas/*.mjs escritorio/src/*.js escritorio/pruebas/*.mjs; do node --check "$f"; done
 python3 -m py_compile bin/*.py pruebas/*.py herramientas/*.py ejemplos/*.py
-python3 -c "import json, glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('ui/idiomas/*.json') + glob.glob('plantillas/*/*.json') + ['ui/demo.json', 'pruebas/casos.json', 'pruebas/puente.json']]"
+python3 -c "import json, glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('ui/idiomas/*.json') + glob.glob('plantillas/*/*.json') + glob.glob('ejemplos/catalogo-ejemplo/plantillas/*/*.json') + ['ui/demo.json', 'pruebas/casos.json', 'pruebas/puente.json']]"
 for f in herramientas/*.sh pruebas/*.sh escritorio/herramientas/*.sh build.sh instalar.sh; do bash -n "$f"; done
 python3 -c "import json, plistlib; json.load(open('escritorio/package.json')); plistlib.load(open('app/Info.plist', 'rb'))"
 [ "$1" = "sintaxis" ] && exit 0
@@ -19,7 +19,7 @@ echo "Contrato"; python3 pruebas/contrato.py
 echo "Motor"; node pruebas/motor.mjs | tail -2
 echo "Python"; python3 pruebas/test_python.py 2>&1 | tail -3
 echo "Interfaz"; node pruebas/interfaz.mjs
-echo "Escritorio (Windows y Linux)"; node escritorio/pruebas/vigilante.mjs
+echo "Escritorio (Windows y Linux)"; node escritorio/pruebas/vigilante.mjs; node escritorio/pruebas/catalogo.mjs
 if command -v xvfb-run >/dev/null && [ -x escritorio/node_modules/electron/dist/electron ]; then
   PW="${PLAYWRIGHT:-}"; NODE_PATH="${PW:+$(dirname "$PW")}${NODE_PATH:+:$NODE_PATH}" xvfb-run -a node escritorio/pruebas/arranque.mjs | tail -1
 else

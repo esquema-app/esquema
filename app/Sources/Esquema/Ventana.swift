@@ -257,6 +257,12 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
             llamar("copiado", ["ok": ok])
         case "abrirEnlace":
             if let u = URL(string: d["url"] as? String ?? ""), u.scheme == "https", u.host != nil { NSWorkspace.shared.open(u) }
+        case "catalogoPlantillas":
+            // Plantillas de la comunidad: el índice se baja de un dominio fijo y lo valida bin/plantillas.py (Catalogo.swift).
+            Catalogo.listar { Ventana.shared.llamar("catalogoListo", $0) }
+        case "descargarPlantilla":
+            let id = texto("id", 60)
+            Catalogo.descargar(id) { Ventana.shared.llamar("plantillaDescargada", $0) }
         case "buscarActualizacion":
             Actualizaciones.revisar { hay, detalle in
                 Ventana.shared.llamar("actualizacionRevisada", ["hay": hay, "detalle": hay ? detalle : "", "sinConexion": detalle == Actualizaciones.sinConexion])

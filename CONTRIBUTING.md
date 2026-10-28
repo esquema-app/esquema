@@ -6,7 +6,9 @@ Esquema es gratis y abierto, y lo hacemos entre todos. Hay lugar para cualquiera
 - **Crea una plantilla:** un diagrama o un documento que te sirve a ti (arquitectura, secuencia de una API, flujo de usuario,
   proceso de negocio, README, ADR, runbook…). Es un JSON corto con el texto en Mermaid o Markdown (formato en
   [`plantillas/README.md`](plantillas/README.md)). Se comparte en el
-  [catálogo de la comunidad](https://github.com/esquema-app/esquema-catalogo) *(en preparación)*.
+  [catálogo de la comunidad](https://github.com/esquema-app/esquema-catalogo): basta con describirla en palabras en el formulario
+  [«Proponer una plantilla»](https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml) y nosotros armamos
+  el JSON. Las del catálogo aparecen en Esquema en «Nuevo» → «Comunidad».
 - **Pruébalo con tus diagramas** y cuéntanos qué no se ve bien: un diagrama de Mermaid que Esquema no lea o dibuje distinto es un
   aporte enorme (con datos ficticios). Los issues con la etiqueta [`probar`](https://github.com/esquema-app/esquema/labels/probar) piden justo eso.
 - **Conversa:** dudas, ideas o lo que documentaste con Esquema → [Discussions](https://github.com/esquema-app/esquema/discussions).

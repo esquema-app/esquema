@@ -67,6 +67,10 @@ if mac is not None:
     act = leer("app/Sources/Esquema/Actualizaciones.swift") or ""
     if not tiene(act, r'repo = "esquema-app/esquema"', r"/releases/download/", r"esDescargaNuestra\(z\)", r"shasum -a 256", r"comillas\("):
         problemas.append("Mac: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella y comillas() (Actualizaciones.swift)")
+    cat = leer("app/Sources/Esquema/Catalogo.swift") or ""
+    if not tiene(cat, r'base = "https://raw\.githubusercontent\.com/esquema-app/esquema-catalogo/main/"', r"SinRedirecciones", r"willPerformHTTPRedirection",
+                 r"SHA256\.hash", r"calculada == huella", r"datos\.count == tamano", r'"plantillas\.py", \["catalogo"', r'"plantillas\.py", "instalar"'):
+        problemas.append("Mac: el catálogo solo desde raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones, con tamaño y huella del índice validado (Catalogo.swift)")
     if re.search(r'"(claude|codex)"\s*,\s*\[', swift) and "--disallowedTools" not in swift:
         problemas.append("Mac: si la app llama a la IA, tiene que ser sin herramientas")
     if "carpeta" in re.search(r"static func guardar\(_ cambios.*?\n    \}", swift, re.S).group(0).split("default:")[0].split("switch k")[1]:
@@ -90,6 +94,10 @@ if escritorio:
     act = leer("escritorio/src/actualizaciones.js") or ""
     if not tiene(act, r'REPO = "esquema-app/esquema"', r"/releases/download/", r"esDescargaNuestra\(url\(inst\.archivo\)\)", r"huella !== esperada"):
         problemas.append("Windows/Linux: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella (actualizaciones.js)")
+    cat = leer("escritorio/src/catalogo.js") or ""
+    if not tiene(cat, r'BASE = "https://raw\.githubusercontent\.com/esquema-app/esquema-catalogo/main/"', r'redirect: "error"', r"huella !== e\.sha256",
+                 r"datos\.length !== e\.tamano", r'"plantillas\.py", \["catalogo"', r'"plantillas\.py", "instalar"') or "crearCatalogo" not in escritorio:
+        problemas.append("Windows/Linux: el catálogo solo desde raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones, con tamaño y huella (catalogo.js)")
     paquete = json.loads(leer("escritorio/package.json"))
     version = paquete.get("devDependencies", {}).get("electron", "")
     if not re.fullmatch(r"\d+\.\d+\.\d+", version) or tuple(map(int, version.split("."))) < (44, 9, 1):

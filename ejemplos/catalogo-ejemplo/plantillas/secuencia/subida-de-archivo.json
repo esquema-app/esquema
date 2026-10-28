@@ -1,0 +1,29 @@
+{
+  "formato": 1,
+  "id": "subida-de-archivo",
+  "categoria": "secuencia",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Subir un archivo con URL firmada",
+    "en": "Upload with a signed URL"
+  },
+  "descripcion": {
+    "es": "El navegador sube directo al almacenamiento con un permiso temporal; tu API solo firma y registra.",
+    "en": "The browser uploads straight to storage with a temporary permission; your API only signs and records."
+  },
+  "archivo": {
+    "es": "subida-de-archivo.mmd",
+    "en": "file-upload.mmd"
+  },
+  "contenido": {
+    "es": "sequenceDiagram\n    actor U as Persona\n    participant N as Navegador\n    participant A as API\n    participant S as Almacenamiento\n    U->>N: Elige un archivo\n    N->>+A: Pide permiso para subir\n    A-->>-N: URL firmada (5 minutos)\n    N->>+S: PUT archivo\n    S-->>-N: 200 OK\n    N->>A: Listo: guarda la referencia\n    A-->>N: Archivo registrado\n    N-->>U: Se ve en la lista\n",
+    "en": "sequenceDiagram\n    actor U as Person\n    participant N as Browser\n    participant A as API\n    participant S as Storage\n    U->>N: Picks a file\n    N->>+A: Asks for upload permission\n    A-->>-N: Signed URL (5 minutes)\n    N->>+S: PUT file\n    S-->>-N: 200 OK\n    N->>A: Done: save the reference\n    A-->>N: File recorded\n    N-->>U: Shows up in the list\n"
+  },
+  "autor": "esquema-app",
+  "etiquetas": [
+    "subida",
+    "upload",
+    "s3",
+    "archivos"
+  ]
+}

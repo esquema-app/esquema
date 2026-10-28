@@ -1,0 +1,29 @@
+{
+  "formato": 1,
+  "id": "recuperar-contrasena",
+  "categoria": "flujo-de-usuario",
+  "tipo": "diagrama",
+  "nombre": {
+    "es": "Recuperar la contraseña",
+    "en": "Reset a password"
+  },
+  "descripcion": {
+    "es": "Desde «Olvidé mi contraseña» hasta entrar de nuevo, con enlace que vence y sin revelar si el correo existe.",
+    "en": "From “Forgot my password” to signing in again, with an expiring link and without revealing whether the email exists."
+  },
+  "archivo": {
+    "es": "recuperar-contrasena.mmd",
+    "en": "password-reset.mmd"
+  },
+  "contenido": {
+    "es": "flowchart TD\n    A([Olvidé mi contraseña]) --> B[/Escribe su correo/]\n    B --> C[Mensaje: si el correo existe, te enviamos un enlace]\n    C --> D{¿Abre el enlace antes de 30 minutos?}\n    D -->|No| E[El enlace venció] --> A\n    D -->|Sí| F[/Escribe la contraseña nueva/]\n    F --> G{¿Es segura?}\n    G -->|No| F\n    G -->|Sí| H[Cierra las otras sesiones]\n    H --> I([Entra a su cuenta])\n",
+    "en": "flowchart TD\n    A([Forgot my password]) --> B[/Types their email/]\n    B --> C[Message: if the email exists, we sent you a link]\n    C --> D{Opens the link within 30 minutes?}\n    D -->|No| E[The link expired] --> A\n    D -->|Yes| F[/Types the new password/]\n    F --> G{Is it strong?}\n    G -->|No| F\n    G -->|Yes| H[Signs out other sessions]\n    H --> I([Signs in])\n"
+  },
+  "autor": "esquema-app",
+  "etiquetas": [
+    "contraseña",
+    "password",
+    "login",
+    "seguridad"
+  ]
+}

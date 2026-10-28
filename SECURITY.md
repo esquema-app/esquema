@@ -50,7 +50,10 @@ necesitan control total del computador; o encabezados que GitHub Pages no deja c
   `codex -s read-only`) y sin las variables de Esquema. Para el README solo ve nombres de archivos (respetando `.gitignore`, sin
   secretos como `.env`, llaves o credenciales) y unos pocos campos de `package.json`/`pyproject.toml`/`Cargo.toml`/`go.mod`. Su
   respuesta se limpia, se valida con el motor y nunca se aplica sola: queda como un cambio con «Quitar este cambio».
-- Las plantillas (incluidas y del catálogo) son solo datos y se validan con el mismo formato en Python y en la interfaz.
+- Las plantillas (incluidas y del catálogo) son solo datos y se validan con el mismo formato en Python y en la interfaz. Las del
+  catálogo se bajan solo cuando la persona abre «Comunidad», solo de `raw.githubusercontent.com/esquema-app/esquema-catalogo`, sin
+  seguir redirecciones y con tamaño máximo; cada una se compara con el tamaño y la huella SHA-256 del índice ya validado, se vuelve a
+  validar y se guarda en la carpeta de Esquema (nunca en la de la persona).
 
 ---
 
