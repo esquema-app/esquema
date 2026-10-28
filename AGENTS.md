@@ -8,7 +8,9 @@ dos formas que se mantienen al día: escribiendo el texto (con autocompletar y e
 conectar arrastrando, renombrar, mover, borrar, deshacer). Dibuja con un **motor propio** sin dependencias, decenas de veces más rápido
 que Mermaid. Los documentos son Markdown con diagramas incrustados que se editan en el lugar. La IA del usuario (Claude Code, Codex o
 Gemini, con su propia cuenta) dibuja lo que se le pide («Dibújame») y escribe el README para GitHub; cada cambio suyo se puede quitar.
-Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y en la de Windows y Linux (`escritorio/`, Electron).
+**Proyectos:** documenta un repositorio entero dentro del mismo repo (`docs/esquema/`), con **elementos** (pantallas, botones,
+servicios…) conectados en todos los documentos y diagramas, cambios en todas partes de una vez y **versiones** (commits de git solo
+de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y en la de Windows y Linux (`escritorio/`, Electron).
 
 **Principios que no se negocian**
 1. **Los archivos son de la persona.** Viven en la carpeta que elige, en formato abierto: `.md` con bloques ```` ```mermaid ```` y
@@ -18,7 +20,10 @@ Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y en la de Windows
    necesarias: comentarios, sangrías y el estilo de quien escribió quedan igual.
 3. **La IA es la del usuario** y ve lo mínimo: el pedido, el diagrama abierto si se pide cambiarlo y, para el README, solo nombres de
    archivos (respetando `.gitignore`, sin secretos). Corre sin herramientas. Su respuesta se valida con el motor y **nunca se aplica
-   sola de forma definitiva**: queda como un cambio con «Quitar este cambio».
+   sola de forma definitiva**: queda como un cambio con «Quitar este cambio». Para documentar un proyecto ve el README, las guías
+   (AGENTS/CONTRIBUTING…), la lista de archivos, los manifiestos y los mensajes de git (sin autores), y solo los archivos de código
+   que la persona aprueba; antes de cada envío se muestra exactamente lo que va («Ver lo que se envía»), y lo que parece un secreto
+   se oculta (`proyecto.ocultar_secretos`).
 4. **Plantillas = solo datos.** Todo lo que viene de afuera (plantillas, traducciones, respuestas de la IA, el texto de un diagrama)
    se valida antes de usarse y se escapa antes de mostrarse.
 5. **Rápido y liviano.** El motor y la interfaz no tienen dependencias (ni npm ni CDN); Python solo con biblioteca estándar.
@@ -30,10 +35,10 @@ Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y en la de Windows
 | Ruta | Qué es |
 |---|---|
 | `ui/motor/` | El motor, JS sin dependencias; cada archivo se suma a `globalThis.EsquemaMotor` (igual en el navegador y en Node). `texto.js` (medir con caché, partir etiquetas, escapar, errores con marcadores, línea `%% esquema:`), `flujo.js` (leer/escribir/editar flowchart conservando el texto), `secuencia.js` (leer/acomodar/dibujar/editar sequenceDiagram), `capas.js` (acomodo por capas), `formas.js` (formas e íconos propios), `dibujo.js` (elige el tipo, acomoda con caché, SVG por partes con clave, SVG independiente para exportar), `markdown.js` (bloques de un `.md` y Markdown → HTML seguro). |
-| `ui/` | Interfaz única (`index.html` con CSP, `app.js`, `app.css`, `favicon.svg`), `demo.json` (ficticio, sale de `herramientas/generar_demo.py`) e `idiomas/en.json`. |
-| `bin/` | Python **solo biblioteca estándar**, lo que corren las apps: `comun.py` (versión, carpeta de Esquema, config, escritura atómica, `ruta_en`, `.gitignore`, secretos, `recorrer`), `carpeta.py` (listar, leer, guardar, estructura para el README), `ia.py` (la IA del usuario, sin herramientas; `probar`), `asistente.py` (README y Dibújame: prompts y limpieza de la respuesta), `plantilla_formato.py` (formato de una plantilla y del índice del catálogo: `validar`, `indice`, `validar_indice`; el MISMO archivo que `herramientas/plantilla_formato.py` del catálogo), `plantillas.py` (incluidas + descargadas, validar, índice, `catalogo` e `instalar` para lo que baja la app), `estado.py` (lo que pide la interfaz al abrir; guardar config). El último argumento siempre es el JSON de salida; lo de la persona llega en un JSON de entrada. |
+| `ui/` | Interfaz única (`index.html` con CSP, `app.js`, `proyectos.js` (proyectos: paneles, diálogos y su simulación), `app.css`, `favicon.svg`), `demo.json` (ficticio, sale de `herramientas/generar_demo.py`) e `idiomas/en.json`. `motor/proyecto.js`: lógica pura de proyectos (validar `esquema.json`, refs, usos, cambiar en todas partes, glosario, comparar, documentos afectados). |
+| `bin/` | Python **solo biblioteca estándar**, lo que corren las apps: `comun.py` (versión, carpeta de Esquema, config, escritura atómica, `ruta_en`, `.gitignore`, secretos, `recorrer`), `carpeta.py` (listar, leer, guardar, estructura para el README), `ia.py` (la IA del usuario, sin herramientas; `probar`), `asistente.py` (README y Dibújame: prompts y limpieza de la respuesta), `plantilla_formato.py` (formato de una plantilla y del índice del catálogo: `validar`, `indice`, `validar_indice`; el MISMO archivo que `herramientas/plantilla_formato.py` del catálogo), `plantillas.py` (incluidas + descargadas, validar, índice, `catalogo` e `instalar` para lo que baja la app), `estado.py` (lo que pide la interfaz al abrir; guardar config), `proyecto.py` (proyectos: abrir, leer el repo sin IA, lo que va a la IA, generar, `esquema.json`, versiones con git o copias, ver y restaurar; recientes en la carpeta de Esquema). El último argumento siempre es el JSON de salida; lo de la persona llega en un JSON de entrada. |
 | `plantillas/` | Plantillas incluidas (`<categoria>/<id>.json`) y `README.md` con el formato. |
-| `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo), `catalogo-ejemplo/` (copia de las plantillas del catálogo de la comunidad: «Comunidad» en la demo y las pruebas) y scripts para construir encima del formato (`listar_diagramas.py`). |
+| `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo, con un poco de «código» para «Documentar un proyecto»), `ia-simulada/` (lo que responde la IA en la vista previa del navegador), `catalogo-ejemplo/` (copia de las plantillas del catálogo de la comunidad: «Comunidad» en la demo y las pruebas) y scripts para construir encima del formato (`listar_diagramas.py`). |
 | `pruebas/` | `correr.sh` (todo), `motor.mjs` (motor en Node), `interfaz.mjs` (Playwright), `test_python.py`, `contrato.py` + `puente.json` (contrato del puente), `casos.json` (casos compartidos), `compat/` (ejemplos Mermaid que se leen y se escriben igual; `variantes/`: formas no canónicas), `ia_falsa.py`. |
 | `herramientas/` | `revisar_privacidad.sh`, `generar_demo.py`, `comparar_mermaid.mjs` (rendimiento y compatibilidad contra Mermaid real, instalado aparte), `empaquetar.sh` (arma `dist/Esquema.app` + zip + `.sha256`, en un Mac), `generar_icono.mjs` (íconos de las apps desde `ui/favicon.svg`), `pagina_capturas.mjs` (sirve la página como en GitHub Pages, arma `compartir.png` y `apple-touch-icon.png` y revisa la página en los dos idiomas). |
 | `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (arranque, menús), `Ventana.swift` (WKWebView + puente: un `case` por acción), `Carpeta.swift` (elegir la carpeta con marcador, rutas, `Vigilante` con FSEvents), `Servicios.swift` (rutas, config, idioma, `Procesador`, `EnOrden`), `Catalogo.swift` (plantillas de la comunidad), `Actualizaciones.swift`; `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
@@ -46,11 +51,48 @@ Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y en la de Windows
 - **Documento** `.md`: Markdown de GitHub. Cada diagrama es un bloque ```` ```mermaid ````. GitHub lo muestra igual que Esquema.
 - **Diagrama** `.mmd`: solo el texto Mermaid (lo que va dentro del bloque).
 - **Línea de Esquema** (opcional, al final del diagrama): `%% esquema: {"aristas": "recta" | "ortogonal", "iconos": {"id": "servidor"},
-  "pos": {"id": [x, y]}}`. Una sola línea JSON, claves ordenadas (diffs chicos). `pos` son centros fijados a mano en coordenadas del
+  "pos": {"id": [x, y]}, "refs": {"id": "id-del-elemento"}}`. `refs` conecta un nodo o participante con un elemento del proyecto. Una sola línea JSON, claves ordenadas (diffs chicos). `pos` son centros fijados a mano en coordenadas del
   acomodo; `iconos`, de `M.ICONOS`. Se valida campo por campo (`M.leerMeta`); lo desconocido se descarta. Sin `pos`, todo se acomoda solo.
-- Nada más se guarda: ni base de datos, ni archivos ocultos en la carpeta de la persona. La config de la app va en la carpeta de
-  Esquema del sistema (`comun.carpeta_app()`: `~/Library/Application Support/Esquema`, `%APPDATA%\Esquema` o `~/.config/esquema`,
-  0700; las apps se la pasan a los scripts en `ESQUEMA_DATOS`): `config.json` (`idioma_ui`, `ia`, `tema`, `bienvenida`, `carpeta`).
+- Nada más se guarda: ni base de datos, ni archivos ocultos en la carpeta de la persona (salvo lo de un proyecto, abajo, que la
+  persona pide). La config de la app va en la carpeta de Esquema del sistema (`comun.carpeta_app()`: `~/Library/Application
+  Support/Esquema`, `%APPDATA%\Esquema` o `~/.config/esquema`, 0700; las apps se la pasan a los scripts en `ESQUEMA_DATOS`):
+  `config.json` (`idioma_ui`, `ia`, `tema`, `bienvenida`, `carpeta`) y `proyectos.json` (`{"recientes": [{ruta, nombre, docs}]}`,
+  hasta 8; lo escribe `bin/proyecto.py`).
+
+### Proyectos (`docs/esquema/` dentro del repo)
+- **Carpeta:** `docs/esquema/` por defecto (se elige al documentar: relativa, sin `..` ni carpetas ocultas, hasta 4 niveles). Adentro,
+  Markdown y diagramas que GitHub muestra tal cual: `README.md` (visión general; GitHub lo muestra al abrir la carpeta),
+  `arquitectura.md`, `flujos/<nombre>.md`, lo que la persona agregue, y dos archivos de Esquema:
+  - `esquema.json` (formato abierto, versionado con la documentación; claves en este orden para diffs chicos):
+    ```json
+    {"formato": 1, "nombre": "Minuta", "descripcion": "…",
+     "documentos": [{"ruta": "flujos/grabar.md", "titulo": "Grabar una reunión", "tipo": "vision|arquitectura|flujo|glosario|otro"}],
+     "elementos": [{"id": "boton-grabar", "tipo": "pantalla|boton|accion|servicio|modulo|dato|actor|otro", "nombre": "Grabar",
+                    "descripcion": "…", "codigo": ["Sources/Grabar.swift"]}],
+     "fuentes": {"leido": "2026-10-28", "archivos": ["README.md", "AGENTS.md"]}}
+    ```
+    `documentos[].ruta` es relativa a la carpeta de docs (`.md`/`.mmd`, hasta dos subcarpetas); `id` de un elemento: minúsculas,
+    números y guiones (`M.ID_ELEMENTO`), estable; `codigo`: rutas del repo (relativas, sin `..`). Se valida igual en
+    `bin/proyecto.py` (`validar_esquema`) y en `ui/motor/proyecto.js` (`M.validarEsquema`), con los casos `proyecto_esquema` y
+    `proyecto_elemento` de `pruebas/casos.json`. Lo desconocido no se guarda.
+  - `elementos.md` (el glosario): lo escribe Esquema desde `esquema.json` (`M.glosario`), un ancla invisible por elemento
+    (`<a id="el-boton-grabar"></a>` antes de su `### Nombre`). No se edita a mano.
+- **Referencias (todo conectado, sin ensuciar lo que se lee en GitHub):**
+  - En un diagrama, la línea de Esquema dice qué nodo o participante es cada elemento: `%% esquema: {"refs": {"G": "boton-grabar"}}`
+    (`M.leerMeta`/`M.escribirMeta` la conservan; borrar un nodo o participante quita su ref).
+  - En el texto, un enlace normal al glosario: `[Grabar](elementos.md#el-boton-grabar)` (con `../` desde una subcarpeta,
+    `M.enlaceElemento`). En GitHub es un enlace que lleva a la ficha; Esquema lo reconoce por `elementos.md#el-<id>` (fuera de los
+    bloques de código) y en la vista del documento abre la ficha del elemento.
+- **Versiones:** con git, «Guardar versión» hace `git add -A -- <docs>` y `git commit --only -- <docs>`: entra **solo** la carpeta de
+  docs; lo que la persona tenga preparado de otros archivos queda igual. Nunca empuja. Sin hooks (`core.hooksPath` a /dev/null,
+  `--no-verify`), sin `core.fsmonitor`, sin preguntar por la terminal (`GIT_TERMINAL_PROMPT=0`) y sin variables `GIT_*` heredadas;
+  si git no tiene nombre configurado, ese commit va a nombre de «Esquema». La historia es `git log -- <docs>`; ver una versión,
+  `git ls-tree`/`git show <id>:./<ruta>` (ids hexadecimales, nada más). Sin git (o en un Mac sin las herramientas de desarrollo, para
+  no abrir el diálogo de instalarlas): copias comprimidas en `<docs>/.versiones/AAAAMMDDTHHMMSSmmm-xxxx.json.gz` (`{formato, fecha,
+  mensaje, archivos: {ruta: texto}}`), hasta 100. Restaurar escribe los archivos de esa versión encima (no borra nada: lo que no
+  estaba queda y se avisa) y guarda una versión nueva «Restauré la versión del …».
+- **Cambios del código:** al abrir un proyecto con git, los commits que tocaron algo fuera de `<docs>` desde el último commit de
+  `<docs>` (`cambios_codigo`). `M.docsAfectados` cruza sus archivos con `codigo` de cada elemento y sus mensajes con los nombres.
 
 ## Subconjunto de Mermaid
 Lo que Esquema lee, dibuja y escribe (probado en `pruebas/compat/` contra Mermaid real con `herramientas/comparar_mermaid.mjs`):
@@ -145,16 +187,38 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
   nuevo, ajustes. Nada antes del idioma; en la bienvenida no se abren otros diálogos.
 - **Actualizaciones** (Ajustes → Actualizaciones, `filaActualizacion`): buscar, «Hay una versión nueva» con sus notas, «Actualizar
   ahora» (guarda todo antes) y el avance por pasos. Un aviso corto la primera vez que el estado trae una versión nueva.
+- **Proyectos** (`ui/proyectos.js`, `E.proyecto`, `E.panel`, `E.pj`): «Nuevo» → «Documentar un proyecto» (o el vacío «Elige una
+  carpeta») elige la carpeta del repo (`elegirCarpeta {proyecto: true}`) → `proyecto {orden: "abrir"}`; si no hay documentación,
+  «Lo que encontré» (`leer`, sin IA: README, guías, lenguajes, carpetas, manifiestos, workflows, git) y la carpeta de docs. Todo
+  pedido a la IA pasa primero por **lo que se envía** (`preparar`: la lista exacta de piezas con su texto y tamaño, y lo que no se
+  manda y por qué) → `generar` → **propuestas**: una tarjeta por documento (vista previa o antes/después) con «Quitar este cambio»,
+  los elementos aparte; cada diagrama se valida con el motor (con errores no se agrega) y los enlaces/refs a elementos que no
+  existen se quitan (`M.limpiarRefs`). «Guardar N cambios» escribe los documentos (los que ya existían quedan además en
+  `E.cambiosIA`), `esquema.json` y el glosario, espera a que todo se guarde (`pj.espera`) y guarda **una** versión. «Documentar un
+  flujo»: la IA puede pedir archivos (`PIDE`); la persona elige cuáles y vuelve a ver lo que se envía. **Elementos**: lista por tipo
+  con búsqueda, ficha con «Dónde se usa» (`M.usosElemento`), Renombrar / Cambiar descripción / Quitar con vista previa por archivo
+  (`M.cambiarElemento`: nodos y participantes renombrados, enlaces, menciones sin enlace opcionales, al quitar «unir lo de antes con
+  lo de después» o lo que queda suelto, frases que lo nombran) aplicado como una versión con «Deshacer este cambio», y «Cambió cómo
+  funciona» (la IA propone el cambio en cada documento que lo usa: tarea `cambio`). En el lienzo, un nodo enlazado muestra su
+  elemento en la barra y uno sin enlace se puede «Enlazar» (o crear el elemento con su nombre). **Versiones**: línea de tiempo,
+  comparar con «Ahora» u otra versión (`M.difVersiones`, `M.difLineas` y `M.difDiagrama`: nodos nuevos, quitados y con otro texto
+  marcados en los dos dibujos) y restaurar. Al abrir: «Cambió el proyecto desde tu última versión: N commits» → «Revisar qué
+  documentos afecta» → la IA los pone al día (tarea `revisar`). En el navegador, `P.simular` usa `demo.json → proyecto` (git
+  ficticio, IA simulada desde `ejemplos/ia-simulada/`, versiones en memoria).
 - **Primer uso:** lo primero es el idioma (`pasoIdioma`, título bilingüe fijo, el del sistema sugerido y enfocado; nada más se muestra
   ni se pide antes); al elegir se guarda por `config` igual que en Ajustes y sigue la bienvenida traducida: hola → carpeta → IA.
 
 ## Puente interfaz ↔ app (contrato en `pruebas/puente.json`)
 La UI llama `host.enviar(accion, datos)` y la app responde con `window.Esquema.<funcion>(json)`. En el navegador responde `simular()`
-con `ui/demo.json` (la carpeta vive en memoria). Acciones: `listo, config, elegirCarpeta, abrirArchivo, guardarArchivo, probarIA,
-estructura, crearReadme, dibujar, exportar, copiar, abrirEnlace, catalogoPlantillas, descargarPlantilla, buscarActualizacion,
-actualizar`. Respuestas: `estado, carpetaElegida, archivoAbierto, archivoGuardado, archivoCambiado, archivos, iaProbada,
-estructuraLista, readmeListo, dibujoListo, exportado, copiado, catalogoListo, plantillaDescargada, actualizacionRevisada,
-actualizacionProgreso` y `menu` (los menús nativos). `puente.json` dice qué script corre
+con `ui/demo.json` (la carpeta vive en memoria). Acciones: `listo, config, elegirCarpeta, abrirProyecto, abrirArchivo, guardarArchivo,
+probarIA, estructura, crearReadme, dibujar, proyecto, exportar, copiar, abrirEnlace, catalogoPlantillas, descargarPlantilla,
+buscarActualizacion, actualizar`. Respuestas: `estado, carpetaElegida, archivoAbierto, archivoGuardado, archivoCambiado, archivos,
+iaProbada, estructuraLista, readmeListo, dibujoListo, proyectoRespuesta, exportado, copiado, catalogoListo, plantillaDescargada,
+actualizacionRevisada, actualizacionProgreso` y `menu` (los menús nativos).
+`proyecto {orden, …}` es una sola acción para todo lo de `bin/proyecto.py`: la app solo acepta las órdenes de `ORDENES` (la misma
+lista en `Ventana.ordenesProyecto` y en `ORDENES_PROYECTO` de `main.js`; el contrato lo revisa), le agrega la carpeta actual y
+responde `proyectoRespuesta {orden, …}`. `abrirProyecto {indice}` abre un reciente por su posición en `proyectos.json`: la ruta la
+lee la app, nunca la manda la interfaz. `puente.json` dice qué script corre
 cada acción. `pruebas/contrato.py` revisa que interfaz, contrato y simulación coincidan, que existan los scripts, que
 `app/Sources/Esquema/Ventana.swift` (un `case` por acción) y `escritorio/src/main.js` (objeto `ACCIONES`) atiendan todo, manden
 todas las respuestas y solo llamen funciones que la interfaz tiene, y la seguridad de las dos apps (abajo). Una acción nueva va en
@@ -162,7 +226,8 @@ todas las respuestas y solo llamen funciones que la interfaz tiene, y la segurid
 
 **Lo que las apps nunca hacen con lo que manda la interfaz:** armar comandos (todo va en un JSON de entrada), aceptar rutas absolutas
 o con `..` (cada ruta se revisa como `comun.ruta_en` antes de llamar a bin/, que la vuelve a revisar), cambiar `carpeta` por
-`config` (solo la cambia el selector del sistema), guardar claves o valores desconocidos en `config.json`, abrir algo que no sea https.
+`config` (solo la cambia el selector del sistema o un proyecto reciente leído de `proyectos.json`), guardar claves o valores
+desconocidos en `config.json`, abrir algo que no sea https, pasar a `bin/proyecto.py` una orden que no conoce o otra carpeta.
 
 ## App de Mac (`app/`)
 - SwiftPM, macOS 15, Apple Silicon. Ventana normal con un `WKWebView` que carga `ui/` desde la app (`Contents/Resources/esquema`,
@@ -289,7 +354,8 @@ explorador; varias carpetas recientes; firma y notarización si algún día hay 
 - Antes de cerrar un cambio: `bash pruebas/correr.sh` y mirar la interfaz (`cd ui && python3 -m http.server 8765`, `?idioma=en`,
   `?bienvenida`, `?vacio`, `window.Esquema._probar(E => …)`), también a 390 px y en claro y oscuro.
 - Seguridad (detalle en `SECURITY.md`): CSP de `ui/index.html` sin scripts ni manejadores en línea; todo dato externo validado y
-  escapado; los scripts solo tocan `.md`/`.mmd` dentro de la carpeta (`comun.ruta_en`); la IA sin herramientas ni MCP
+  escapado; los scripts solo tocan `.md`/`.mmd` dentro de la carpeta (`comun.ruta_en`; `bin/proyecto.py` además escribe
+  `esquema.json` y `.versiones/` dentro de la carpeta de docs, y llama a git con argumentos fijos); la IA sin herramientas ni MCP
   (`claude --disallowedTools "*" --strict-mcp-config`, `codex -s read-only`) ni variables `ESQUEMA_*`. Workflows: actions fijadas
   por SHA con su versión en un comentario (Dependabot con `cooldown`), `permissions` mínimos, `persist-credentials: false`, nunca
   `pull_request_target` ni `${{ github.event.* }}` dentro de `run:`.

@@ -54,6 +54,14 @@ necesitan control total del computador; o encabezados que GitHub Pages no deja c
   catálogo se bajan solo cuando la persona abre «Comunidad», solo de `raw.githubusercontent.com/esquema-app/esquema-catalogo`, sin
   seguir redirecciones y con tamaño máximo; cada una se compara con el tamaño y la huella SHA-256 del índice ya validado, se vuelve a
   validar y se guarda en la carpeta de Esquema (nunca en la de la persona).
+- **Proyectos:** `bin/proyecto.py` solo lee lo que deja `comun.recorrer` (respeta `.gitignore`, sin secretos ni carpetas pesadas),
+  nada binario y con tope de tamaño; lo que va a la IA se muestra antes, entero («Ver lo que se envía»), los archivos de código
+  solo van si la persona los aprueba, y lo que parece una clave, un token o una contraseña escrita en el texto se oculta. La IA no
+  puede pedir rutas fuera del repo ni escribir fuera de la carpeta de la documentación (`docs/esquema/` o la que se elija, relativa
+  y sin `..`). git se llama con argumentos fijos, sin shell, sin hooks (`core.hooksPath` a /dev/null y `--no-verify`), sin
+  `core.fsmonitor`, sin preguntar nada por la terminal y sin variables `GIT_*` heredadas; un commit incluye **solo** la carpeta de
+  la documentación (`git commit --only -- <docs>`) y nunca se empuja. Las apps solo pasan a `bin/proyecto.py` órdenes conocidas y
+  la carpeta actual; un proyecto reciente se abre por su posición en `proyectos.json` (la ruta nunca viene de la interfaz).
 
 ---
 

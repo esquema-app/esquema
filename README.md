@@ -22,6 +22,16 @@ formato que GitHub ya muestra (Markdown con bloques ```` ```mermaid ```` y archi
 - **Tu IA te ayuda** (Claude Code, Codex o Gemini, con tu cuenta): «Dibújame» propone un diagrama desde lo que describes, y el
   asistente **README para GitHub** escribe el README de tu proyecto con la lista de archivos (solo nombres, respetando `.gitignore`,
   nunca secretos). Cada cambio de la IA tiene su tarjeta con **«Quitar este cambio»**.
+- **Proyectos: documentación que crece con tu código.** Elige la carpeta de un repositorio: Esquema lee el README, las guías, los
+  archivos y la historia de git (sin IA, nada sale de tu computador) y tu IA escribe la visión general, la arquitectura y los flujos
+  principales en `docs/esquema/`, como Markdown y Mermaid que GitHub muestra tal cual. Después pídele un flujo específico («cómo se
+  graba una reunión»): si necesita leer archivos del código te pregunta cuáles, y antes de cada envío ves exactamente qué se manda.
+- **Todo conectado.** Pantallas, botones y servicios son **elementos** (`esquema.json`); los diagramas y los textos los enlazan. Si
+  renombras o quitas un botón, Esquema muestra cada documento y diagrama que cambia (antes y después, lo que queda suelto) y lo
+  aplica todo en una sola versión que puedes deshacer. Si algo ahora funciona distinto, tu IA propone el cambio en cada documento.
+- **Versiones.** Cada «Guardar versión» es un commit de git **solo** de la carpeta de la documentación (sin git, una copia en
+  `.versiones/`). Compara versiones (texto y diagramas, con lo nuevo y lo quitado marcado) y restaura cualquiera. Si el código
+  cambió desde tu última versión, Esquema te dice qué documentos podrían estar desactualizados.
 - **Plantillas** de arquitectura, secuencia de API, flujo de usuario, proceso de negocio, README, decisión de arquitectura (ADR) y
   runbook, y las del [catálogo de la comunidad](https://github.com/esquema-app/esquema-catalogo) en «Nuevo» → «Comunidad» (se
   descargan con su huella revisada). **Exporta** a SVG, PNG, Markdown o «Copiar para GitHub».
@@ -30,6 +40,10 @@ formato que GitHub ya muestra (Markdown con bloques ```` ```mermaid ```` y archi
 | Documento con sus diagramas | Secuencia editable | README con tu IA |
 |---|---|---|
 | ![](docs/img/esquema-documento-escritorio-claro.png) | ![](docs/img/esquema-secuencia-escritorio-oscuro.png) | ![](docs/img/esquema-readme-escritorio-claro.png) |
+
+| Proyecto: elementos conectados en todos los documentos | Versiones: comparar texto y diagramas, y restaurar |
+|---|---|
+| ![](docs/img/esquema-proyecto-elementos-escritorio-claro.png) | ![](docs/img/esquema-proyecto-versiones-escritorio-claro.png) |
 
 <p align="center"><img src="docs/img/esquema-flujo-390-oscuro.png" width="240" alt="Esquema en un celular, modo oscuro"> <img src="docs/img/esquema-documento-390-claro.png" width="240" alt="Documento en un celular"></p>
 
@@ -49,6 +63,21 @@ flowchart LR
 
 GitHub lo muestra como siempre; Esquema le pone los íconos. El subconjunto de Mermaid que lee y escribe está en
 [AGENTS.md](AGENTS.md#subconjunto-de-mermaid); otros tipos (gantt, ER, estados…) se dejan intactos hasta que lleguen.
+
+Un **proyecto** guarda su documentación dentro del mismo repositorio, para que crezca y se versione con el código:
+
+```
+docs/esquema/
+├── README.md              visión general (GitHub la muestra al abrir la carpeta)
+├── arquitectura.md
+├── flujos/grabar-una-reunion.md
+├── elementos.md           el glosario: lo escribe Esquema, con un ancla por elemento
+└── esquema.json           nombre, documentos y elementos (formato abierto, en AGENTS.md)
+```
+
+Un diagrama dice qué nodo es cada elemento en la misma línea de Esquema (`%% esquema: {"refs": {"G": "boton-grabar"}}`) y el texto lo
+enlaza con un enlace normal al glosario: `[Grabar](elementos.md#el-boton-grabar)`. En GitHub se lee como siempre y el enlace lleva a
+la ficha del elemento.
 
 ## Rendimiento
 
@@ -146,6 +175,15 @@ already renders (Markdown with ```` ```mermaid ```` blocks and `.mmd` files), pl
 - **Your own AI** (Claude Code, Codex or Gemini, with your account): “Draw it” proposes a diagram from a description, and the
   **README for GitHub** assistant writes your project's README from the file list (names only, respecting `.gitignore`, never
   secrets). Every AI change has a card with **“Remove this change”**.
+- **Projects: documentation that grows with your code.** Pick a repository folder: Esquema reads the README, guides, files and git
+  history (no AI, nothing leaves your computer) and your AI writes the overview, architecture and main flows in `docs/esquema/` as
+  Markdown and Mermaid that GitHub shows as is. Ask for a specific flow later; if it needs to read code files it asks which ones, and
+  before every request you see exactly what gets sent.
+- **Everything connected.** Screens, buttons and services are **elements** (`esquema.json`) that diagrams and text link to. Rename
+  or remove a button and Esquema previews every document and diagram that changes, then applies it all as one version you can undo.
+- **Versions.** Each “Save version” is a git commit of **only** the documentation folder (without git, a copy in `.versiones/`).
+  Compare versions (text and diagrams) and restore any of them; when the code changed since your last version, Esquema tells you
+  which documents may be out of date.
 - **Templates** (architecture, API sequence, user flow, business process, README, ADR, runbook) and **export** to SVG, PNG, Markdown
   or “Copy for GitHub”. Own architecture icons, light and dark, Spanish and English; the first thing it asks is your language.
 
