@@ -25,7 +25,12 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
    sola de forma definitiva**: queda como un cambio con «Quitar este cambio». Para documentar un proyecto ve el README, las guías
    (AGENTS/CONTRIBUTING…), la lista de archivos, los manifiestos y los mensajes de git (sin autores), y solo los archivos de código
    que la persona aprueba; antes de cada envío se muestra exactamente lo que va («Ver lo que se envía»), y lo que parece un secreto
-   se oculta (`proyecto.ocultar_secretos`).
+   se oculta (`proyecto.ocultar_secretos`). **Revisión a fondo** (`a_fondo`, casilla del diálogo de envío, marcada de partida en
+   las tareas de `proyecto.A_FONDO`: `inicial`, `flujo`, `completar`; se puede desmarcar): además, la IA puede **leer** la carpeta del
+   código por su cuenta para revisarla entera. Solo leer: Claude con `--add-dir <código> --allowedTools Read,Glob,Grep` y
+   `--disallowedTools` de todo lo que escribe, ejecuta o sale a internet, más `Read(**/<patrón>)` de `proyecto.NO_LEER` (`.env*`,
+   llaves, credenciales, `.git/`); Codex `-s read-only -C <código>`; Gemini solo con Antigravity (`ia.puede_leer`). El diálogo dice
+   qué carpeta y qué no abre. Nunca escribe en la carpeta del código.
 4. **Plantillas = solo datos.** Todo lo que viene de afuera (plantillas, traducciones, respuestas de la IA, el texto de un diagrama)
    se valida antes de usarse y se escapa antes de mostrarse.
 5. **Rápido y liviano.** El motor y la interfaz no tienen dependencias (ni npm ni CDN); Python solo con biblioteca estándar.
@@ -73,7 +78,9 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
   carpeta del código, sin carpetas ocultas; lo que existe solo con `reemplazar`). En la interfaz: «Agregar proyecto» (`p-agregar`),
   la lista de proyectos en el lateral, «Moverla aparte» (`p-mover`) y el diálogo `pasar` (casilla, destino `docs/<ruta>`, estado
   Nuevo/Igual/Ya existe, «Ver diferencia» con `difHTML`, «Reemplazar»). `docsDir()` es `""` en un proyecto vinculado.
-  Cambios del código desde la última versión: por fecha (`cambios_vinculado`), porque son dos repos.
+  Cambios del código desde la última versión: por fecha (`cambios_vinculado`), porque son dos repos. Los `.md`/`.mmd` del repo del
+  código se ven y se editan en el lateral (órdenes `codigo`, `codigo_leer`, `codigo_guardar`; en la interfaz, con el prefijo
+  `@codigo/`, que `abrir`/`guardar` mandan por `proyecto` en vez de `abrirArchivo`/`guardarArchivo`).
 - **Los de antes (`docs/esquema/` dentro del repo)** siguen funcionando igual y muestran «Moverla aparte».
 - **Carpeta (los de antes):** `docs/esquema/` por defecto (se elige al documentar: relativa, sin `..` ni carpetas ocultas, hasta 4 niveles). Adentro,
   Markdown y diagramas que GitHub muestra tal cual: `README.md` (visión general; GitHub lo muestra al abrir la carpeta),
@@ -181,6 +188,12 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
   para un nodo nuevo; en un `.md`, dentro de los bloques mermaid.
 - **Documento:** texto | vista con los diagramas dibujados (`resultadoBloque` con caché); «Editar» abre el bloque en el lienzo en el
   lugar (el texto sigue siendo el del documento); los enlaces nunca navegan (https → navegador; relativos → abre ese archivo).
+- **Lateral de un proyecto** (`P.lateralHTML`, cuando hay `E.proyecto` o `E.vinculo`): «Proyectos» con una carpeta por proyecto; el
+  abierto trae **Código** (los `.md`/`.mmd` del repo: `E.codigoDocs` en uno vinculado, o lo que queda fuera de `docsDir()` en uno de
+  antes) y **Documentación** (Elementos, Versiones y sus documentos). Tocar «Documentación» (`data-p-docs`) abre su panel: vacía, la
+  invitación a documentar todo («Lo que encontré»); con algo, **Lo que falta** (`loQueFalta`: visión, arquitectura, flujos,
+  elementos, elementos que ningún documento nombra y commits nuevos) con «Completar lo que falta» (tarea `completar`, con el pedido
+  armado por `pedidoCompletar`: la IA escribe solo lo que falta). Claves de `E.abiertas`: `#p`, `#codigo`, `#docs`.
 - **Lateral e inicio:** la carpeta como árbol (`arbolDe`/`arbolHTML`; `E.abiertas` guarda lo que la persona abrió o cerró y, si no
   tocó nada, `arbolAbierta` abre todo con ≤ 20 archivos, la carpeta del archivo abierto y la de la documentación). Una carpeta recién
   elegida abre en su **Inicio** (`inicioHTML`, también arriba del panel de un proyecto): «Crear diagrama» (`crear-diagrama`),

@@ -21,10 +21,12 @@ Uso (lo de la persona llega en un JSON de entrada; el último argumento siempre 
   mover      copia la documentación de <repo>/docs/esquema a ~/Esquema/<nombre>/ y la vincula (no borra nada) → {ok, indice}
   destinos   para «Pasar al proyecto»: qué rutas ya existen en el repo y su texto → {ok, estados: {destino: {existe, texto}}}
   pasar      escribe en el repo los documentos elegidos (solo .md/.mmd; reemplaza solo si se pide) → {ok, escritos, saltados}
+  codigo     los .md/.mmd del repo del código, para verlos en el lateral → {ok, nombre, ubicacion, archivos}
+  codigo_leer / codigo_guardar   abre o guarda uno de esos .md/.mmd (dentro de la carpeta del código) → como carpeta.py
 
 Seguridad: solo se lee lo que comun.recorrer deja (respeta .gitignore, sin secretos ni carpetas pesadas), nada binario y con
 tope de tamaño; lo que va a la IA pasa además por `ocultar_secretos`. git se llama con argumentos fijos (nunca un shell), sin
-hooks, sin pedir nada por la terminal y sin empujar. Solo se escribe dentro de la carpeta de docs y, con «pasar», los .md/.mmd que
+hooks, sin pedir nada por la terminal y sin empujar. Solo se escribe dentro de la carpeta de docs y, con «pasar» o «codigo_guardar», los .md/.mmd que
 la persona eligió dentro de la carpeta del código vinculada (la ruta del código sale de proyectos.json, nunca de la interfaz).
 """
 import datetime
@@ -54,7 +56,10 @@ MAX_PROYECTOS = 30
 TIPOS_ELEMENTO = ("pantalla", "boton", "accion", "servicio", "modulo", "dato", "actor", "otro")
 TIPOS_DOCUMENTO = ("vision", "arquitectura", "flujo", "glosario", "otro")
 ID = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-TAREAS = ("inicial", "flujo", "cambio", "revisar")
+TAREAS = ("inicial", "flujo", "cambio", "revisar", "completar")
+#: Revisión a fondo: la IA lee la carpeta del código por su cuenta (solo leer). Lo que nunca puede abrir:
+NO_LEER = (".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "id_rsa*", "id_ed25519*", ".git/", "*.keystore", "credentials*", "secrets*")
+A_FONDO = ("inicial", "flujo", "completar")
 BINARIOS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".icns", ".pdf", ".zip", ".gz", ".tgz", ".xz", ".7z", ".rar", ".jar",
             ".class", ".so", ".dylib", ".dll", ".exe", ".bin", ".o", ".a", ".wasm", ".mp3", ".mp4", ".mov", ".wav", ".m4a", ".ogg",
             ".webm", ".ttf", ".otf", ".woff", ".woff2", ".psd", ".sketch", ".car", ".nib", ".xcassets", ".lock", ".map", ".min.js"}
@@ -564,14 +569,14 @@ def piezas(e):
     if pedido.strip():
         r.append(_pieza("pedido", "Lo que pides", ocultar_secretos(pedido)))
     esquema, _ = leer_esquema(L["dir_docs"])
-    if tarea in ("inicial", "flujo"):
+    if tarea in ("inicial", "flujo", "completar"):
         r.append(_pieza("lista", "Lista de archivos del proyecto (solo nombres)", "\n".join(codigo[:400]), recortado=len(codigo) > 400))
         readme = next((x for x in rutas if x.lower() in ("readme.md", "readme.markdown")), None)
         if readme:
             p, _ = _archivo(base, readme, conjunto, 12_000 if tarea == "inicial" else 5_000)
             if p:
                 r.append(p)
-    if tarea == "inicial":
+    if tarea in ("inicial", "completar"):
         for g in GUIAS[:4]:
             if g in conjunto:
                 p, _ = _archivo(base, g, conjunto, 8_000)
@@ -587,7 +592,7 @@ def piezas(e):
                 lineas.append("Versiones (tags): " + ", ".join(g["tags"]))
             lineas += [f"{c['fecha']} {c['mensaje']}" for c in g["commits"]]
             r.append(_pieza("git", "Historia de git (fecha y mensaje, sin autores)", ocultar_secretos("\n".join(lineas))))
-    if esquema and tarea != "inicial":
+    if esquema and tarea in ("flujo", "cambio", "revisar", "completar"):
         els = [{k: el[k] for k in ("id", "tipo", "nombre", "descripcion", "codigo") if k in el} for el in esquema["elementos"]]
         r.append(_pieza("elementos", "Elementos del proyecto", json.dumps(els, ensure_ascii=False, indent=1)))
         r.append(_pieza("indice", "Documentos que ya existen", "\n".join(f"{d['ruta']} — {d['titulo']}" for d in esquema["documentos"])))
@@ -622,7 +627,11 @@ def piezas(e):
 
 def preparar(e):
     tarea, docs, ps, rechazados = piezas(e)
-    return {"ok": True, "tarea": tarea, "docs": docs, "piezas": ps, "rechazados": rechazados, "bytes": sum(p["bytes"] for p in ps)}
+    r = {"ok": True, "tarea": tarea, "docs": docs, "piezas": ps, "rechazados": rechazados, "bytes": sum(p["bytes"] for p in ps)}
+    if tarea in A_FONDO:
+        # Lo que la IA podría leer por su cuenta en una revisión a fondo (se muestra antes de enviar).
+        r["a_fondo"] = {"carpeta": ubicacion(lugares(e)["codigo"]), "no_leer": list(NO_LEER), "puede": ia.puede_leer()}
+    return r
 
 
 FORMATO = """Responde SOLO con bloques como estos (nada fuera de ellos):
@@ -671,6 +680,10 @@ def prompt(e, tarea, docs, ps):
         "revisar": (f"El código del proyecto cambió (te mando los commits nuevos). Revisa los documentos que te mando y actualiza, en "
                     f"{idioma}, solo lo que esos cambios dejaron desactualizado, devolviendo cada documento COMPLETO con su misma "
                     "ruta. Si nada cambia, no mandes archivos y explícalo en la NOTA."),
+        "completar": (f"Este proyecto ya tiene documentación (te mando el índice y los elementos). Escribe, en {idioma}, SOLO lo que "
+                      "falta según el pedido, con las mismas reglas: «README.md» es la visión general, «arquitectura.md» los "
+                      "componentes con un diagrama de arquitectura y «flujos/<nombre>.md» los flujos principales con su diagrama. "
+                      "No reescribas los documentos que ya existen. Reutiliza los elementos que ya existen (mismos id)."),
     }[tarea]
     if tarea == "flujo" and e.get("forma") == "diagrama":
         encabezado = (f"Dibuja, en {idioma}, lo que pide la persona sobre este proyecto: un documento corto en «diagramas/<nombre>.md» "
@@ -679,6 +692,11 @@ def prompt(e, tarea, docs, ps):
                       "necesitas leer archivos del código, pídelos en PIDE y no escribas el documento todavía.")
     donde = f"La documentación vive en «{docs}/» dentro del repositorio." if docs else "La documentación vive en su propia carpeta, aparte del código."
     partes = [encabezado, asistente.SOLO_ESTO, asistente.SUBCONJUNTO, FORMATO, "\n" + donde]
+    if e.get("a_fondo") and tarea in A_FONDO:
+        partes.insert(2, "REVISIÓN A FONDO: tu carpeta de trabajo es la carpeta del código del proyecto y puedes leerla (solo leer). "
+                         "Antes de escribir, recórrela de pies a cabeza: la estructura, cada módulo y archivo que importe, cómo se "
+                         "conectan y los flujos reales en el código. Que no se te escape nada. No leas secretos (.env, llaves, "
+                         "credenciales) ni la carpeta .git. No pidas archivos en PIDE: léelos tú. Al final responde en el formato pedido.")
     for p in ps:
         etiqueta = {"archivo": "archivo", "documento": "documento"}.get(p["clave"], p["clave"])
         attr = f' ruta="{p["ruta"]}"' if p.get("ruta") else ""
@@ -747,9 +765,11 @@ def leer_respuesta(texto):
 
 def generar(e):
     tarea, docs, ps, rechazados = piezas(e)
-    if tarea in ("flujo", "cambio") and not str(e.get("pedido") or "").strip():
+    if tarea in ("flujo", "cambio", "completar") and not str(e.get("pedido") or "").strip():
         return {"ok": False, "tarea": tarea, "error": "Cuéntame qué quieres documentar."}
-    texto, error = ia.preguntar(prompt(e, tarea, docs, ps), timeout=900)
+    # Revisión a fondo: la IA lee la carpeta del código por su cuenta (solo leer, sin secretos) y tiene más tiempo.
+    leer = lugares(e)["codigo"] if e.get("a_fondo") and tarea in A_FONDO else None
+    texto, error = ia.preguntar(prompt(e, tarea, docs, ps), timeout=2400 if leer else 900, leer=leer, no_leer=NO_LEER)
     if error:
         return {"ok": False, "tarea": tarea, "error": error}
     r = leer_respuesta(texto)
@@ -1072,9 +1092,34 @@ def pasar(e):
     return {"ok": True, "escritos": escritos, "saltados": saltados, "codigo": os.path.basename(L["codigo"])}
 
 
+# ───────────── Los documentos del código (proyecto con la documentación aparte) ─────────────
+def _carpeta_codigo(e):
+    L = lugares(e)
+    if not L["vinculado"] or not os.path.isdir(L["codigo"]):
+        raise ValueError("Este proyecto no tiene una carpeta de código vinculada.")
+    return L["codigo"]
+
+
+def codigo(e):
+    """Los .md y .mmd del repo del código (para verlos en el lateral junto a la documentación)."""
+    cod = _carpeta_codigo(e)
+    r = carpeta_mod.listar(cod)
+    if not r["ok"]:
+        return r
+    return {"ok": True, "nombre": os.path.basename(cod), "ubicacion": ubicacion(cod), "archivos": r["archivos"]}
+
+
+def codigo_leer(e):
+    return carpeta_mod.leer({"carpeta": _carpeta_codigo(e), "ruta": e.get("ruta")})
+
+
+def codigo_guardar(e):
+    return carpeta_mod.guardar({"carpeta": _carpeta_codigo(e), "ruta": e.get("ruta"), "texto": e.get("texto")})
+
+
 ORDENES = {"abrir": abrir, "leer": leer, "preparar": preparar, "generar": generar, "guardar": guardar, "version": version,
            "versiones": versiones, "ver": ver, "restaurar": restaurar, "vincular": vincular, "mover": mover, "destinos": destinos,
-           "pasar": pasar}
+           "pasar": pasar, "codigo": codigo, "codigo_leer": codigo_leer, "codigo_guardar": codigo_guardar}
 
 
 def main(args):

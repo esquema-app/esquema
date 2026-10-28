@@ -86,7 +86,7 @@
       pj.dialogo = null;
       pj.generando = { tarea: d.tarea, datos: d.datos };
       pj.ultimoEnvio = d;
-      enviar("generar", { tarea: d.tarea, idioma: E.idioma, ...d.datos });
+      enviar("generar", { tarea: d.tarea, idioma: E.idioma, ...d.datos, ...(d.aFondo && d.fondo ? { a_fondo: true } : {}) });
       api.pintar();
     }
     /** Lo que propuso la IA, listo para revisar: cada documento como tarjeta con «Quitar este cambio». Se limpia (enlaces a elementos
@@ -211,9 +211,15 @@
             // «Agregar proyecto»: la documentación va aparte, en ~/Esquema, vinculada a esta carpeta.
             if (pj.pedido) { pj.pedido = false; enviar("vincular"); }
           }
+          if (vinculado() && !E.codigoDocs) enviar("codigo");
           if (vinculado() && pj.despues) { const x = pj.despues; pj.despues = null; pedirIA(x.tarea, x.datos); }
           return api.pintar();
         }
+        case "codigo":
+          E.codigoDocs = r.ok ? { nombre: r.nombre, ubicacion: r.ubicacion, archivos: (r.archivos || []).slice().sort((a, b) => a.ruta.localeCompare(b.ruta)) } : { archivos: [] };
+          return api.pintar();
+        case "codigo_leer": return window.Esquema.archivoAbierto({ ...r, ruta: CODIGO + r.ruta });
+        case "codigo_guardar": return window.Esquema.archivoGuardado({ ...r, ruta: CODIGO + r.ruta });
         case "vincular":
         case "mover": {
           if (!r.ok) { pj.despues = null; toast(r.error || "No pude preparar la carpeta de documentación"); return api.pintar(); }
@@ -241,6 +247,7 @@
           pj.dialogo = null;
           const n = (r.escritos || []).length, s = (r.saltados || []).length;
           toast(s ? Tp("Pasé {n} archivos a {x}; {s} quedaron igual (ya existían o la ruta no servía)", { n, x: r.codigo, s }) : cuenta(n, "Pasé 1 archivo al proyecto", "Pasé {n} archivos al proyecto"), true);
+          if (n) enviar("codigo");  // el lateral muestra lo que quedó en el código
           return api.pintar();
         }
         case "leer":
@@ -252,7 +259,9 @@
           const d = pj.dialogo;
           if (!d || d.tipo !== "envio") return;
           if (!r.ok) { d.cargando = false; d.error = r.error; return api.pintar(); }
-          Object.assign(d, { cargando: false, piezas: r.piezas || [], rechazados: r.rechazados || [], bytes: r.bytes || 0 });
+          Object.assign(d, { cargando: false, piezas: r.piezas || [], rechazados: r.rechazados || [], bytes: r.bytes || 0, aFondo: r.a_fondo || null });
+          // Revisión a fondo: activada de partida cuando la IA sabe leer la carpeta (se puede desmarcar).
+          if (d.aFondo && d.fondo === undefined) d.fondo = !!d.aFondo.puede;
           return api.pintar();
         }
         case "generar": {
@@ -328,20 +337,85 @@
     }
 
     // ───────────── Barra lateral ─────────────
-    function lateralHTML() {
-      if (!E.proyecto) return "";
-      const x = esquema(), p = E.panel;
-      return `<h3>Proyecto</h3>
-        <button class="archivo" data-p="proyecto" aria-current="${p === "proyecto" || p === "propuestas"}">${ic("proyecto")}<span data-sin-traducir>${esc(x.nombre)}</span></button>
-        <button class="archivo" data-p="elementos" aria-current="${p === "elementos"}">${ic("elemento")}<span>Elementos</span><small data-sin-traducir>${x.elementos.length}</small></button>
-        <button class="archivo" data-p="versiones" aria-current="${p === "versiones"}">${ic("historia")}<span>Versiones</span>${E.proyecto.pendiente ? `<small>Sin guardar</small>` : ""}</button>`;
+    // ───────────── Lateral: una carpeta por proyecto, con su código y su documentación ─────────────
+    /** Los .md/.mmd del repo del código de un proyecto vinculado se abren con este prefijo (no están en la carpeta abierta). */
+    const CODIGO = "@codigo/";
+    const esCodigo = (r) => typeof r === "string" && r.startsWith(CODIGO);
+    const esProyecto = () => !!(E.proyecto || E.vinculo);
+    function leerCodigo(ruta) { enviar("codigo_leer", { ruta: ruta.slice(CODIGO.length) }); }
+    function guardarCodigo(ruta, texto) { enviar("codigo_guardar", { ruta: ruta.slice(CODIGO.length), texto }); }
+    /** Los documentos del código y de la documentación, cada uno como su propio árbol. */
+    function partesProyecto(arbolDe) {
+      if (vinculado()) {
+        const cod = (E.codigoDocs?.archivos || []).map((a) => ({ ...a, ruta: CODIGO + a.ruta }));
+        return { codigo: arbolDe(cod).carpetas.get(CODIGO.slice(0, -1)) || arbolDe([]), nCodigo: cod.length, docs: arbolDe(E.archivos), nDocs: E.archivos.length };
+      }
+      const d = docsDir(), dentro = (r) => r.startsWith(d + "/");
+      const enDocs = E.archivos.filter((a) => dentro(a.ruta)), fuera = E.archivos.filter((a) => !dentro(a.ruta));
+      let raiz = arbolDe(enDocs);
+      for (const parte of d.split("/")) raiz = raiz.carpetas.get(parte) || { ruta: d, carpetas: new Map(), archivos: [], total: 0 };
+      return { codigo: arbolDe(fuera), nCodigo: fuera.length, docs: raiz, nDocs: enDocs.length };
     }
+    function lateralHTML({ arbolDe, arbolHTML, arbolAbierta }) {
+      if (!esProyecto()) return "";
+      const x = esquema(), p = E.panel, partes = partesProyecto(arbolDe);
+      const nombre = E.codigoDocs?.nombre || (E.proyecto && !E.proyecto.vinculado ? E.carpeta?.nombre : x?.nombre) || E.carpeta?.nombre || "";
+      const carpeta = (clave, nivel, icono, etiqueta, extra = "", attrs = `data-arbol="${clave}"`) => {
+        const ab = arbolAbierta(clave);
+        return [ab, `<button class="archivo carpeta-arbol" style="--n:${nivel}" ${attrs} aria-expanded="${ab}">${ic(ab ? "abajo" : "derecha")}${ic(icono)}${etiqueta}${extra}</button>`];
+      };
+      const [abP, filaP] = carpeta("#p", 0, "proyecto", `<span data-sin-traducir>${esc(nombre)}</span>`);
+      let html = filaP;
+      if (abP) {
+        const [abC, filaC] = carpeta("#codigo", 1, "carpeta", `<span>Código</span>`, `<small data-sin-traducir>${vinculado() && !E.codigoDocs ? "…" : partes.nCodigo}</small>`);
+        const [abD, filaD] = carpeta("#docs", 1, "carpeta", `<span>Documentación</span>`, `<small data-sin-traducir>${partes.nDocs || esc(tr("vacía"))}</small>`, `data-p-docs aria-current="${p === "proyecto"}"`);
+        const extras = E.proyecto ? `<button class="archivo" style="--n:2" data-p="elementos" aria-current="${p === "elementos"}">${ic("elemento")}<span>Elementos</span><small data-sin-traducir>${x.elementos.length}</small></button>
+          <button class="archivo" style="--n:2" data-p="versiones" aria-current="${p === "versiones"}">${ic("historia")}<span>Versiones</span>${E.proyecto.pendiente ? `<small>Sin guardar</small>` : ""}</button>` : "";
+        html += `<div role="group">${filaC}${abC ? `<div role="group">${arbolHTML(partes.codigo, 2) || `<p class="vacio" style="--n:2">El código no tiene documentos .md ni diagramas.</p>`}</div>` : ""}
+          ${filaD}${abD ? `<div role="group">${extras}${arbolHTML(partes.docs, 2)}</div>` : ""}</div>`;
+      }
+      const actual = E.carpeta?.ruta;
+      const otros = E.recientes.map((r, i) => [r, i]).filter(([r]) => r.ruta !== actual);
+      return `<h3>Proyectos</h3><div class="arbol">${html}${otros.map(filaReciente).join("")}</div>
+        <button class="archivo" data-accion="p-agregar">${ic("mas")}<span>Agregar proyecto</span></button>`;
+    }
+    const filaReciente = ([p, i]) => `<button class="archivo carpeta-arbol" data-p-reciente="${i}" title="${esc(p.ubicacion || p.ruta)}" data-sin-traducir>${ic("derecha")}${ic("proyecto")}<span>${esc(p.nombre)}</span></button>`;
     function recientesHTML() {
+      if (esProyecto()) return "";
       const actual = E.carpeta?.ruta;
       const otros = E.recientes.map((p, i) => [p, i]).filter(([p]) => p.ruta !== actual);
-      const fila = ([p, i]) => `<button class="archivo" data-p-reciente="${i}" title="${esc(p.ubicacion || p.ruta)}" data-sin-traducir>${ic("proyecto")}<span>${esc(p.nombre)}</span>${p.codigo ? `<small>${esc(p.codigo)}</small>` : ""}</button>`;
-      return `<h3>${E.proyecto || E.vinculo ? "Otros proyectos" : "Proyectos"}</h3>${otros.map(fila).join("")}
+      return `<h3>Proyectos</h3><div class="arbol">${otros.map(filaReciente).join("")}</div>
         <button class="archivo" data-accion="p-agregar">${ic("mas")}<span>Agregar proyecto</span></button>`;
+    }
+
+    /** «Lo que falta» en la documentación: lo que una documentación completa trae y esta todavía no. */
+    function loQueFalta() {
+      const x = esquema(), tipos = x.documentos.map((d) => d.tipo), { docs, listos } = docsProyecto();
+      const flujos = tipos.filter((t) => t === "flujo").length;
+      const sinUso = listos ? x.elementos.filter((el) => !M.usosElemento(docs, el).length) : [];
+      const c = E.proyecto.cambios;
+      return [
+        { ok: tipos.includes("vision"), titulo: "Visión general", falta: "la visión general (README.md): qué es el proyecto y para quién" },
+        { ok: tipos.includes("arquitectura"), titulo: "Arquitectura", falta: "la arquitectura (arquitectura.md): sus componentes y cómo se conectan, con un diagrama" },
+        { ok: flujos > 0, titulo: "Flujos principales", n: flujos, falta: "los flujos principales (flujos/<nombre>.md), cada uno con su diagrama" },
+        { ok: x.elementos.length > 0, titulo: "Elementos", n: x.elementos.length, falta: "los elementos del proyecto (pantallas, botones, servicios, módulos…)" },
+        { ok: !sinUso.length, titulo: "Cada elemento aparece en un documento", n: sinUso.length, nombres: sinUso.map((e) => e.nombre), falta: "documentar los elementos que ningún documento nombra" },
+        { ok: !c?.n, titulo: "Al día con el código", n: c?.n || 0, falta: "poner al día lo que cambió en el código desde la última versión" },
+      ];
+    }
+    function faltaHTML() {
+      const items = loQueFalta(), faltan = items.filter((i) => !i.ok);
+      const fila = (i) => `<li class="${i.ok ? "hecho" : "pendiente"}">${ic(i.ok ? "listo" : "mas")}<span><b data-sin-traducir>${esc(tr(i.titulo))}</b>${i.n != null && (i.ok ? i.n && i.titulo !== "Cada elemento aparece en un documento" && i.titulo !== "Al día con el código" : i.n) ? ` <small data-sin-traducir>${i.n}</small>` : ""}${i.nombres?.length ? `<small data-sin-traducir> · ${esc(i.nombres.slice(0, 4).join(", "))}${i.nombres.length > 4 ? "…" : ""}</small>` : ""}</span></li>`;
+      return `<section class="p-tarjeta p-falta">
+        <h3>${faltan.length ? (faltan.length === 1 ? frase("Le falta 1 cosa a la documentación") : frase("Le faltan {n} cosas a la documentación", { n: faltan.length })) : "La documentación está completa"}</h3>
+        <ul>${items.map(fila).join("")}</ul>
+        <div class="p-acciones izq">${faltan.length ? `<button class="boton principal" data-accion="p-completar">${ic("chispa")} Completar lo que falta</button>` : `<button class="boton" data-accion="p-flujo">${ic("chispa")} Documentar otro flujo</button>`}</div>
+      </section>`;
+    }
+    /** El pedido para «Completar lo que falta» (lo ve la persona en «Ver lo que se envía»). */
+    function pedidoCompletar() {
+      const faltan = loQueFalta().filter((i) => !i.ok);
+      return tr("Completa la documentación. Falta:") + "\n" + faltan.map((i) => "- " + tr(i.falta) + (i.nombres?.length ? ": " + i.nombres.join(", ") : "")).join("\n");
     }
     function barraHTML() {
       const titulos = { proyecto: "Proyecto", elementos: "Elementos", versiones: "Versiones", propuestas: "Revisa lo que propone tu IA" };
@@ -401,6 +475,7 @@
       return `<div class="p-cab"><span class="p-icono">${ic("proyecto")}</span><div><h2 data-sin-traducir>${esc(x.nombre)}</h2>${frase("{d} documentos · {e} elementos · en {c}", { d: x.documentos.length, e: x.elementos.length, c: donde }, "p")}${E.proyecto.vinculado && E.proyecto.codigo ? frase("Código: {x}", { x: E.proyecto.codigo }, "p") : ""}</div></div>
         ${!E.proyecto.vinculado ? `<div class="p-aviso"><span>${frase("Esta documentación está dentro del repo ({x}). ¿La paso a una carpeta aparte en ~/Esquema? No borro nada del repo.", { x: docsDir() + "/" })}</span><button class="boton" data-accion="p-mover">Moverla aparte</button></div>` : ""}
         ${E.proyecto.vinculado && pj.ofrecerPasar && !pj.espera ? `<div class="p-aviso"><span>Guardé la versión. ¿Quieres llevar algo de esto al repo del proyecto?</span><button class="boton" data-accion="p-pasar">Pasar al proyecto</button></div>` : ""}
+        ${x.documentos.length ? faltaHTML() : ""}
         ${api.accionesInicioHTML()}
         ${pj.espera ? `<div class="p-aviso"><span class="giro"></span> Guardando la versión…</div>` : ""}
         ${u ? `<div class="p-aviso"><span data-sin-traducir>${esc(u.mensaje)}</span>${u.puede ? `<button class="boton" data-accion="p-deshacer">${ic("deshacer")} Deshacer este cambio</button>` : ""}</div>` : ""}
@@ -595,15 +670,24 @@
       return "";
     }
     function envioHTML(d) {
-      const titulo = d.datos?.forma === "diagrama" ? "Crear diagrama" : { inicial: "Documentar el proyecto", flujo: "Documentar un flujo", cambio: "Actualizar los documentos", revisar: "Poner al día la documentación" }[d.tarea];
+      const titulo = d.datos?.forma === "diagrama" ? "Crear diagrama" : { inicial: "Documentar el proyecto", flujo: "Documentar un flujo", cambio: "Actualizar los documentos", revisar: "Poner al día la documentación", completar: "Completar la documentación" }[d.tarea];
       if (d.cargando) return `<h2 id="t-pj">${titulo}</h2><div class="esperando"><span class="giro"></span> Preparando lo que se envía…</div>`;
       if (d.error) return `<h2 id="t-pj">${titulo}</h2><p class="mal-txt" data-sin-traducir>${esc(tr(d.error))}</p><div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cerrar</button></div>`;
       const motivos = { ruta: "ruta no válida", fuera: "no existe, es un secreto o está ignorado", binario: "no es texto", tope: "pasa del tope de tamaño" };
       return `<h2 id="t-pj">${titulo}</h2>
         <p>${frase("Esto es exactamente lo que le mando a {ia} ({b}). Revísalo antes de enviar: nada más sale de tu computador.", { ia: nombreIA(), b: tamano(d.bytes) })}</p>
         <div class="p-envio">${d.piezas.map((p, i) => `<details ${d.abierta === i ? "open" : ""}><summary><span data-sin-traducir>${p.ruta ? `<code>${esc(p.ruta)}</code>` : esc(tr(p.titulo))}</span><small data-sin-traducir>${esc(tamano(p.bytes))}${p.recortado ? " · " + esc(tr("recortado")) : ""}</small></summary><pre data-sin-traducir>${esc(p.texto)}</pre></details>`).join("")}</div>
+        ${d.aFondo ? fondoHTML(d) : ""}
         ${d.rechazados.length ? `<p class="p-ayuda">No mando: <span data-sin-traducir>${d.rechazados.map((r) => `<code>${esc(r.ruta)}</code> (${esc(tr(motivos[r.motivo] || r.motivo))})`).join(", ")}</span></p>` : ""}
         <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-enviar" data-autofoco>${ic("chispa")} ${frase("Enviar a {ia}", { ia: nombreIA() })}</button></div>`;
+    }
+    /** La casilla «Revisión a fondo»: la IA lee (solo lee) la carpeta del código por su cuenta, menos los secretos. */
+    function fondoHTML(d) {
+      const a = d.aFondo;
+      if (!a.puede) return `<p class="p-ayuda">${frase("{ia} no sabe leer una carpeta con permisos de solo lectura: le mando solo lo de arriba.", { ia: nombreIA() })}</p>`;
+      return `<label class="marcar p-fondo"><input type="checkbox" data-p-fondo ${d.fondo ? "checked" : ""}><span><b>Revisión a fondo</b>
+        <small>${frase("Además, {ia} puede leer (solo leer) la carpeta {c} de pies a cabeza. Nunca escribe ni ejecuta nada, y no abre:", { ia: nombreIA(), c: a.carpeta }, "span")} <span data-sin-traducir>${a.no_leer.map((x) => `<code>${esc(x)}</code>`).join(" ")}</span></small>
+        <small>Tarda más, pero no se le escapa nada.</small></span></label>`;
     }
     function cambioHTML(d) {
       const { listos } = docsProyecto();
@@ -685,6 +769,11 @@
         if (d.p !== "elementos" || movil()) { pj.editar = null; if (movil()) pj.elemento = null; }  // en celular, Elementos abre la lista
         api.pintar(); return true;
       }
+      if (d.pDocs !== undefined) {
+        // La carpeta «Documentación»: abre lo que tiene y lo que le falta (o, vacía, la invitación a documentar todo).
+        E.abiertas["#docs"] = E.panel === "proyecto" && !E.sel ? !(E.abiertas["#docs"] ?? true) : true;
+        E.panel = "proyecto"; E.sel = null; E.lateral = false; api.pintar(); return true;
+      }
       if (d.pReciente !== undefined) { E.lateral = false; pj.pedido = true; host.enviar("abrirProyecto", { indice: Number(d.pReciente) }); return true; }
       if (d.pElemento !== undefined && !d.accion) { E.lateral = false; E.menu = null; pj.elemento = d.pElemento; pj.editar = null; E.panel = "elementos"; api.pintar(); return true; }
       if (d.abrir && d.pBloque !== undefined) { api.abrir(d.abrir); const k = Number(d.pBloque); if (k >= 0) { E.bloque = k; E.lz.ajustar = true; if (movil()) E.vista = "dibujo"; api.pintar(); } return true; }
@@ -694,6 +783,7 @@
         else { const p = E.propuestas.lista[Number(d.pQuitar)]; if (!p.error) p.quitada = !p.quitada; }
         api.pintar(); return true;
       }
+      if (d.pFondo !== undefined) { const x = pj.dialogo; if (x?.aFondo) { x.fondo = !x.fondo; api.pintar(); } return true; }
       if (d.pFila !== undefined) { const f = pj.dialogo?.filas?.[Number(d.pFila)]; if (f) { f.elegido = !f.elegido; f.revisado = true; api.pintar(); } return true; }
       if (d.pReemplazar !== undefined) { const f = pj.dialogo?.filas?.[Number(d.pReemplazar)]; if (f) { f.reemplazar = !f.reemplazar; if (f.reemplazar) f.elegido = true; api.pintar(); } return true; }
       if (d.pVerDif !== undefined) { const x = pj.dialogo; x.abierta = x.abierta === Number(d.pVerDif) ? null : Number(d.pVerDif); api.pintar(); return true; }
@@ -735,6 +825,7 @@
         }
         case "p-enviar": enviarIA(); return true;
         case "p-cancelar": pj.generando = null; toast("Cancelé: si tu IA responde, no aplico nada"); api.pintar(); return true;
+        case "p-completar": E.lateral = false; pedirIA("completar", { pedido: pedidoCompletar() }); return true;
         case "p-flujo": E.nuevo = null; E.lateral = false; pj.dialogo = { tipo: "flujo", pedido: "" }; api.pintar(); return true;
         case "p-flujo-enviar": {
           const pedido = ($("#p-pedido")?.value || "").trim();
@@ -833,7 +924,7 @@
 
     // ───────────── Lo que avisa app.js ─────────────
     function alCambiarCarpeta(r) {
-      E.proyecto = null; E.encontrado = null; E.vinculo = null; pj.ofrecerPasar = false; E.propuestas = null; pj.versiones = null; pj.elemento = null; pj.ultimo = null; pj.dialogo = null;
+      E.proyecto = null; E.encontrado = null; E.vinculo = null; E.codigoDocs = null; pj.ofrecerPasar = false; E.propuestas = null; pj.versiones = null; pj.elemento = null; pj.ultimo = null; pj.dialogo = null;
       if (E.panel) E.panel = null;
       if (r && r.proyecto) { pj.pedido = true; E.panel = "proyecto"; }
       if (E.carpeta) enviar("abrir", { docs: undefined });
@@ -849,9 +940,9 @@
     function hayDialogo() { return !!(pj.dialogo || pj.generando); }
     function cerrarDialogo() { pj.dialogo = null; if (pj.generando) { pj.generando = null; } }
 
-    return { lateralHTML, recientesHTML, barraHTML, areaHTML, dialogoHTML, menuElementosHTML, botonElemento, clic, respuesta, despuesDePintar, enlace, pedirIA,
+    return { lateralHTML, recientesHTML, esProyecto, esCodigo, leerCodigo, guardarCodigo, barraHTML, areaHTML, dialogoHTML, menuElementosHTML, botonElemento, clic, respuesta, despuesDePintar, enlace, pedirIA,
       alCambiarCarpeta, alAbrirArchivo, alGuardarArchivo, alCambiarArchivos, hayDialogo, cerrarDialogo, simular,
-      _: { armarPropuestas, docsProyecto, cargarDocs } };
+      _: { armarPropuestas, docsProyecto, cargarDocs, loQueFalta, pedidoCompletar } };
 
     // ───────────── Vista previa en el navegador: un proyecto ficticio (ui/demo.json → proyecto) ─────────────
     function simular(d, memoria, DEMO, luego) {
@@ -868,6 +959,13 @@
         case "abrir": { const x = leerEsquema(); return responder({ ok: true, existe: !!x, docs, esquema: x, git: { hay: true }, cambios: sim.cambios || null, pendiente: sim.pendiente !== false && !!x && !sim.versiones.length, recientes: recientes(), ...lugar() }); }
         case "vincular": sim.vinculado = true; return responder({ ok: true, indice: 0, ubicacion: lugar().ubicacion, recientes: recientes() });
         case "mover": sim.vinculado = true; return responder({ ok: true, indice: 0, desde: docs, ubicacion: lugar().ubicacion, recientes: recientes() });
+        case "codigo": {
+          if (!sim.vinculado) return responder({ ok: false, error: "Este proyecto no tiene una carpeta de código vinculada." });
+          const arch = [...new Set(["README.md", ...Object.keys(sim.repo)])].filter((x) => /\.(md|mmd)$/.test(x)).map((ruta) => ({ ruta, tamano: (sim.repo[ruta] ?? memoria["README.md"] ?? "").length }));
+          return responder({ ok: true, nombre: DEMO.carpeta.nombre, ubicacion: "~/" + DEMO.carpeta.nombre, archivos: arch });
+        }
+        case "codigo_leer": { const t = sim.repo[d.ruta] ?? (d.ruta === "README.md" ? memoria["README.md"] : null); return responder(t != null ? { ok: true, ruta: d.ruta, texto: t } : { ok: false, ruta: d.ruta, error: tr("No encontré el archivo") }, 20); }
+        case "codigo_guardar": sim.repo[d.ruta] = d.texto; return responder({ ok: true, ruta: d.ruta }, 40);
         case "destinos": return responder({ ok: true, codigo: DEMO.carpeta.nombre, estados: Object.fromEntries((d.rutas || []).map((x) => [x, sim.repo[x] != null ? { valido: true, existe: true, texto: sim.repo[x] } : { valido: /^[\w.-]+(\/[\w.-]+)*\.(md|mmd)$/.test(x), existe: false }])) });
         case "pasar": {
           const escritos = [], saltados = [];
@@ -890,7 +988,8 @@
           if (x && d.tarea !== "inicial") { pieza("elementos", "Elementos del proyecto", JSON.stringify(x.elementos, null, 1)); pieza("indice", "Documentos que ya existen", x.documentos.map((y) => `${y.ruta} — ${y.titulo}`).join("\n")); }
           for (const r of d.documentos || []) if (memoria[docs + "/" + r] != null) pieza("documento", r, memoria[docs + "/" + r], r);
           for (const r of d.archivos || []) { if (pr.codigo[r] != null) pieza("archivo", r, pr.codigo[r], r); else rechazados.push({ ruta: r, motivo: "fuera" }); }
-          return responder({ ok: true, tarea: d.tarea, docs, piezas, rechazados, bytes: piezas.reduce((s, p) => s + p.bytes, 0) }, 150);
+          const aFondo = ["inicial", "flujo", "completar"].includes(d.tarea) ? { a_fondo: { carpeta: "~/" + DEMO.carpeta.nombre, no_leer: [".env", ".env.*", "*.pem", "*.key", ".git/"], puede: true } } : {};
+          return responder({ ok: true, tarea: d.tarea, docs, piezas, rechazados, bytes: piezas.reduce((s, p) => s + p.bytes, 0), ...aFondo }, 150);
         }
         case "generar": return luego(600, () => A.proyectoRespuesta({ orden: "generar", ...generarSimulado(d, memoria, docs, pr) }));
         case "guardar": {
@@ -932,6 +1031,11 @@
         const nombre = M.idElemento(d.pedido).split("-").slice(0, 5).join("-");
         const texto = g.flujo.texto.split("{titulo}").join(d.pedido.replace(/[\n#]/g, " ").slice(0, 80));
         return { ok: true, tarea: "flujo", docs, propuestas: [{ ruta: `${d.forma === "diagrama" ? "diagramas" : "flujos"}/${nombre}.md`, titulo: d.pedido.slice(0, 80), tipo: "flujo", texto }], elementos: g.flujo.elementos, pide: [], nota: g.flujo.nota };
+      }
+      if (d.tarea === "completar") {
+        // Solo lo que todavía no existe.
+        const propuestas = g.inicial.filter((p) => memoria[(docs ? docs + "/" : "") + p.ruta] == null);
+        return { ok: true, tarea: "completar", docs, propuestas, elementos: g.elementos, pide: [], nota: g.nota };
       }
       // cambio o revisar: agrega lo pedido como una nota al comienzo de cada documento.
       const propuestas = (d.documentos || []).filter((r) => memoria[docs + "/" + r] != null).map((r) => {

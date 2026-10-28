@@ -15,7 +15,7 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
 
     static let maximoExportar = 50 * 1024 * 1024
     /// Proyectos: lo que bin/proyecto.py sabe hacer (la interfaz no puede pedir otra cosa).
-    static let ordenesProyecto: Set<String> = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar"]
+    static let ordenesProyecto: Set<String> = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar", "codigo", "codigo_leer", "codigo_guardar"]
 
     func mostrar() {
         if ventana == nil { crear() }

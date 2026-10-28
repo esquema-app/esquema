@@ -5,6 +5,14 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Revisión a fondo:** al documentar tu proyecto, tu IA puede leer (solo leer) toda la carpeta del código para que no se le escape
+  nada; nunca abre tus `.env`, llaves ni la carpeta `.git`, y puedes desmarcarla. · *Thorough review: when documenting your
+  project, your AI can read (only read) the whole code folder so nothing slips through; it never opens your `.env`, keys or the
+  `.git` folder, and you can turn it off.*
+- **Cada proyecto, una carpeta:** a la izquierda, cada proyecto con su **Código** y su **Documentación**. Al abrir la documentación
+  ves qué le falta (visión, arquitectura, flujos, elementos…) y la completas con un botón. · *Each project, one folder: on the left,
+  each project with its Code and its Documentation. Opening the documentation shows what it's missing (overview, architecture,
+  flows, elements…) and one button completes it.*
 - **Varios proyectos, con la documentación aparte:** agrega los proyectos que quieras; la documentación de cada uno vive en
   `~/Esquema/<proyecto>/`, con su propio historial, y tu repo no cambia. Con «Pasar al proyecto» eliges qué documentos copiar al
   repo y si reemplazas los que ya existen, viendo la diferencia. Los proyectos de antes se pueden mover aparte sin borrar nada.

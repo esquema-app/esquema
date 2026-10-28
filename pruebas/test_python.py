@@ -309,6 +309,18 @@ class Proyecto(unittest.TestCase):
             self.assertTrue(proyecto_mod.es_repo(docs))
             _, s, _ = proyecto_mod.git(codigo, "log", "--format=%s")
             self.assertEqual(s.split(), ["Primero"], "el git del código no se toca")
+        # Los .md del código se ven y se editan desde el proyecto, sin salir de la carpeta del código.
+        c = proyecto_mod.codigo({"carpeta": docs})
+        self.assertEqual([x["ruta"] for x in c["archivos"]], ["README.md", "docs/existe.md"])
+        self.assertEqual(proyecto_mod.codigo_leer({"carpeta": docs, "ruta": "docs/existe.md"})["texto"], "# Mío\n")
+        self.assertTrue(proyecto_mod.codigo_guardar({"carpeta": docs, "ruta": "docs/existe.md", "texto": "# Mío\n\nMás.\n"})["ok"])
+        for malo in ("../fuera.md", "/etc/passwd", "src/pagos.py"):
+            self.assertFalse(proyecto_mod.codigo_leer({"carpeta": docs, "ruta": malo})["ok"], malo)
+            self.assertFalse(proyecto_mod.codigo_guardar({"carpeta": docs, "ruta": malo, "texto": "x"})["ok"], malo)
+        with open(os.path.join(codigo, "docs", "existe.md"), "w", encoding="utf-8") as f:
+            f.write("# Mío\n")
+        with self.assertRaises(ValueError):
+            proyecto_mod.codigo({"carpeta": codigo})  # sin vínculo (es la carpeta del código misma)
         vs = proyecto_mod.versiones({"carpeta": docs})
         self.assertEqual(vs["lista"][0]["mensaje"], "Primera")
         self.assertEqual(proyecto_mod.ver({"carpeta": docs, "id": vs["lista"][0]["id"]})["archivos"]["README.md"], "# Pagos\n\nVisión general.\n")
@@ -443,6 +455,36 @@ class Proyecto(unittest.TestCase):
         ver = orden("preparar", {"carpeta": p, "tarea": "inicial"})
         for pieza in ver["piezas"]:
             self.assertIn(pieza["texto"], llamada["prompt"])
+
+    def test_revision_a_fondo_solo_lee_el_codigo(self):
+        """Con «Revisión a fondo», la IA lee la carpeta del código por su cuenta: solo Read/Glob/Grep, nada que escriba, ejecute
+        o salga a internet, y nunca los secretos. Sin pedirla, sigue sin herramientas."""
+        p = repo_de_prueba()
+        ver = orden("preparar", {"carpeta": p, "tarea": "inicial"})
+        self.assertIn(".env", ver["a_fondo"]["no_leer"])
+        self.assertTrue(ver["a_fondo"]["puede"])
+        self.assertNotIn("a_fondo", orden("preparar", {"carpeta": p, "tarea": "revisar"}))
+        if os.path.exists(REGISTRO):
+            os.unlink(REGISTRO)
+        self.assertTrue(orden("generar", {"carpeta": p, "tarea": "inicial", "a_fondo": True})["ok"])
+        with open(REGISTRO, encoding="utf-8") as f:
+            llamada = [json.loads(l) for l in f][-1]
+        a = llamada["args"]
+        self.assertEqual(os.path.realpath(llamada["cwd"]), os.path.realpath(p))
+        self.assertEqual(os.path.realpath(a[a.index("--add-dir") + 1]), os.path.realpath(p))
+        self.assertEqual(a[a.index("--allowedTools") + 1], "Read,Glob,Grep")
+        prohibido = a[a.index("--disallowedTools") + 1].split(",")
+        for x in ("Bash", "Edit", "Write", "WebFetch", "Read(**/.env)", "Read(**/.git/**)", "Read(**/*.pem)"):
+            self.assertIn(x, prohibido)
+        self.assertIn("--strict-mcp-config", a)
+        self.assertIn("REVISIÓN A FONDO", llamada["prompt"])
+        # Una tarea que no es a fondo (o sin pedirlo) no recibe la carpeta.
+        self.assertTrue(orden("generar", {"carpeta": p, "tarea": "inicial"})["ok"])
+        with open(REGISTRO, encoding="utf-8") as f:
+            llamada = [json.loads(l) for l in f][-1]
+        self.assertNotIn("--add-dir", llamada["args"])
+        self.assertEqual(llamada["args"][llamada["args"].index("--disallowedTools") + 1], "*")
+        self.assertNotIn("REVISIÓN A FONDO", llamada["prompt"])
 
     def test_generar_pide_archivos_y_basura(self):
         p = repo_de_prueba()

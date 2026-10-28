@@ -71,14 +71,36 @@ def _soporta(comando, opcion):
     return opcion in _ayuda[comando]
 
 
-def ejecutar_ia(prompt, timeout=600, ia=None):
+def puede_leer(ia=None):
+    """Si la IA elegida sabe leer una carpeta con permisos de solo lectura (revisión a fondo)."""
+    ia = ia or elegida()
+    if ia != "gemini":
+        return True
+    comando = next((r for r in map(shutil.which, IAS[ia][0]) if r), "")
+    return os.path.basename(comando).lower().split(".")[0] in ("agy", "antigravity")
+
+
+def _sin_secretos(no_leer):
+    """Reglas de Claude Code para no abrir secretos en una revisión a fondo."""
+    reglas = []
+    for patron in no_leer:
+        p = patron.rstrip("/") + ("/**" if patron.endswith("/") else "")
+        reglas += [f"Read(**/{p})", f"Read(./{p})"]
+    return reglas
+
+
+def ejecutar_ia(prompt, timeout=600, ia=None, leer=None, no_leer=()):
+    """Corre la IA con el prompt. Con `leer` (una carpeta), la IA puede LEER esa carpeta (revisión a fondo): solo leer, nunca
+    escribir ni ejecutar, y nunca lo de `no_leer`. Sin `leer`, corre en una carpeta temporal vacía y sin herramientas."""
     ia = ia or elegida()
     comando = next((r for r in map(shutil.which, IAS[ia][0]) if r), IAS[ia][0][0])
+    if leer and not (os.path.isdir(leer) and puede_leer(ia)):
+        leer = None
     with tempfile.TemporaryDirectory(prefix="esquema-ia-") as tmp:
         if ia == "codex":
             salida = os.path.join(tmp, "respuesta.txt")
-            cmd = [comando, "exec", "--skip-git-repo-check", "-s", "read-only", "-C", tmp, "-o", salida, "-"]
-            r = subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env=_entorno())
+            cmd = [comando, "exec", "--skip-git-repo-check", "-s", "read-only", "-C", leer or tmp, "-o", salida, "-"]
+            r = subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=leer or tmp, env=_entorno())
             texto = open(salida, encoding="utf-8").read() if os.path.exists(salida) else ""
             return subprocess.CompletedProcess(cmd, r.returncode, texto, r.stderr)
         es_agy = os.path.basename(comando).lower().split(".")[0] in ("agy", "antigravity")
@@ -90,24 +112,31 @@ def ejecutar_ia(prompt, timeout=600, ia=None):
                     f.write(prompt)
                 pedido = ("Lee el archivo instrucciones.md de esta carpeta y haz exactamente lo que pide. "
                           "Entrega solo el resultado pedido, sin comentarios. No modifiques ni crees archivos.")
-            cmd = [comando, "--output-format", "text", "--sandbox", "--add-dir", tmp, "-p", pedido]
-            return subprocess.run(cmd, stdin=subprocess.DEVNULL, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env=_entorno())
+            cmd = [comando, "--output-format", "text", "--sandbox", "--add-dir", tmp, *(["--add-dir", leer] if leer else []), "-p", pedido]
+            return subprocess.run(cmd, stdin=subprocess.DEVNULL, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=leer or tmp, env=_entorno())
         if ia == "gemini":
             cmd = [comando, "-p", "Responde a las instrucciones de arriba. Entrega solo el resultado pedido.", "-o", "text"]
         else:
             # Sin herramientas ni servidores MCP: la IA solo responde texto, no puede leer ni cambiar nada. Y sin la memoria de la
             # persona: solo ve lo que Esquema le manda (lo que muestra «Ver lo que se envía»).
-            cmd = [comando, "-p", "--output-format", "text", "--disallowedTools", "*", "--strict-mcp-config"]
+            cmd = [comando, "-p", "--output-format", "text", "--strict-mcp-config"]
+            if leer:
+                # Revisión a fondo: solo leer (Read, Glob, Grep) dentro de la carpeta del código; nada que escriba, ejecute o salga a
+                # internet, y nunca los secretos.
+                cmd += ["--add-dir", leer, "--allowedTools", "Read,Glob,Grep",
+                        "--disallowedTools", ",".join(["Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch", "WebSearch", "Task"] + _sin_secretos(no_leer))]
+            else:
+                cmd += ["--disallowedTools", "*"]
             if _soporta(comando, "--safe-mode"):
                 cmd.append("--safe-mode")
-            return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env={**_entorno(), **SIN_MEMORIA_CLAUDE})
+            return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=leer or tmp, env={**_entorno(), **SIN_MEMORIA_CLAUDE})
         return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env=_entorno())
 
 
-def preguntar(prompt, timeout=600, ia=None):
+def preguntar(prompt, timeout=600, ia=None, leer=None, no_leer=()):
     """Devuelve (texto, error). El error es un mensaje para la persona, con el nombre de su IA."""
     try:
-        r = ejecutar_ia(prompt, timeout, ia)
+        r = ejecutar_ia(prompt, timeout, ia, leer=leer, no_leer=no_leer)
     except FileNotFoundError:
         return "", f"No encontré {nombre(ia)} en este computador. Revisa en Ajustes → Tu IA."
     except subprocess.TimeoutExpired:

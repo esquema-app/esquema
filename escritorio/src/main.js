@@ -121,7 +121,7 @@ async function enviarEstado() {
 }
 
 /** Proyectos: lo que bin/proyecto.py sabe hacer (la interfaz no puede pedir otra cosa). */
-const ORDENES_PROYECTO = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar"];
+const ORDENES_PROYECTO = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar", "codigo", "codigo_leer", "codigo_guardar"];
 
 /** Deja `c` como la carpeta, la lista, la vigila y responde carpetaElegida (con proyecto: true si viene de un proyecto). */
 async function usarCarpeta(c, proyecto) {

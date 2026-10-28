@@ -108,7 +108,7 @@
   // ───────────── Íconos de la interfaz (trazos de 16×16) ─────────────
   const IC = {
     mas: "M8 3v10M3 8h10", menos: "M3 8h10", deshacer: "M5.5 4 2.5 7l3 3M2.5 7H10a3.5 3.5 0 0 1 0 7H8", rehacer: "M10.5 4l3 3-3 3M13.5 7H6a3.5 3.5 0 0 0 0 7h2",
-    menu: "M2.5 4h11M2.5 8h11M2.5 12h11", carpeta: "M1.5 4.5v8h13v-7H8L6.5 3.5h-5z", doc: "M4 1.5h5.5L12.5 4.5v10h-8.5zM9.5 1.5v3h3M6 8h4.5M6 11h4.5",
+    listo: "M3 8.5l3 3 7-7", menu: "M2.5 4h11M2.5 8h11M2.5 12h11", carpeta: "M1.5 4.5v8h13v-7H8L6.5 3.5h-5z", doc: "M4 1.5h5.5L12.5 4.5v10h-8.5zM9.5 1.5v3h3M6 8h4.5M6 11h4.5",
     diagrama: "M5.5 1.5h5v4h-5zM1.5 10.5h5v4h-5zM9.5 10.5h5v4h-5zM8 5.5v2.5M4 10.5V8h8v2.5", chispa: "M8 1.5l1.6 4.9 4.9 1.6-4.9 1.6L8 14.5l-1.6-4.9L1.5 8l4.9-1.6z",
     exportar: "M8 10V2M5 5l3-3 3 3M2.5 9.5v4h11v-4", ajustar: "M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4", mapa: "M1.5 3.5l4-1.5 5 2 4-1.5v10l-4 1.5-5-2-4 1.5zM5.5 2v10M10.5 4v10",
     borrar: "M2.5 4.5h11M6 4.5V2.5h4v2M4 4.5l.7 9.5h6.6l.7-9.5", cerrar: "M3.5 3.5l9 9M12.5 3.5l-9 9", lapiz: "M10.5 2.5l3 3-8 8H2.5v-3z",
@@ -188,7 +188,8 @@
     const d = E.docs[ruta];
     if (!d || d.texto === d.guardado) { if (d) d.estado = "guardado"; return pintarEstadoGuardado(); }
     d.estado = "guardando"; d.enviado = d.texto;
-    host.enviar("guardarArchivo", { ruta, texto: d.texto });
+    if (P.esCodigo(ruta)) P.guardarCodigo(ruta, d.texto);  // un .md del repo del código (proyecto con la documentación aparte)
+    else host.enviar("guardarArchivo", { ruta, texto: d.texto });
     pintarEstadoGuardado();
   }
   /** Guarda ya todo lo que tenga cambios (menú Guardar, antes de cerrar la app o de actualizarla). */
@@ -204,8 +205,8 @@
     E.panel = null;
     E.sel = ruta; E.bloque = null; E.elegido = null; E.menu = null; E.lateral = false; E.lz.ajustar = true; E.tarjetaIA = null;
     E.vista = movil() ? (esDocumento(ruta) ? "dibujo" : "dibujo") : "ambos";
-    if (!E.docs[ruta]) { E.docs[ruta] = { texto: null, guardado: null, estado: "cargando", pila: [], futuro: [] }; host.enviar("abrirArchivo", { ruta }); }
-    try { localStorage.setItem("esquema.ultimo", ruta); } catch { /* sin almacenamiento: no pasa nada */ }
+    if (!E.docs[ruta]) { E.docs[ruta] = { texto: null, guardado: null, estado: "cargando", pila: [], futuro: [] }; if (P.esCodigo(ruta)) P.leerCodigo(ruta); else host.enviar("abrirArchivo", { ruta }); }
+    if (!P.esCodigo(ruta)) try { localStorage.setItem("esquema.ultimo", ruta); } catch { /* sin almacenamiento: no pasa nada */ }
     pintar();
   }
 
@@ -272,6 +273,10 @@
   /** Si nadie la abrió o cerró: abierta si hay pocos archivos, si tiene el archivo abierto o si es (o lleva a) la documentación del proyecto. */
   function arbolAbierta(ruta) {
     if (ruta in E.abiertas) return E.abiertas[ruta];
+    // Las carpetas del proyecto en el lateral: el proyecto y su documentación abiertos; el código, cerrado salvo que tenga lo abierto.
+    if (ruta === "#p" || ruta === "#docs") return true;
+    if (ruta === "#codigo") return P.esCodigo(E.sel);
+    if (P.esCodigo(ruta)) return !!E.sel && E.sel.startsWith(ruta + "/");
     const dentro = (r) => r && (r === ruta || r.startsWith(ruta + "/"));
     return E.archivos.length <= 20 || (E.sel && dentro(carpetaDe(E.sel))) || (E.proyecto && dentro(E.proyecto.docs));
   }
@@ -290,10 +295,9 @@
       <button class="carpeta" data-accion="elegir-carpeta" title="Cambiar de carpeta">${ic("carpeta")}<span data-sin-traducir>${esc(E.carpeta?.nombre || "")}</span></button>
       <button class="boton principal nuevo" data-accion="nuevo">${ic("mas")} Nuevo</button>
       <nav class="lista">
-        ${inicio}
-        ${P.lateralHTML()}
+        ${P.esProyecto() ? P.lateralHTML({ arbolDe, arbolHTML, arbolAbierta }) : `${inicio}
         ${E.archivos.length ? `<h3>Archivos</h3><div class="arbol">${arbolHTML(arbolDe(E.archivos), 0)}</div>` : ""}
-        ${!E.archivos.length && E.carpeta ? `<p class="vacio">Esta carpeta todavía no tiene documentos ni diagramas.</p>` : ""}
+        ${!E.archivos.length && E.carpeta ? `<p class="vacio">Esta carpeta todavía no tiene documentos ni diagramas.</p>` : ""}`}
         ${P.recientesHTML()}
       </nav>
       <div class="pie-lateral"><button class="boton plano" data-accion="ajustes">${ic("ajustes")} Ajustes</button></div>
@@ -1341,7 +1345,7 @@
   }
   document.addEventListener("input", (e) => {
     // Casillas de «Pasar al proyecto» (los clics solo llegan a botones): el estado vive en E.pj.dialogo.
-    if (e.target.dataset?.pFila !== undefined || e.target.dataset?.pReemplazar !== undefined) { P.clic(e.target, e.target.dataset, e); return; }
+    if (e.target.dataset?.pFila !== undefined || e.target.dataset?.pReemplazar !== undefined || e.target.dataset?.pFondo !== undefined) { P.clic(e.target, e.target.dataset, e); return; }
     // «la secuencia de…» marca Secuencia mientras se escribe (si la persona no eligió el tipo a mano).
     if (e.target.id === "pedido-dibujo" && E.dibujar && !E.dibujar.tipoManual) {
       const tipo = tipoDelPedido(e.target.value);

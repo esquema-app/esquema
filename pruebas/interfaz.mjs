@@ -473,6 +473,11 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.click('[data-accion="p-generar-inicial"]'); await p.waitForSelector(".p-envio details");
   const piezas = await p.$$eval(".p-envio summary", (x) => x.map((s) => s.textContent));
   if (!piezas.some((x) => x.includes("README.md"))) falla("Lo que se envía no muestra el README: " + piezas.join(" | "));
+  // Revisión a fondo: marcada de partida, dice qué carpeta y qué no abre, y se puede desmarcar
+  if (!(await p.isChecked("[data-p-fondo]"))) falla("«Revisión a fondo» no viene marcada al documentar un proyecto");
+  if (!(await p.$eval(".p-fondo", (x) => x.textContent.includes(".env")))) falla("«Revisión a fondo» no dice que no abre los .env");
+  await p.click("[data-p-fondo]"); if (await p.isChecked("[data-p-fondo]")) falla("«Revisión a fondo» no se desmarca");
+  await p.click("[data-p-fondo]");
   await p.click(".p-envio summary"); await etapa("envio");
   // Propuestas: tarjetas con «Quitar este cambio»
   await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-prop", { timeout: 5000 });
@@ -499,6 +504,22 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.click('[data-accion="p-pasar-enviar"]');
   await p.waitForFunction(() => !document.querySelector(".p-pasar"), null, { timeout: 4000 });
   await p.waitForFunction(() => /Pasé|copied/.test(document.querySelector("#toast")?.textContent || ""), null, { timeout: 4000 });
+  // El lateral: el proyecto como carpeta, con su código (los .md del repo, que se abren y se guardan ahí) y su documentación
+  await p.waitForFunction(() => Number(document.querySelector(".lateral [data-arbol='#codigo'] small")?.textContent) >= 2, null, { timeout: 4000 });
+  if (!(await p.$(".lateral [data-p-docs]"))) falla("El lateral no muestra la carpeta «Documentación» del proyecto");
+  await p.evaluate(() => window.Esquema._pruebas.abrir("@codigo/docs/arquitectura.md"));
+  await p.waitForFunction(() => /^# (Arquitectura|Architecture)/.test(document.querySelector("#texto")?.value || ""), null, { timeout: 4000 });
+  if (!(await p.$(".lateral [data-abrir='@codigo/docs/arquitectura.md'][aria-current='true']"))) falla("Un .md del código abierto no se marca en el lateral");
+  await probar(p, "E.panel='proyecto';E.sel=null"); await espera(p, 120);
+  // Lo que falta: con la documentación completa no queda nada; sin la arquitectura, «Completar lo que falta» pide solo eso
+  if (!(await p.$(".p-falta"))) falla("La documentación no dice qué le falta");
+  await probar(p, "E._docs=E.proyecto.esquema.documentos;E.proyecto.esquema.documentos=E.proyecto.esquema.documentos.filter((y)=>y.tipo!=='arquitectura');E.panel='proyecto'"); await espera(p, 120);
+  if (!(await p.$('.p-falta [data-accion="p-completar"]'))) falla("Sin arquitectura, no ofrece «Completar lo que falta»");
+  await etapa("falta");
+  await p.click('[data-accion="p-completar"]'); await p.waitForSelector(".p-envio details");
+  if (!(await p.$eval(".p-envio", (x) => /arquitectura\.md/.test(x.textContent)))) falla("«Completar lo que falta» no pide la arquitectura");
+  await p.click('.pie-dialogo [data-accion="cerrar"]');
+  await probar(p, "E.proyecto.esquema.documentos=E._docs;delete E._docs");
   // El lienzo: un nodo enlazado muestra su elemento; uno sin enlace se enlaza (con un elemento nuevo)
   await p.evaluate((r) => window.Esquema._pruebas.abrir(r), D + "flujos/recibir-el-comprobante.md");
   await p.waitForFunction(() => document.querySelector("#texto")?.value.length > 0);
@@ -531,7 +552,7 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.click('[data-accion="p-descartar"]');
   await p.click('.p-panel [data-p="elementos"]'); await p.click('[data-accion="p-elemento-nuevo"]'); await p.waitForSelector("#p-el-nombre"); await etapa("elemento-nuevo"); await p.click('.capa [data-accion="cerrar"]');
   // Versiones, comparar y restaurar
-  await p.click(ancho < 500 ? '.barra [data-p="proyecto"]' : '.lateral [data-p="proyecto"]'); await p.waitForSelector('.p-acciones [data-p="versiones"]');
+  await p.click(ancho < 500 ? '.barra [data-p="proyecto"]' : '.lateral [data-p-docs]'); await p.waitForSelector('.p-acciones [data-p="versiones"]');
   if (!(await p.$('[data-accion="p-deshacer"]'))) falla("Después de renombrar no se ofrece deshacer el cambio");
   await p.click('.p-acciones [data-p="versiones"]'); await p.waitForSelector("[data-p-version]");
   const versiones = await p.$$eval("[data-p-version]", (x) => x.map((b) => b.textContent));

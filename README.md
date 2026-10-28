@@ -33,6 +33,9 @@ formato que GitHub ya muestra (Markdown con bloques ```` ```mermaid ```` y archi
   propio historial de versiones: tu repo no cambia. Con **«Pasar al proyecto»** eliges qué documentos copiar al repo (y si
   reemplazas los que ya existen, viendo la diferencia). Después pídele un flujo específico («cómo se
   graba una reunión»): si necesita leer archivos del código te pregunta cuáles, y antes de cada envío ves exactamente qué se manda.
+  Con **«Revisión a fondo»** tu IA puede además leer (solo leer) toda la carpeta del código, nunca tus `.env`, llaves ni `.git`. A la
+  izquierda, cada proyecto es una carpeta con su **Código** y su **Documentación**, y la documentación te dice **qué le falta**
+  (visión, arquitectura, flujos, elementos) y la completa con un botón.
 - **Todo conectado.** Pantallas, botones y servicios son **elementos** (`esquema.json`); los diagramas y los textos los enlazan. Si
   renombras o quitas un botón, Esquema muestra cada documento y diagrama que cambia (antes y después, lo que queda suelto) y lo
   aplica todo en una sola versión que puedes deshacer. Si algo ahora funciona distinto, tu IA propone el cambio en cada documento.
@@ -192,6 +195,9 @@ already renders (Markdown with ```` ```mermaid ```` blocks and `.mmd` files), pl
   your repo doesn't change. With **“Copy to project”** you choose which documents go into the repo (and whether to replace the ones
   that exist, seeing the difference). Ask for a specific flow later; if it needs to read code files it asks which ones, and
   before every request you see exactly what gets sent.
+  With **“Thorough review”** your AI can also read (only read) the whole code folder, never your `.env`, keys or `.git`. On the
+  left, each project is a folder with its **Code** and its **Documentation**, and the documentation tells you **what it's missing**
+  (overview, architecture, flows, elements) and completes it with one button.
 - **Everything connected.** Screens, buttons and services are **elements** (`esquema.json`) that diagrams and text link to. Rename
   or remove a button and Esquema previews every document and diagram that changes, then applies it all as one version you can undo.
 - **Versions.** Each “Save version” is a git commit of **only** the documentation folder (without git, a copy in `.versiones/`).

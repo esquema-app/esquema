@@ -77,6 +77,16 @@ button { cursor: pointer; }
 /* Árbol de la carpeta: cada nivel corre 14 px; la flecha dice si la subcarpeta está abierta. */
 .arbol .archivo { padding-left: calc(8px + var(--n, 0) * 14px); }
 .arbol .carpeta-arbol { gap: 4px; }
+.arbol .vacio { padding-left: calc(8px + var(--n, 0) * 14px); font-size: 12px; }
+/* «Lo que falta» en la documentación de un proyecto. */
+.p-falta ul { list-style: none; margin: 8px 0 12px; padding: 0; display: grid; gap: 6px; }
+.p-falta li { display: flex; gap: 8px; align-items: flex-start; }
+.p-falta li .ic { flex: none; margin-top: 2px; }
+.p-falta li.hecho .ic { color: var(--verde); }
+.p-falta li.pendiente .ic { color: var(--acento); }
+.p-falta li small { color: var(--gris); }
+.p-fondo { margin: 12px 0; align-items: flex-start; }
+.p-fondo small { display: block; color: var(--gris); margin-top: 2px; }
 .arbol .carpeta-arbol .ic + .ic { margin-right: 4px; }
 .arbol .carpeta-arbol[aria-expanded="true"] > .ic:first-child { color: var(--texto); }
 /* Inicio de una carpeta: cuatro acciones grandes, una por fila en celular. */
