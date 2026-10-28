@@ -36,6 +36,11 @@ formato que GitHub ya muestra (Markdown con bloques ```` ```mermaid ```` y archi
   Con **«Revisión a fondo»** tu IA puede además leer (solo leer) toda la carpeta del código, nunca tus `.env`, llaves ni `.git`. A la
   izquierda, cada proyecto es una carpeta con su **Código** y su **Documentación**, y la documentación te dice **qué le falta**
   (visión, arquitectura, flujos, elementos) y la completa con un botón.
+- **Documentar no te deja esperando a ciegas.** Tu IA trabaja por etapas (revisa los archivos, lee el código y arma un plan, escribe
+  cada documento de a dos y guarda una versión) y ves en vivo qué archivo lee, cuántos lleva y cómo va cada documento. Cada uno queda
+  guardado apenas está listo, aunque cierres la ventana, y puedes seguir trabajando; uno que falla se reintenta solo. **«Código»**
+  muestra todos los archivos del proyecto con una marca en los que tu IA leyó (el código no se abre en Esquema: lo lee tu IA), y la
+  documentación se ordena según el tipo de proyecto (app, biblioteca, sitio, varias partes o documentos).
 - **Todo conectado.** Pantallas, botones y servicios son **elementos** (`esquema.json`); los diagramas y los textos los enlazan. Si
   renombras o quitas un botón, Esquema muestra cada documento y diagrama que cambia (antes y después, lo que queda suelto) y lo
   aplica todo en una sola versión que puedes deshacer. Si algo ahora funciona distinto, tu IA propone el cambio en cada documento.
@@ -198,6 +203,11 @@ already renders (Markdown with ```` ```mermaid ```` blocks and `.mmd` files), pl
   With **“Thorough review”** your AI can also read (only read) the whole code folder, never your `.env`, keys or `.git`. On the
   left, each project is a folder with its **Code** and its **Documentation**, and the documentation tells you **what it's missing**
   (overview, architecture, flows, elements) and completes it with one button.
+- **Documenting never leaves you waiting blind.** Your AI works in stages (checks the files, reads the code and makes a plan, writes
+  each document two at a time and saves a version) and you see live which file it reads, how many so far and how each document is
+  going. Each one is saved as soon as it's ready, even if you close the window, and you can keep working; a failed one is retried on
+  its own. **“Code”** shows every file in the project, marking the ones your AI read (code doesn't open in Esquema: your AI reads it),
+  and the documentation is organized for the kind of project (app, library, site, several parts or writing).
 - **Everything connected.** Screens, buttons and services are **elements** (`esquema.json`) that diagrams and text link to. Rename
   or remove a button and Esquema previews every document and diagram that changes, then applies it all as one version you can undo.
 - **Versions.** Each “Save version” is a git commit of **only** the documentation folder (without git, a copy in `.versiones/`).

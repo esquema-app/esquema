@@ -5,6 +5,23 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Documentar ya no se pierde ni te deja esperando a ciegas:** tu IA trabaja por etapas (revisa los archivos, lee el código y arma
+  un plan, escribe cada documento y guarda una versión) y ves en vivo qué archivo está leyendo, cuántos lleva, cuánto tiempo va y
+  cómo va cada documento. Cada documento queda guardado apenas está listo, aunque cierres la ventana; puedes seguir usando Esquema
+  mientras tanto, y si algo falla se reintenta solo ese documento. Escape ya no cancela nada: para eso está «Detener», y después
+  «Seguir donde quedó». · *Documenting no longer gets lost or leaves you waiting blind: your AI works in stages and you see live which
+  file it's reading, how many so far, the time and how each document is going. Each document is saved as soon as it's ready, even
+  if you close the window; you can keep working meanwhile, and a failed document is retried on its own. Escape no longer cancels
+  anything: use «Stop», then «Pick up where it left off».*
+- **«Código» muestra todo tu código:** todos los archivos del proyecto, ordenados y con su ícono (código, configuración, imágenes,
+  datos…), con una marca en lo que tu IA leyó, lo que está leyendo ahora y lo que cambió desde que lo leyó. Los archivos de código no
+  se abren: tocarlos muestra cuándo los leyó tu IA y en qué documentos y elementos aparecen. · *«Code» shows all your code: every
+  file, sorted and with its icon, marking what your AI read, what it's reading now and what changed since. Code files don't open:
+  tapping one shows when your AI read it and where it appears.*
+- **Ordenada según tu proyecto:** Esquema detecta si es una app, una biblioteca, un sitio, un proyecto con varias partes o
+  documentos y escritos, y la documentación y «Lo que falta» se ajustan a eso (visión, arquitectura, una página por parte, flujos…).
+  · *Organized for your project: Esquema detects whether it's an app, a library, a site, a project with several parts or writing,
+  and the documentation and «What's missing» adapt to it.*
 - **Revisión a fondo:** al documentar tu proyecto, tu IA puede leer (solo leer) toda la carpeta del código para que no se le escape
   nada; nunca abre tus `.env`, llaves ni la carpeta `.git`, y puedes desmarcarla. · *Thorough review: when documenting your
   project, your AI can read (only read) the whole code folder so nothing slips through; it never opens your `.env`, keys or the
