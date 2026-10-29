@@ -144,7 +144,7 @@ for (const oscuro of [false, true]) {
     const lum = (c) => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map(Number).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
     const contraste = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
     const v = (n) => { const d = document.createElement("div"); d.style.color = `var(${n})`; document.body.appendChild(d); const c = getComputedStyle(d).color; d.remove(); return c; };
-    const b = document.querySelector(".boton.principal"), cs = getComputedStyle(b);
+    const b = document.createElement("button"); b.className = "boton principal"; document.body.appendChild(b); const cs = getComputedStyle(b);
     return { principal: contraste(cs.color, cs.backgroundColor), gris: contraste(v("--gris"), v("--fondo")), grisPanel: contraste(v("--gris"), v("--panel")), rojo: contraste(v("--rojo"), v("--panel")), rojoSuave: contraste(v("--rojo"), v("--rojo-suave")), lineas: contraste(v("--d-linea"), v("--lienzo")) };
   });
   for (const [k, x] of Object.entries(r)) if (x < (k === "lineas" ? 3 : 4.5)) falla(`Contraste ${k} (${oscuro ? "oscuro" : "claro"}): ${x.toFixed(2)}`);
@@ -334,7 +334,11 @@ console.log("Dibújame: revisado");
   if (!(await p.$('.lateral [data-p-docs] ~ [role="group"] [data-accion="p-documentar"], .lateral [data-accion="p-documentar"]'))) falla("La carpeta «Documentación» vacía no invita a hacerla");
   await p.click('.lateral [data-arbol="#codigo"]'); await espera(p);
   const tarjetas = await p.$$eval(".tarjeta-inicio", (l) => l.map((x) => x.dataset.accion));
-  if (tarjetas.join() !== "crear-diagrama,p-documentar,p-flujo,nuevo") falla("El inicio no ofrece las cuatro acciones: " + tarjetas.join());
+  if (tarjetas.join() !== "p-historia,p-agregar-algo,crear-diagrama,p-flujo") falla("El inicio no ofrece las cuatro acciones del tipo Software: " + tarjetas.join());
+  // Crear es dentro del proyecto: «Nuevo en <proyecto>» en su carpeta del lateral; arriba solo «Agregar» (proyecto), que es global.
+  if (await p.$('.lateral > .nuevo, .lateral .boton.principal.nuevo')) falla("El lateral todavía tiene un «Nuevo» global arriba");
+  if (!(await p.$eval('.lateral [data-accion="p-nuevo-en"]', (x) => /proyecto-ejemplo/.test(x.textContent)))) falla("«Nuevo en …» no dice en qué proyecto se crea");
+  if (!(await p.$('.lateral .lat-cab [data-accion="p-agregar"]'))) falla("«Agregar proyecto» no está junto a «Proyectos»");
   // El árbol: «docs» se cierra y se abre; lo de adentro desaparece y vuelve.
   await p.click('[data-arbol="#c:docs"]'); await espera(p);
   if (await p.$('[data-abrir="docs/pago.mmd"]')) falla("Cerrar la carpeta del árbol no esconde sus archivos");
@@ -382,7 +386,7 @@ console.log("Inicio, árbol y Crear diagrama: revisado");
 {
   const p = await pagina();
   await abrir(p, "docs/pago.mmd");
-  await p.click('[data-accion="nuevo"]'); await p.click('.plantilla[data-accion="readme"]');
+  await p.click('.lateral [data-accion="p-nuevo-en"]'); await p.click('.plantilla[data-accion="readme"]');
   await p.click('[data-accion="ver-envio"]'); await p.waitForFunction(() => /docs\/pago\.mmd/.test(document.querySelector(".lista-envio")?.textContent || ""));
   await p.fill("#descripcion-readme", "Pagos ficticios para la demo");
   await p.click('[data-accion="readme-escribir"]');
@@ -400,7 +404,7 @@ console.log("README: revisado");
 {
   const p = await pagina();
   await abrir(p, "README.md");
-  await p.click('[data-accion="nuevo"]');
+  await p.click('.lateral [data-accion="p-nuevo-en"]');
   await p.click('[data-categoria="arquitectura"]');
   await p.click('[data-plantilla="aplicacion-web"]');
   const nombre = await p.$eval("#nombre-nuevo", (x) => x.value);
@@ -428,7 +432,7 @@ console.log("Plantillas y exportar: revisado");
 {
   const p = await pagina();
   await abrir(p, "README.md");
-  await p.click('[data-accion="nuevo"]');
+  await p.click('.lateral [data-accion="p-nuevo-en"]');
   await p.click('[data-fuente="comunidad"]');
   await p.waitForSelector("[data-catalogo]");
   const n = await p.$$eval("[data-catalogo] .previa svg", (x) => x.length);
@@ -469,7 +473,7 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   const D = "docs/esquema/";
   // Documentar un proyecto: lo que encontré (sin IA)
   if (ancho < 500) await p.click('[data-accion="abrir-lateral"]');
-  await p.click('[data-accion="nuevo"]'); await p.click('.plantilla[data-accion="p-nuevo"]');
+  await p.click('.lateral [data-accion="p-documentar"]');
   await p.waitForSelector('[data-accion="p-generar-inicial"]');
   if (!(await p.$eval(".p-panel", (x) => /Python/.test(x.textContent) && /v1\.2\.0/.test(x.textContent)))) falla("«Lo que encontré» no muestra lenguajes y git");
   await etapa("encontrado");
@@ -491,7 +495,7 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.waitForFunction(() => /listo/.test(document.querySelector(".p-trabajo")?.className || ""), null, { timeout: 15000 });
   await etapa("trabajo-listo");
   await p.click('[data-accion="p-trabajo-visto"]');
-  await p.waitForFunction(() => document.querySelectorAll(".p-doc").length >= 5, null, { timeout: 5000 });
+  await p.waitForFunction(() => document.querySelectorAll(".p-doc").length >= 4, null, { timeout: 5000 });
   const ini = await estado(`return { els: E.proyecto.esquema.elementos.length, docs: E.proyecto.esquema.documentos.map((d) => d.ruta), arch: E.archivos.map((a) => a.ruta) }`);
   if (ini.els !== 7 || !ini.docs.includes("elementos.md") || !ini.arch.includes(D + "flujos/pagar-una-cuenta.md")) falla("Documentar no deja los documentos y elementos: " + JSON.stringify(ini));
   if (ini.docs.join() !== "README.md,arquitectura.md,flujos/pagar-una-cuenta.md,flujos/recibir-el-comprobante.md,elementos.md") falla("Los documentos no quedan ordenados (visión, arquitectura, flujos, elementos): " + ini.docs.join());
@@ -577,13 +581,13 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.waitForFunction(() => document.querySelectorAll("[data-p-version]").length === 3, null, { timeout: 4000 });
   if (!(await estado(`return E.proyecto.esquema.elementos.find((e) => e.id === "boton-pagar").nombre`))?.match(/^(Pagar|Pay)$/)) falla("Restaurar no vuelve el elemento a su nombre");
   // Documentar un flujo: la IA pide un archivo, la persona lo aprueba y lo ve antes de mandarlo
-  await p.click('.barra [data-accion="p-flujo"]'); await p.fill("#p-pedido", idioma === "en" ? "How a payment is processed" : "Cómo se procesa un pago"); await etapa("flujo");
+  await probar(p, "E.panel='proyecto';E.sel=null"); await p.click('.p-panel .acciones-inicio [data-accion="p-flujo"]'); await p.fill("#p-pedido", idioma === "en" ? "How a payment is processed" : "Cómo se procesa un pago"); await etapa("flujo");
   await p.click('[data-accion="p-flujo-enviar"]'); await p.waitForSelector(".p-envio"); await p.click('[data-accion="p-enviar"]');
   await p.waitForSelector("[data-p-elegir]"); await etapa("pedir");
   await p.click('[data-accion="p-pedir-enviar"]'); await p.waitForSelector(".p-envio details");
   if (!(await p.$$eval(".p-envio summary", (x) => x.some((s) => s.textContent.includes("src/api/pagos.py"))))) falla("El archivo aprobado no aparece en lo que se envía");
   await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-prop"); await p.click('[data-accion="p-aplicar"]');
-  await p.waitForFunction(() => document.querySelectorAll(".p-doc").length >= 6, null, { timeout: 4000 });
+  await p.waitForFunction(() => document.querySelectorAll(".p-doc").length >= 5, null, { timeout: 4000 });
   await p.waitForFunction(() => !document.querySelector(".p-aviso .giro"), null, { timeout: 4000 }); await espera(p, 500);
   if (await p.$('[data-accion="p-deshacer"]')) falla("Después de restaurar y documentar otra cosa, todavía se ofrece deshacer un cambio viejo");
   // Cambios del código desde la última versión
@@ -604,7 +608,7 @@ async function recorridoTrabajo({ idioma, ancho, oscuro = false }) {
   const lateral = async () => { if (ancho < 500 && !(await p.$(".lateral.abierto"))) { await p.click('[data-accion="abrir-lateral"]'); await espera(p, 150); } };
   await p.evaluate(() => { window._simVelocidad = 0.25; window._simFallar = "arquitectura.md"; });
   await lateral();
-  await p.click('[data-accion="nuevo"]'); await p.click('.plantilla[data-accion="p-nuevo"]');
+  await p.click('.lateral [data-accion="p-documentar"]');
   await p.waitForSelector('[data-accion="p-generar-inicial"]'); await p.click('[data-accion="p-generar-inicial"]');
   await p.waitForSelector(".p-envio details"); await p.click('[data-accion="p-enviar"]');
   // Mientras lee: etapas, el archivo que lee, cuántos lleva; Escape y tocar fuera no cancelan nada.
@@ -678,6 +682,123 @@ await recorridoProyecto({ idioma: "es", ancho: 1280 });
 await recorridoProyecto({ idioma: "en", ancho: 390, oscuro: true });
 await recorridoProyecto({ idioma: "en", ancho: 1280 });
 console.log("Proyectos: revisado");
+
+// ── 16) Agregar al proyecto, historias de usuario con preguntas, libros, borrar y la wiki ──
+async function recorridoAgregar({ idioma, ancho, oscuro = false }) {
+  const p = await pagina({ ancho, alto: ancho < 500 ? 844 : 800, idioma, oscuro });
+  const etapa = async (nombre) => { await espera(p, 150); if (idioma === "en") await sinTraducir(p, "agregar " + nombre + " " + ancho); if (ancho < 500) await desborde(p, "agregar " + nombre + ` (${idioma})`); await captura(p, `${nombre}-${idioma}-${ancho < 500 ? "390" : "escritorio"}-${oscuro ? "oscuro" : "claro"}`); };
+  const estado = (f) => p.evaluate((src) => { let x; window.Esquema._probar((E) => { x = new Function("E", src)(E); }); return x; }, f);
+  const lateral = async () => { if (ancho < 500 && !(await p.$(".lateral.abierto"))) { await p.click('[data-accion="abrir-lateral"]'); await espera(p, 150); } };
+  const cerrarLateral = async () => { if (ancho < 500 && (await p.$(".lateral.abierto"))) { await probar(p, "E.lateral=false"); await espera(p, 120); } };
+  const textos = demo.agregar[idioma].textos, en = idioma === "en";
+  await p.evaluate(() => { window._simVelocidad = 0.15; });
+  // 1) Una historia de usuario pegada: Esquema detecta qué es; la documentación se prepara aparte y la IA pregunta lo que falta.
+  await probar(p, "E.sel=null;E.panel=null");
+  await p.click('[data-accion="p-historia"]');
+  await p.fill("#p-pegar", textos.historia);
+  await etapa("agregar");
+  await p.click('[data-accion="p-detectar"]'); await p.waitForSelector("[data-p-contenido]");
+  if ((await p.getAttribute('[data-p-contenido="historia"]', "aria-pressed")) !== "true") falla("Una historia de usuario pegada no se detecta como tal");
+  if (!(await p.$eval(".razones", (x) => x.textContent.length > 20))) falla("«Agregar» no dice por qué cree que es una historia");
+  await etapa("agregar-detectado");
+  await p.click('[data-accion="p-agregar-enviar"]');
+  await p.waitForSelector(".pregunta .preg-txt", { timeout: 10000 });
+  if (!(await estado("return E.proyecto?.vinculado"))) falla("Agregar a una carpeta sin documentación no la preparó aparte");
+  await etapa("preguntas");
+  // Con teclado: «2» elige la segunda opción y pasa a la siguiente pregunta.
+  await p.keyboard.press("2"); await espera(p, 120);
+  if ((await estado("return E.pj.preguntas.k")) !== 1) falla("Elegir una opción con el teclado no pasa a la siguiente pregunta");
+  await p.click('[data-accion="p-preg-nose"]'); await p.click('[data-accion="p-preg-siguiente"]');
+  // La IA vuelve con una pregunta más (segunda ronda). Si la persona se va, la pregunta la espera.
+  await p.waitForSelector(".pregunta .preg-txt", { timeout: 10000 });
+  if ((await estado("return E.pj.trabajo?.ronda")) !== 2) falla("Las respuestas no vuelven a la IA (segunda ronda)");
+  await p.click('.pregunta [data-p="proyecto"]');
+  await p.waitForSelector(".p-trabajo [data-p-responder]");
+  await lateral();
+  if (!(await p.$(".lateral .espera-punto"))) falla("El lateral no avisa que hay preguntas esperando");
+  if (!(await p.$('.lateral .hu-punto[data-estado="por-entender"]'))) falla("La historia no tiene su punto de estado en el lateral");
+  await etapa("lateral-espera");
+  await cerrarLateral();
+  await p.click(".p-trabajo [data-p-responder]"); await p.waitForSelector(".preg-opcion");
+  await p.click('[data-p-resp="0"]');
+  await p.waitForFunction(() => /\blisto\b/.test(document.querySelector(".p-trabajo")?.className || ""), null, { timeout: 10000 });
+  const hu = await estado("return E.proyecto.historias[0]");
+  if (!hu || !/^historias\/hu-12-/.test(hu.ruta)) falla("La historia no quedó en historias/: " + JSON.stringify(hu));
+  const D = "docs/esquema/";
+  const texto = await estado(`return E.docs[${JSON.stringify(D + (hu?.ruta || ""))}]?.texto || ""`) || "";
+  await p.evaluate((r) => window.Esquema._pruebas.abrir(r), D + hu.ruta);
+  await p.waitForFunction(() => (document.querySelector("#texto")?.value || "").startsWith("---\nestado:"), null, { timeout: 4000 });
+  const doc = await textoDoc(p);
+  if (!doc.includes(en ? "## Decisions" : "## Decisiones") || !doc.includes(en ? "## Open questions" : "## Preguntas abiertas")) falla("La historia no registra decisiones y preguntas abiertas");
+  if (!/\*\*\d{4}-\d{2}-\d{2}\*\* · /.test(doc)) falla("Las decisiones no llevan su fecha");
+  void texto;
+  // Su barra: el estado se cambia con un toque; en desarrollo ofrece «Terminé el desarrollo».
+  await p.waitForSelector(".hu-barra");
+  await etapa("historia");
+  await p.click('[data-hu-estado="en-desarrollo"]');
+  await p.waitForFunction(() => /estado: en-desarrollo/.test(document.querySelector("#texto")?.value || ""), null, { timeout: 4000 });
+  await p.waitForSelector('[data-accion="p-hu-terminar"]');
+  await p.click('[data-accion="p-hu-terminar"]'); await p.waitForSelector('[data-accion="confirmar-si"]');
+  await etapa("terminar");
+  await p.click('[data-accion="confirmar-si"]');
+  await p.waitForFunction(() => { let x; window.Esquema._probar((E) => { x = E.pj.trabajo?.tipo === "historia_cierre" && E.pj.trabajo.estado === "listo"; }); return x; }, null, { timeout: 10000 });
+  await espera(p, 400);
+  const cerrada = await estado(`return E.docs[${JSON.stringify(D + hu.ruta)}]?.texto || ""`);
+  if (!/estado: terminada/.test(cerrada) || !cerrada.includes(en ? "## How it turned out" : "## Cómo quedó")) falla("«Terminé el desarrollo» no documentó cómo quedó ni la dejó terminada");
+  await etapa("panel-historias");
+  // 2) Borrar lo creado: va al historial y se deshace al tiro; el código de un proyecto vinculado no se borra desde aquí.
+  await p.evaluate((r) => window.Esquema._pruebas.abrir(r), D + hu.ruta); await espera(p, 300);
+  await p.click('.barra [data-p-borrar]'); await p.waitForSelector('[data-accion="confirmar-si"].peligro-lleno');
+  await etapa("borrar");
+  await p.click('[data-accion="confirmar-si"]');
+  await p.waitForFunction((r) => { let x; window.Esquema._probar((E) => { x = !E.archivos.some((a) => a.ruta === r); }); return x; }, D + hu.ruta, { timeout: 4000 });
+  await p.waitForSelector("#toast .toast-accion");
+  await p.click("#toast .toast-accion");
+  await p.waitForFunction((r) => { let x; window.Esquema._probar((E) => { x = E.archivos.some((a) => a.ruta === r); }); return x; }, D + hu.ruta, { timeout: 4000 });
+  if (await estado(`return !!window.Esquema._pruebas.proyectos().puedeBorrar("README.md")`)) falla("Un archivo del código de un proyecto vinculado se ofrece borrar");
+  // 3) La wiki: qué páginas son nuevas, las escritas a mano no se tocan.
+  await probar(p, "E.sel=null;E.panel='proyecto'");
+  await p.click('.p-acciones [data-accion="p-wiki"]'); await p.waitForSelector(".p-pasar-fila");
+  const home = await p.$$eval(".p-pasar-fila", (l) => l.filter((x) => /^Home/.test(x.textContent.trim())).map((x) => x.querySelector("input").disabled));
+  if (home.length && home[0] !== true) falla("La wiki ofrece pisar una página escrita a mano");
+  await etapa("wiki");
+  await p.click('[data-accion="p-wiki-publicar"]');
+  await p.waitForFunction(() => /wiki/.test(document.querySelector("#toast")?.textContent || ""), null, { timeout: 4000 });
+  // 4) Un proyecto Libro: el tipo se elige al agregar el proyecto; se parte en capítulos y antes de resumir pregunta para qué.
+  await lateral();
+  await p.click('.lat-cab [data-accion="p-agregar"]'); await p.waitForSelector(".tipos-proyecto");
+  await p.click('[data-p-tipo-proyecto="libro"]');
+  await p.fill("#p-pegar", textos.libro);
+  await etapa("agregar-proyecto");
+  await p.click('[data-accion="p-detectar"]'); await p.waitForSelector('[data-accion="p-crear-libro"]');
+  await p.click('[data-accion="p-crear-libro"]');
+  await p.waitForSelector(".pregunta .preg-txt", { timeout: 10000 });
+  if ((await estado("return E.proyecto?.tipo")) !== "libro") falla("El proyecto nuevo no quedó de tipo Libro");
+  await p.click('[data-p-resp="0"]'); await p.click('[data-p-resp="1"]');
+  await p.waitForFunction(() => { let x; window.Esquema._probar((E) => { x = E.pj.trabajo?.tipo === "libro" && E.pj.trabajo.estado === "listo" && E.proyecto?.esquema?.documentos.some((d) => d.ruta === "mapa.md"); }); return x; }, null, { timeout: 15000 });
+  const rutas = await estado("return E.proyecto.esquema.documentos.map((d) => d.ruta)");
+  for (const r of ["README.md", "mapa.md", "capitulos/01-" + (en ? "the-arrival" : "la-llegada") + ".md"]) if (!rutas.includes(r)) falla("El libro no tiene " + r + ": " + rutas.join(", "));
+  if (await p.$('.lateral [data-arbol="#codigo"]')) falla("Un proyecto Libro muestra la carpeta «Código»");
+  if (!(await p.$$eval(".p-seccion h3", (l) => l.some((h) => /Capítulos|Chapters/.test(h.textContent))))) falla("El panel del libro no tiene la sección de capítulos");
+  await probar(p, "E.pj.trabajo.visto=true"); await etapa("libro");
+  const termino = (tipo) => p.waitForFunction((x) => { let r; window.Esquema._probar((E) => { r = E.pj.trabajo?.tipo === x && E.pj.trabajo.estado === "listo"; }); return r; }, tipo, { timeout: 15000 });
+  await p.click('.p-panel [data-accion="p-estudiar"]'); await termino("estudio");
+  await p.click('.p-panel [data-accion="p-incongruencias"]'); await termino("incongruencias"); await espera(p, 400);
+  await p.evaluate(() => window.Esquema._pruebas.abrir("incongruencias.md")); await p.waitForFunction(() => (document.querySelector("#texto")?.value || "").length > 0);
+  const inc = await textoDoc(p);
+  if (!inc.includes(en ? "## Dates and ages" : "## Fechas y edades") || !inc.includes("capitulos/01-")) falla("La revisión de incongruencias no dice dónde está cada hallazgo");
+  await etapa("incongruencias");
+  // 5) Soltar un archivo en el proyecto abre «Agregar» con ese archivo.
+  await probar(p, "E.sel=null;E.panel='proyecto'");
+  await p.evaluate(() => { const dt = new DataTransfer(); dt.items.add(new File(["# Notas\n\nUna nota corta."], "notas.md", { type: "text/markdown" })); document.querySelector(".p-panel").dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true })); });
+  await p.waitForSelector(".p-archivos li", { timeout: 3000 }).catch(() => falla("Soltar un archivo no abre «Agregar» con ese archivo"));
+  await p.close();
+}
+await recorridoAgregar({ idioma: "es", ancho: 1280 });
+await recorridoAgregar({ idioma: "en", ancho: 390, oscuro: true });
+await recorridoAgregar({ idioma: "en", ancho: 1280, oscuro: true });
+await recorridoAgregar({ idioma: "es", ancho: 390 });
+console.log("Agregar, historias de usuario, libros, borrar y la wiki: revisado");
 
 // ── Capturas para la página y el README (claro y oscuro, escritorio y celular) ──
 if (CAPTURAS) {

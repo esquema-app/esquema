@@ -1,0 +1,139 @@
+{
+ "historia": {
+  "titulo": "Pagar una cuenta en cuotas",
+  "documento": "## Resumen\n\nEl cliente quiere pagar una cuenta en cuotas mensuales en vez de pagarla entera. Hoy [Pagar](../elementos.md#el-boton-pagar) cobra todo de una vez.\n\n## Quién, qué y para qué\n\n- **Quién:** un cliente de [Banco Ejemplo](../elementos.md#el-banco-ejemplo) con una cuenta por pagar.\n- **Necesita:** elegir en cuántas cuotas paga.\n- **Para:** no pagar todo de una vez.\n\n## Criterios de aceptación\n\n1. **Dado** que tengo una cuenta por pagar, **cuando** elijo «Pagar en cuotas», **entonces** veo cuánto pago cada mes.\n2. **Dado** que pagué en cuotas, **cuando** llega el comprobante, **entonces** dice cuántas cuotas elegí.\n3. **Dado** que elijo más cuotas de las permitidas, **cuando** intento pagar, **entonces** veo un mensaje claro. _(propuesto)_\n\n## Qué partes del proyecto toca\n\n- La [Pantalla de pago](../elementos.md#el-pantalla-pago): `src/web/pagar.js` (elegir las cuotas).\n- La [API de pagos](../elementos.md#el-api-pagos): `src/api/pagos.py` (mandar las cuotas al banco).\n- El [Servicio de correo](../elementos.md#el-servicio-correo): `src/api/correo.py` (el comprobante).\n\n## Cómo debería funcionar\n\n```mermaid\nsequenceDiagram\n    actor P as Persona\n    participant W as Pantalla de pago\n    participant A as API de pagos\n    participant B as Banco Ejemplo\n    P->>W: Elige 3 cuotas\n    W->>A: Pagar en cuotas\n    A->>B: Autorizar en cuotas\n    B-->>A: Autorizado\n    A-->>W: Cuánto paga cada mes\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"P\":\"persona\",\"W\":\"pantalla-pago\"}}\n```\n\n## Casos borde\n\n- Una cuenta muy chica que no se puede dividir.\n- El banco rechaza las cuotas pero acepta el pago completo.\n\n## Riesgos y dependencias\n\n- Depende de que [Banco Ejemplo](../elementos.md#el-banco-ejemplo) permita pagar en cuotas.\n",
+  "preguntas": [
+   [
+    {
+     "pregunta": "¿Cuántas cuotas como máximo?",
+     "porque": "Cambia los criterios de aceptación y lo que se muestra en la pantalla.",
+     "opciones": [
+      "3",
+      "6",
+      "12"
+     ]
+    },
+    {
+     "pregunta": "¿Las cuotas tienen interés?",
+     "porque": "Cambia el total que ve el cliente.",
+     "opciones": [
+      "Sin interés",
+      "Con interés, lo calcula el banco"
+     ]
+    },
+    {
+     "pregunta": "¿Qué pasa si el banco rechaza las cuotas?",
+     "porque": "Es un caso borde que hoy no está decidido.",
+     "opciones": [
+      "Se ofrece pagar todo de una vez",
+      "Se avisa y no se paga"
+     ]
+    }
+   ],
+   [
+    {
+     "pregunta": "¿El comprobante muestra el calendario de cuotas?",
+     "porque": "Es lo único que falta para escribir el criterio del comprobante.",
+     "opciones": [
+      "Sí, con fechas",
+      "Solo el número de cuotas"
+     ]
+    }
+   ]
+  ],
+  "como_quedo": "Se agregó la opción «Pagar en cuotas» en la [Pantalla de pago](../elementos.md#el-pantalla-pago) y la [API de pagos](../elementos.md#el-api-pagos) manda las cuotas a [Banco Ejemplo](../elementos.md#el-banco-ejemplo).\n\n- ✅ Ver cuánto se paga cada mes.\n- ✅ El comprobante dice cuántas cuotas se eligieron.\n- ❓ El mensaje cuando se piden demasiadas cuotas: no se ve en el código.",
+  "propuesta": {
+   "ruta": "flujos/pagar-una-cuenta.md",
+   "linea": "> Ahora también se puede pagar en cuotas (HU-12).",
+   "nota": "Agregué las cuotas al flujo de pago."
+  }
+ },
+ "documento": {
+  "documento": "## Resumen\n\nUn texto que agregaste al proyecto, resumido en pocas líneas.\n\n## Puntos clave\n\n- Lo más importante, en una lista corta.\n\n## Diagrama\n\n```mermaid\nflowchart LR\n    A[Idea] --> B[Decisión] --> C[Próximo paso]\n```\n\n## Preguntas abiertas\n\n- Lo que el texto no deja claro.\n"
+ },
+ "libro": {
+  "elementos": [
+   {
+    "id": "marta",
+    "tipo": "personaje",
+    "nombre": "Marta",
+    "descripcion": "La guardiana del faro."
+   },
+   {
+    "id": "tomas",
+    "tipo": "personaje",
+    "nombre": "Tomás",
+    "descripcion": "El pescador más viejo del muelle."
+   },
+   {
+    "id": "el-faro",
+    "tipo": "lugar",
+    "nombre": "El faro",
+    "descripcion": "Ciento doce escalones, apagado dos inviernos."
+   },
+   {
+    "id": "la-carta",
+    "tipo": "concepto",
+    "nombre": "La carta",
+    "descripcion": "Una carta sin abrir para el último guardián."
+   }
+  ],
+  "capitulos": [
+   "[Marta](../elementos.md#el-marta) llega a la isla y recibe la llave de [El faro](../elementos.md#el-el-faro) de manos de [Tomás](../elementos.md#el-tomas). Encuentra [La carta](../elementos.md#el-la-carta) y decide leerla cuando el faro vuelva a encenderse.",
+   "[Marta](../elementos.md#el-marta) arregla el faro durante tres semanas y la luz vuelve a girar el primer viernes de marzo. El pueblo la acepta.",
+   "La peor tormenta en cuarenta años: [Marta](../elementos.md#el-marta) mantiene la luz a mano y guía a [Tomás](../elementos.md#el-tomas) de vuelta.",
+   "El pueblo abre una sala de lectura en [El faro](../elementos.md#el-el-faro) y [Tomás](../elementos.md#el-tomas) se queda como ayudante."
+  ],
+  "readme": "## De qué trata\n\nDe una guardiana que vuelve a encender un faro y, con él, a un pueblo que se estaba apagando.\n\n## Ideas principales\n\n- Cuidar algo pequeño todos los días cambia a una comunidad.\n- La luz sirve tanto para guiar como para reunir.\n\n## Para quién es\n\nPara quien quiere una historia corta sobre comunidad y perseverancia.",
+  "mapa": "```mermaid\nflowchart LR\n    M[Marta] -->|enciende| F[El faro]\n    F -->|guía| T[Tomás]\n    F -->|reúne| P[El pueblo]\n    M -.->|guarda| C[La carta]\n%% esquema: {\"refs\":{\"C\":\"la-carta\",\"F\":\"el-faro\",\"M\":\"marta\",\"T\":\"tomas\"}}\n```\n\nMarta enciende el faro; el faro guía a Tomás y reúne al pueblo. La carta queda guardada.",
+  "estudio": "## Esquema\n\n- {titulo}\n  - Lo principal del capítulo\n\n## Preguntas de repaso\n\n**P:** ¿Qué pasa en «{titulo}»?\n\n**R:** {resumen}\n\n## Tarjetas\n\n| Frente | Reverso |\n|---|---|\n| {titulo} | {resumen} |\n",
+  "hallazgos": [
+   {
+    "tipo": "fecha",
+    "descripcion": "La edad de Marta no calza: tiene treinta años al llegar y cuarenta y cinco un par de meses después.",
+    "gravedad": "alta",
+    "citas": [
+     {
+      "capitulo": 1,
+      "cita": "con treinta años recién cumplidos"
+     },
+     {
+      "capitulo": 3,
+      "cita": "a sus cuarenta y cinco años"
+     }
+    ]
+   },
+   {
+    "tipo": "cabo-suelto",
+    "descripcion": "La carta para el último guardián: Marta la guarda para leerla cuando el faro se encienda, pero nunca se dice qué decía.",
+    "gravedad": "media",
+    "citas": [
+     {
+      "capitulo": 1,
+      "cita": "una carta sin abrir dirigida al último guardián"
+     }
+    ]
+   }
+  ],
+  "preguntas": [
+   {
+    "pregunta": "¿Para qué quieres este libro?",
+    "porque": "Así los resúmenes y el material de estudio apuntan a lo que te sirve.",
+    "opciones": [
+     "Para estudiarlo",
+     "Para aplicarlo en el trabajo",
+     "Un resumen general"
+    ]
+   },
+   {
+    "pregunta": "¿Qué tan a fondo?",
+    "porque": "Más a fondo es más largo y tarda más.",
+    "opciones": [
+     "Corto",
+     "Normal",
+     "A fondo"
+    ]
+   }
+  ]
+ }
+}

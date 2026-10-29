@@ -932,5 +932,562 @@
     }
    }
   }
+ },
+ "tipos": [
+  {
+   "formato": 1,
+   "id": "software",
+   "icono": "codigo",
+   "nombre": {
+    "es": "Software",
+    "en": "Software"
+   },
+   "descripcion": {
+    "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+    "en": "An app, a service or a library: the code and its documentation, kept apart."
+   },
+   "fuente": "carpeta",
+   "elementos": [
+    "pantalla",
+    "boton",
+    "accion",
+    "servicio",
+    "modulo",
+    "dato",
+    "actor",
+    "otro"
+   ],
+   "secciones": [
+    {
+     "id": "vision",
+     "nombre": {
+      "es": "Visión y arquitectura",
+      "en": "Overview and architecture"
+     },
+     "icono": "proyecto",
+     "carpetas": [
+      ""
+     ],
+     "tipos": [
+      "vision",
+      "arquitectura"
+     ]
+    },
+    {
+     "id": "componentes",
+     "nombre": {
+      "es": "Componentes",
+      "en": "Components"
+     },
+     "icono": "diagrama",
+     "carpetas": [
+      "componentes"
+     ]
+    },
+    {
+     "id": "flujos",
+     "nombre": {
+      "es": "Flujos",
+      "en": "Flows"
+     },
+     "icono": "flecha",
+     "carpetas": [
+      "flujos",
+      "diagramas"
+     ]
+    },
+    {
+     "id": "historias",
+     "nombre": {
+      "es": "Historias de usuario",
+      "en": "User stories"
+     },
+     "icono": "persona",
+     "carpetas": [
+      "historias"
+     ]
+    },
+    {
+     "id": "documentos",
+     "nombre": {
+      "es": "Documentos",
+      "en": "Documents"
+     },
+     "icono": "doc",
+     "carpetas": []
+    },
+    {
+     "id": "fuentes",
+     "nombre": {
+      "es": "Originales",
+      "en": "Originals"
+     },
+     "icono": "archivo",
+     "carpetas": [
+      "fuentes"
+     ]
+    },
+    {
+     "id": "elementos",
+     "nombre": {
+      "es": "Elementos",
+      "en": "Elements"
+     }
+    },
+    {
+     "id": "versiones",
+     "nombre": {
+      "es": "Versiones",
+      "en": "Versions"
+     }
+    }
+   ],
+   "falta": [
+    "vision",
+    "arquitectura",
+    "segun-codigo",
+    "flujos",
+    "elementos",
+    "elementos-usados",
+    "al-dia"
+   ],
+   "acciones": [
+    "documentar",
+    "completar",
+    "flujo",
+    "diagrama",
+    "historia",
+    "agregar",
+    "readme",
+    "wiki"
+   ],
+   "nuevo": [
+    "diagrama",
+    "documento",
+    "historia",
+    "agregar"
+   ],
+   "agregar": [
+    "historia",
+    "documento",
+    "libro"
+   ]
+  },
+  {
+   "formato": 1,
+   "id": "libro",
+   "icono": "libro",
+   "nombre": {
+    "es": "Libro",
+    "en": "Book"
+   },
+   "descripcion": {
+    "es": "Un libro o un texto largo, partido en capítulos para estudiarlo, resumirlo y revisarlo.",
+    "en": "A book or a long text, split into chapters to study it, summarize it and review it."
+   },
+   "fuente": "texto",
+   "elementos": [
+    "personaje",
+    "concepto",
+    "lugar",
+    "otro"
+   ],
+   "secciones": [
+    {
+     "id": "libro",
+     "nombre": {
+      "es": "El libro",
+      "en": "The book"
+     },
+     "icono": "libro",
+     "carpetas": [
+      ""
+     ],
+     "tipos": [
+      "libro",
+      "vision",
+      "otro"
+     ]
+    },
+    {
+     "id": "capitulos",
+     "nombre": {
+      "es": "Capítulos",
+      "en": "Chapters"
+     },
+     "icono": "doc",
+     "carpetas": [
+      "capitulos"
+     ]
+    },
+    {
+     "id": "estudio",
+     "nombre": {
+      "es": "Para estudiar",
+      "en": "Study material"
+     },
+     "icono": "listo",
+     "carpetas": [
+      "estudio"
+     ]
+    },
+    {
+     "id": "revision",
+     "nombre": {
+      "es": "Revisión",
+      "en": "Review"
+     },
+     "icono": "chispa",
+     "tipos": [
+      "revision"
+     ]
+    },
+    {
+     "id": "documentos",
+     "nombre": {
+      "es": "Notas",
+      "en": "Notes"
+     },
+     "icono": "doc",
+     "carpetas": []
+    },
+    {
+     "id": "fuentes",
+     "nombre": {
+      "es": "Original",
+      "en": "Original"
+     },
+     "icono": "archivo",
+     "carpetas": [
+      "fuentes"
+     ]
+    },
+    {
+     "id": "elementos",
+     "nombre": {
+      "es": "Personajes y conceptos",
+      "en": "Characters and concepts"
+     }
+    },
+    {
+     "id": "versiones",
+     "nombre": {
+      "es": "Versiones",
+      "en": "Versions"
+     }
+    }
+   ],
+   "falta": [
+    "capitulos",
+    "resumenes",
+    "libro-readme",
+    "estudio",
+    "incongruencias",
+    "elementos"
+   ],
+   "acciones": [
+    "estudiar",
+    "incongruencias",
+    "diagrama",
+    "agregar",
+    "wiki"
+   ],
+   "nuevo": [
+    "documento",
+    "diagrama",
+    "agregar"
+   ],
+   "agregar": [
+    "documento"
+   ]
+  }
+ ],
+ "agregar": {
+  "es": {
+   "historia": {
+    "titulo": "Pagar una cuenta en cuotas",
+    "documento": "## Resumen\n\nEl cliente quiere pagar una cuenta en cuotas mensuales en vez de pagarla entera. Hoy [Pagar](../elementos.md#el-boton-pagar) cobra todo de una vez.\n\n## Quién, qué y para qué\n\n- **Quién:** un cliente de [Banco Ejemplo](../elementos.md#el-banco-ejemplo) con una cuenta por pagar.\n- **Necesita:** elegir en cuántas cuotas paga.\n- **Para:** no pagar todo de una vez.\n\n## Criterios de aceptación\n\n1. **Dado** que tengo una cuenta por pagar, **cuando** elijo «Pagar en cuotas», **entonces** veo cuánto pago cada mes.\n2. **Dado** que pagué en cuotas, **cuando** llega el comprobante, **entonces** dice cuántas cuotas elegí.\n3. **Dado** que elijo más cuotas de las permitidas, **cuando** intento pagar, **entonces** veo un mensaje claro. _(propuesto)_\n\n## Qué partes del proyecto toca\n\n- La [Pantalla de pago](../elementos.md#el-pantalla-pago): `src/web/pagar.js` (elegir las cuotas).\n- La [API de pagos](../elementos.md#el-api-pagos): `src/api/pagos.py` (mandar las cuotas al banco).\n- El [Servicio de correo](../elementos.md#el-servicio-correo): `src/api/correo.py` (el comprobante).\n\n## Cómo debería funcionar\n\n```mermaid\nsequenceDiagram\n    actor P as Persona\n    participant W as Pantalla de pago\n    participant A as API de pagos\n    participant B as Banco Ejemplo\n    P->>W: Elige 3 cuotas\n    W->>A: Pagar en cuotas\n    A->>B: Autorizar en cuotas\n    B-->>A: Autorizado\n    A-->>W: Cuánto paga cada mes\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"P\":\"persona\",\"W\":\"pantalla-pago\"}}\n```\n\n## Casos borde\n\n- Una cuenta muy chica que no se puede dividir.\n- El banco rechaza las cuotas pero acepta el pago completo.\n\n## Riesgos y dependencias\n\n- Depende de que [Banco Ejemplo](../elementos.md#el-banco-ejemplo) permita pagar en cuotas.\n",
+    "preguntas": [
+     [
+      {
+       "pregunta": "¿Cuántas cuotas como máximo?",
+       "porque": "Cambia los criterios de aceptación y lo que se muestra en la pantalla.",
+       "opciones": [
+        "3",
+        "6",
+        "12"
+       ]
+      },
+      {
+       "pregunta": "¿Las cuotas tienen interés?",
+       "porque": "Cambia el total que ve el cliente.",
+       "opciones": [
+        "Sin interés",
+        "Con interés, lo calcula el banco"
+       ]
+      },
+      {
+       "pregunta": "¿Qué pasa si el banco rechaza las cuotas?",
+       "porque": "Es un caso borde que hoy no está decidido.",
+       "opciones": [
+        "Se ofrece pagar todo de una vez",
+        "Se avisa y no se paga"
+       ]
+      }
+     ],
+     [
+      {
+       "pregunta": "¿El comprobante muestra el calendario de cuotas?",
+       "porque": "Es lo único que falta para escribir el criterio del comprobante.",
+       "opciones": [
+        "Sí, con fechas",
+        "Solo el número de cuotas"
+       ]
+      }
+     ]
+    ],
+    "como_quedo": "Se agregó la opción «Pagar en cuotas» en la [Pantalla de pago](../elementos.md#el-pantalla-pago) y la [API de pagos](../elementos.md#el-api-pagos) manda las cuotas a [Banco Ejemplo](../elementos.md#el-banco-ejemplo).\n\n- ✅ Ver cuánto se paga cada mes.\n- ✅ El comprobante dice cuántas cuotas se eligieron.\n- ❓ El mensaje cuando se piden demasiadas cuotas: no se ve en el código.",
+    "propuesta": {
+     "ruta": "flujos/pagar-una-cuenta.md",
+     "linea": "> Ahora también se puede pagar en cuotas (HU-12).",
+     "nota": "Agregué las cuotas al flujo de pago."
+    }
+   },
+   "documento": {
+    "documento": "## Resumen\n\nUn texto que agregaste al proyecto, resumido en pocas líneas.\n\n## Puntos clave\n\n- Lo más importante, en una lista corta.\n\n## Diagrama\n\n```mermaid\nflowchart LR\n    A[Idea] --> B[Decisión] --> C[Próximo paso]\n```\n\n## Preguntas abiertas\n\n- Lo que el texto no deja claro.\n"
+   },
+   "libro": {
+    "elementos": [
+     {
+      "id": "marta",
+      "tipo": "personaje",
+      "nombre": "Marta",
+      "descripcion": "La guardiana del faro."
+     },
+     {
+      "id": "tomas",
+      "tipo": "personaje",
+      "nombre": "Tomás",
+      "descripcion": "El pescador más viejo del muelle."
+     },
+     {
+      "id": "el-faro",
+      "tipo": "lugar",
+      "nombre": "El faro",
+      "descripcion": "Ciento doce escalones, apagado dos inviernos."
+     },
+     {
+      "id": "la-carta",
+      "tipo": "concepto",
+      "nombre": "La carta",
+      "descripcion": "Una carta sin abrir para el último guardián."
+     }
+    ],
+    "capitulos": [
+     "[Marta](../elementos.md#el-marta) llega a la isla y recibe la llave de [El faro](../elementos.md#el-el-faro) de manos de [Tomás](../elementos.md#el-tomas). Encuentra [La carta](../elementos.md#el-la-carta) y decide leerla cuando el faro vuelva a encenderse.",
+     "[Marta](../elementos.md#el-marta) arregla el faro durante tres semanas y la luz vuelve a girar el primer viernes de marzo. El pueblo la acepta.",
+     "La peor tormenta en cuarenta años: [Marta](../elementos.md#el-marta) mantiene la luz a mano y guía a [Tomás](../elementos.md#el-tomas) de vuelta.",
+     "El pueblo abre una sala de lectura en [El faro](../elementos.md#el-el-faro) y [Tomás](../elementos.md#el-tomas) se queda como ayudante."
+    ],
+    "readme": "## De qué trata\n\nDe una guardiana que vuelve a encender un faro y, con él, a un pueblo que se estaba apagando.\n\n## Ideas principales\n\n- Cuidar algo pequeño todos los días cambia a una comunidad.\n- La luz sirve tanto para guiar como para reunir.\n\n## Para quién es\n\nPara quien quiere una historia corta sobre comunidad y perseverancia.",
+    "mapa": "```mermaid\nflowchart LR\n    M[Marta] -->|enciende| F[El faro]\n    F -->|guía| T[Tomás]\n    F -->|reúne| P[El pueblo]\n    M -.->|guarda| C[La carta]\n%% esquema: {\"refs\":{\"C\":\"la-carta\",\"F\":\"el-faro\",\"M\":\"marta\",\"T\":\"tomas\"}}\n```\n\nMarta enciende el faro; el faro guía a Tomás y reúne al pueblo. La carta queda guardada.",
+    "estudio": "## Esquema\n\n- {titulo}\n  - Lo principal del capítulo\n\n## Preguntas de repaso\n\n**P:** ¿Qué pasa en «{titulo}»?\n\n**R:** {resumen}\n\n## Tarjetas\n\n| Frente | Reverso |\n|---|---|\n| {titulo} | {resumen} |\n",
+    "hallazgos": [
+     {
+      "tipo": "fecha",
+      "descripcion": "La edad de Marta no calza: tiene treinta años al llegar y cuarenta y cinco un par de meses después.",
+      "gravedad": "alta",
+      "citas": [
+       {
+        "capitulo": 1,
+        "cita": "con treinta años recién cumplidos"
+       },
+       {
+        "capitulo": 3,
+        "cita": "a sus cuarenta y cinco años"
+       }
+      ]
+     },
+     {
+      "tipo": "cabo-suelto",
+      "descripcion": "La carta para el último guardián: Marta la guarda para leerla cuando el faro se encienda, pero nunca se dice qué decía.",
+      "gravedad": "media",
+      "citas": [
+       {
+        "capitulo": 1,
+        "cita": "una carta sin abrir dirigida al último guardián"
+       }
+      ]
+     }
+    ],
+    "preguntas": [
+     {
+      "pregunta": "¿Para qué quieres este libro?",
+      "porque": "Así los resúmenes y el material de estudio apuntan a lo que te sirve.",
+      "opciones": [
+       "Para estudiarlo",
+       "Para aplicarlo en el trabajo",
+       "Un resumen general"
+      ]
+     },
+     {
+      "pregunta": "¿Qué tan a fondo?",
+      "porque": "Más a fondo es más largo y tarda más.",
+      "opciones": [
+       "Corto",
+       "Normal",
+       "A fondo"
+      ]
+     }
+    ]
+   },
+   "textos": {
+    "historia": "HU-12 Pagar una cuenta en cuotas\n\nComo cliente de Banco Ejemplo quiero pagar una cuenta en cuotas para no tener que pagar todo de una vez.\n\nCriterios de aceptación\n- Dado que tengo una cuenta por pagar, cuando elijo «Pagar en cuotas», entonces veo cuánto pago cada mes.\n- El comprobante dice cuántas cuotas elegí.\n",
+    "libro": "# El faro de Isla Ejemplo\n\n## Capítulo 1: La llegada\n\nMarta llegó a Isla Ejemplo un martes de niebla, con treinta años recién cumplidos y una maleta llena de libros. El faro llevaba dos inviernos apagado y nadie en el pueblo quería subir los ciento doce escalones. Tomás, el pescador más viejo del muelle, le entregó la llave sin decir palabra.\n\nEsa noche Marta encontró, debajo de la escalera, una carta sin abrir dirigida al último guardián. La guardó en el bolsillo del abrigo y decidió que la leería cuando el faro volviera a encenderse.\n\n## Capítulo 2: La luz\n\nDurante tres semanas Marta limpió los cristales, cambió el aceite de la lámpara y aprendió a leer el cielo. Tomás pasaba cada tarde a dejarle pescado y noticias del pueblo: la escuela cerraba, el ferry venía solo los jueves y los jóvenes se iban al continente.\n\nEl primer viernes de marzo la luz volvió a girar. Desde el muelle, la gente aplaudió como si hubiera llegado un barco. Marta sintió que la isla, por fin, la había aceptado.\n\n## Capítulo 3: La tormenta\n\nEn abril llegó la peor tormenta en cuarenta años. Marta, que a sus cuarenta y cinco años había visto muchas, nunca había sentido el faro temblar así. Pasó la noche entera junto a la lámpara, alimentándola a mano cuando el viento cortó la electricidad.\n\nAl amanecer, un bote apareció en las rocas. Era el de Tomás. Marta bajó corriendo los ciento doce escalones y lo encontró vivo, abrazado a una red, mirando la luz que lo había guiado.\n\n## Capítulo 4: El pueblo\n\nDespués de la tormenta, el pueblo decidió que el faro no volvería a apagarse. Abrieron una sala de lectura en la planta baja con los libros de Marta, y los niños de la escuela venían a aprender a leer el cielo.\n\nTomás, ya sin bote, se quedó como ayudante. Cada noche, antes de encender la lámpara, Marta le contaba una historia. La isla, que antes miraba hacia el continente, empezó a mirar hacia la luz.\n"
+   }
+  },
+  "en": {
+   "historia": {
+    "titulo": "Pay a bill in installments",
+    "documento": "## Summary\n\nThe customer wants to pay a bill in monthly installments instead of all at once. Today [Pay](../elementos.md#el-boton-pagar) charges everything at once.\n\n## Who, what and why\n\n- **Who:** a [Banco Ejemplo](../elementos.md#el-banco-ejemplo) customer with a bill to pay.\n- **Needs:** to choose how many installments.\n- **So that:** they don't pay everything at once.\n\n## Acceptance criteria\n\n1. **Given** I have a bill to pay, **when** I choose \"Pay in installments\", **then** I see how much I pay each month.\n2. **Given** I paid in installments, **when** the receipt arrives, **then** it says how many installments I chose.\n3. **Given** I choose more installments than allowed, **when** I try to pay, **then** I see a clear message. _(proposed)_\n\n## What parts of the project it touches\n\n- The [Payment screen](../elementos.md#el-pantalla-pago): `src/web/pagar.js` (choosing the installments).\n- The [Payments API](../elementos.md#el-api-pagos): `src/api/pagos.py` (sending the installments to the bank).\n- The [Email service](../elementos.md#el-servicio-correo): `src/api/correo.py` (the receipt).\n\n## How it should work\n\n```mermaid\nsequenceDiagram\n    actor P as Person\n    participant W as Payment screen\n    participant A as Payments API\n    participant B as Banco Ejemplo\n    P->>W: Chooses 3 installments\n    W->>A: Pay in installments\n    A->>B: Authorize in installments\n    B-->>A: Authorized\n    A-->>W: Monthly amount\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"P\":\"persona\",\"W\":\"pantalla-pago\"}}\n```\n\n## Edge cases\n\n- A very small bill that can't be split.\n- The bank rejects installments but accepts the full payment.\n\n## Risks and dependencies\n\n- It depends on [Banco Ejemplo](../elementos.md#el-banco-ejemplo) allowing installments.\n",
+    "preguntas": [
+     [
+      {
+       "pregunta": "What's the maximum number of installments?",
+       "porque": "It changes the acceptance criteria and what the screen shows.",
+       "opciones": [
+        "3",
+        "6",
+        "12"
+       ]
+      },
+      {
+       "pregunta": "Do installments have interest?",
+       "porque": "It changes the total the customer sees.",
+       "opciones": [
+        "No interest",
+        "With interest, calculated by the bank"
+       ]
+      },
+      {
+       "pregunta": "What happens if the bank rejects the installments?",
+       "porque": "It's an edge case that isn't decided yet.",
+       "opciones": [
+        "Offer to pay it all at once",
+        "Tell the customer and don't pay"
+       ]
+      }
+     ],
+     [
+      {
+       "pregunta": "Does the receipt show the installment schedule?",
+       "porque": "It's the only thing missing to write the receipt criterion.",
+       "opciones": [
+        "Yes, with dates",
+        "Only the number of installments"
+       ]
+      }
+     ]
+    ],
+    "como_quedo": "The [Payment screen](../elementos.md#el-pantalla-pago) now has \"Pay in installments\" and the [Payments API](../elementos.md#el-api-pagos) sends them to [Banco Ejemplo](../elementos.md#el-banco-ejemplo).\n\n- ✅ See how much is paid each month.\n- ✅ The receipt says how many installments were chosen.\n- ❓ The message when too many installments are requested: not visible in the code.",
+    "propuesta": {
+     "ruta": "flujos/pagar-una-cuenta.md",
+     "linea": "> You can now also pay in installments (US-12).",
+     "nota": "I added installments to the payment flow."
+    }
+   },
+   "documento": {
+    "documento": "## Summary\n\nA text you added to the project, summarized in a few lines.\n\n## Key points\n\n- The most important things, in a short list.\n\n## Diagram\n\n```mermaid\nflowchart LR\n    A[Idea] --> B[Decision] --> C[Next step]\n```\n\n## Open questions\n\n- What the text doesn't make clear.\n"
+   },
+   "libro": {
+    "elementos": [
+     {
+      "id": "marta",
+      "tipo": "personaje",
+      "nombre": "Marta",
+      "descripcion": "The lighthouse keeper."
+     },
+     {
+      "id": "tomas",
+      "tipo": "personaje",
+      "nombre": "Tomás",
+      "descripcion": "The oldest fisherman on the pier."
+     },
+     {
+      "id": "el-faro",
+      "tipo": "lugar",
+      "nombre": "The lighthouse",
+      "descripcion": "One hundred and twelve steps, dark for two winters."
+     },
+     {
+      "id": "la-carta",
+      "tipo": "concepto",
+      "nombre": "The letter",
+      "descripcion": "An unopened letter for the last keeper."
+     }
+    ],
+    "capitulos": [
+     "[Marta](../elementos.md#el-marta) arrives on the island and gets the key to [The lighthouse](../elementos.md#el-el-faro) from [Tomás](../elementos.md#el-tomas). She finds [The letter](../elementos.md#el-la-carta) and decides to read it when the light shines again.",
+     "[Marta](../elementos.md#el-marta) fixes the lighthouse for three weeks and the light turns again on the first Friday of March. The village accepts her.",
+     "The worst storm in forty years: [Marta](../elementos.md#el-marta) keeps the light going by hand and guides [Tomás](../elementos.md#el-tomas) back.",
+     "The village opens a reading room in [The lighthouse](../elementos.md#el-el-faro) and [Tomás](../elementos.md#el-tomas) stays on as a helper."
+    ],
+    "readme": "## What it is about\n\nA keeper who lights a lighthouse again and, with it, a village that was fading.\n\n## Main ideas\n\n- Caring for something small every day changes a community.\n- Light serves both to guide and to gather.\n\n## Who it is for\n\nFor anyone who wants a short story about community and perseverance.",
+    "mapa": "```mermaid\nflowchart LR\n    M[Marta] -->|lights| F[The lighthouse]\n    F -->|guides| T[Tomás]\n    F -->|gathers| P[The village]\n    M -.->|keeps| C[The letter]\n%% esquema: {\"refs\":{\"C\":\"la-carta\",\"F\":\"el-faro\",\"M\":\"marta\",\"T\":\"tomas\"}}\n```\n\nMarta lights the lighthouse; it guides Tomás and gathers the village. The letter stays unread.",
+    "estudio": "## Outline\n\n- {titulo}\n  - The main point of the chapter\n\n## Review questions\n\n**Q:** What happens in \"{titulo}\"?\n\n**A:** {resumen}\n\n## Flashcards\n\n| Front | Back |\n|---|---|\n| {titulo} | {resumen} |\n",
+    "hallazgos": [
+     {
+      "tipo": "fecha",
+      "descripcion": "Marta's age doesn't match: she is thirty when she arrives and forty-five a couple of months later.",
+      "gravedad": "alta",
+      "citas": [
+       {
+        "capitulo": 1,
+        "cita": "having just turned thirty"
+       },
+       {
+        "capitulo": 3,
+        "cita": "at forty-five"
+       }
+      ]
+     },
+     {
+      "tipo": "cabo-suelto",
+      "descripcion": "The letter for the last keeper: Marta keeps it to read when the light shines, but we never learn what it said.",
+      "gravedad": "media",
+      "citas": [
+       {
+        "capitulo": 1,
+        "cita": "an unopened letter addressed to the last keeper"
+       }
+      ]
+     }
+    ],
+    "preguntas": [
+     {
+      "pregunta": "What do you want this book for?",
+      "porque": "So the summaries and the study material aim at what helps you.",
+      "opciones": [
+       "To study it",
+       "To apply it at work",
+       "A general summary"
+      ]
+     },
+     {
+      "pregunta": "How deep?",
+      "porque": "Deeper is longer and takes more time.",
+      "opciones": [
+       "Short",
+       "Normal",
+       "In depth"
+      ]
+     }
+    ]
+   },
+   "textos": {
+    "historia": "US-12 Pay a bill in installments\n\nAs a Banco Ejemplo customer I want to pay a bill in installments so that I don't have to pay it all at once.\n\nAcceptance criteria\n- Given I have a bill to pay, when I choose \"Pay in installments\", then I see how much I pay each month.\n- The receipt says how many installments I chose.\n",
+    "libro": "# The lighthouse of Isla Ejemplo\n\n## Chapter 1: The arrival\n\nMarta arrived at Isla Ejemplo on a foggy Tuesday, having just turned thirty, with a suitcase full of books. The lighthouse had been dark for two winters and nobody in the village wanted to climb its one hundred and twelve steps. Tomás, the oldest fisherman on the pier, handed her the key without a word.\n\nThat night Marta found, under the stairs, an unopened letter addressed to the last keeper. She put it in her coat pocket and decided she would read it when the lighthouse shone again.\n\n## Chapter 2: The light\n\nFor three weeks Marta cleaned the glass, changed the lamp oil and learned to read the sky. Tomás came by every afternoon with fish and news from the village: the school was closing, the ferry came only on Thursdays and the young people were leaving for the mainland.\n\nOn the first Friday of March the light turned again. From the pier, people clapped as if a ship had arrived. Marta felt that the island had finally accepted her.\n\n## Chapter 3: The storm\n\nIn April the worst storm in forty years arrived. Marta, who at forty-five had seen many, had never felt the lighthouse shake like that. She spent the whole night by the lamp, feeding it by hand when the wind cut the power.\n\nAt dawn, a boat appeared on the rocks. It was Tomás's. Marta ran down the one hundred and twelve steps and found him alive, holding on to a net, looking at the light that had guided him.\n\n## Chapter 4: The village\n\nAfter the storm, the village decided the lighthouse would never go dark again. They opened a reading room on the ground floor with Marta's books, and the school children came to learn to read the sky.\n\nTomás, with no boat left, stayed on as her helper. Every night, before lighting the lamp, Marta told him a story. The island, which used to look towards the mainland, started looking towards the light.\n"
+   }
+  }
  }
 }

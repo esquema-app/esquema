@@ -1,0 +1,139 @@
+{
+ "historia": {
+  "titulo": "Pay a bill in installments",
+  "documento": "## Summary\n\nThe customer wants to pay a bill in monthly installments instead of all at once. Today [Pay](../elementos.md#el-boton-pagar) charges everything at once.\n\n## Who, what and why\n\n- **Who:** a [Banco Ejemplo](../elementos.md#el-banco-ejemplo) customer with a bill to pay.\n- **Needs:** to choose how many installments.\n- **So that:** they don't pay everything at once.\n\n## Acceptance criteria\n\n1. **Given** I have a bill to pay, **when** I choose \"Pay in installments\", **then** I see how much I pay each month.\n2. **Given** I paid in installments, **when** the receipt arrives, **then** it says how many installments I chose.\n3. **Given** I choose more installments than allowed, **when** I try to pay, **then** I see a clear message. _(proposed)_\n\n## What parts of the project it touches\n\n- The [Payment screen](../elementos.md#el-pantalla-pago): `src/web/pagar.js` (choosing the installments).\n- The [Payments API](../elementos.md#el-api-pagos): `src/api/pagos.py` (sending the installments to the bank).\n- The [Email service](../elementos.md#el-servicio-correo): `src/api/correo.py` (the receipt).\n\n## How it should work\n\n```mermaid\nsequenceDiagram\n    actor P as Person\n    participant W as Payment screen\n    participant A as Payments API\n    participant B as Banco Ejemplo\n    P->>W: Chooses 3 installments\n    W->>A: Pay in installments\n    A->>B: Authorize in installments\n    B-->>A: Authorized\n    A-->>W: Monthly amount\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"P\":\"persona\",\"W\":\"pantalla-pago\"}}\n```\n\n## Edge cases\n\n- A very small bill that can't be split.\n- The bank rejects installments but accepts the full payment.\n\n## Risks and dependencies\n\n- It depends on [Banco Ejemplo](../elementos.md#el-banco-ejemplo) allowing installments.\n",
+  "preguntas": [
+   [
+    {
+     "pregunta": "What's the maximum number of installments?",
+     "porque": "It changes the acceptance criteria and what the screen shows.",
+     "opciones": [
+      "3",
+      "6",
+      "12"
+     ]
+    },
+    {
+     "pregunta": "Do installments have interest?",
+     "porque": "It changes the total the customer sees.",
+     "opciones": [
+      "No interest",
+      "With interest, calculated by the bank"
+     ]
+    },
+    {
+     "pregunta": "What happens if the bank rejects the installments?",
+     "porque": "It's an edge case that isn't decided yet.",
+     "opciones": [
+      "Offer to pay it all at once",
+      "Tell the customer and don't pay"
+     ]
+    }
+   ],
+   [
+    {
+     "pregunta": "Does the receipt show the installment schedule?",
+     "porque": "It's the only thing missing to write the receipt criterion.",
+     "opciones": [
+      "Yes, with dates",
+      "Only the number of installments"
+     ]
+    }
+   ]
+  ],
+  "como_quedo": "The [Payment screen](../elementos.md#el-pantalla-pago) now has \"Pay in installments\" and the [Payments API](../elementos.md#el-api-pagos) sends them to [Banco Ejemplo](../elementos.md#el-banco-ejemplo).\n\n- ✅ See how much is paid each month.\n- ✅ The receipt says how many installments were chosen.\n- ❓ The message when too many installments are requested: not visible in the code.",
+  "propuesta": {
+   "ruta": "flujos/pagar-una-cuenta.md",
+   "linea": "> You can now also pay in installments (US-12).",
+   "nota": "I added installments to the payment flow."
+  }
+ },
+ "documento": {
+  "documento": "## Summary\n\nA text you added to the project, summarized in a few lines.\n\n## Key points\n\n- The most important things, in a short list.\n\n## Diagram\n\n```mermaid\nflowchart LR\n    A[Idea] --> B[Decision] --> C[Next step]\n```\n\n## Open questions\n\n- What the text doesn't make clear.\n"
+ },
+ "libro": {
+  "elementos": [
+   {
+    "id": "marta",
+    "tipo": "personaje",
+    "nombre": "Marta",
+    "descripcion": "The lighthouse keeper."
+   },
+   {
+    "id": "tomas",
+    "tipo": "personaje",
+    "nombre": "Tomás",
+    "descripcion": "The oldest fisherman on the pier."
+   },
+   {
+    "id": "el-faro",
+    "tipo": "lugar",
+    "nombre": "The lighthouse",
+    "descripcion": "One hundred and twelve steps, dark for two winters."
+   },
+   {
+    "id": "la-carta",
+    "tipo": "concepto",
+    "nombre": "The letter",
+    "descripcion": "An unopened letter for the last keeper."
+   }
+  ],
+  "capitulos": [
+   "[Marta](../elementos.md#el-marta) arrives on the island and gets the key to [The lighthouse](../elementos.md#el-el-faro) from [Tomás](../elementos.md#el-tomas). She finds [The letter](../elementos.md#el-la-carta) and decides to read it when the light shines again.",
+   "[Marta](../elementos.md#el-marta) fixes the lighthouse for three weeks and the light turns again on the first Friday of March. The village accepts her.",
+   "The worst storm in forty years: [Marta](../elementos.md#el-marta) keeps the light going by hand and guides [Tomás](../elementos.md#el-tomas) back.",
+   "The village opens a reading room in [The lighthouse](../elementos.md#el-el-faro) and [Tomás](../elementos.md#el-tomas) stays on as a helper."
+  ],
+  "readme": "## What it is about\n\nA keeper who lights a lighthouse again and, with it, a village that was fading.\n\n## Main ideas\n\n- Caring for something small every day changes a community.\n- Light serves both to guide and to gather.\n\n## Who it is for\n\nFor anyone who wants a short story about community and perseverance.",
+  "mapa": "```mermaid\nflowchart LR\n    M[Marta] -->|lights| F[The lighthouse]\n    F -->|guides| T[Tomás]\n    F -->|gathers| P[The village]\n    M -.->|keeps| C[The letter]\n%% esquema: {\"refs\":{\"C\":\"la-carta\",\"F\":\"el-faro\",\"M\":\"marta\",\"T\":\"tomas\"}}\n```\n\nMarta lights the lighthouse; it guides Tomás and gathers the village. The letter stays unread.",
+  "estudio": "## Outline\n\n- {titulo}\n  - The main point of the chapter\n\n## Review questions\n\n**Q:** What happens in \"{titulo}\"?\n\n**A:** {resumen}\n\n## Flashcards\n\n| Front | Back |\n|---|---|\n| {titulo} | {resumen} |\n",
+  "hallazgos": [
+   {
+    "tipo": "fecha",
+    "descripcion": "Marta's age doesn't match: she is thirty when she arrives and forty-five a couple of months later.",
+    "gravedad": "alta",
+    "citas": [
+     {
+      "capitulo": 1,
+      "cita": "having just turned thirty"
+     },
+     {
+      "capitulo": 3,
+      "cita": "at forty-five"
+     }
+    ]
+   },
+   {
+    "tipo": "cabo-suelto",
+    "descripcion": "The letter for the last keeper: Marta keeps it to read when the light shines, but we never learn what it said.",
+    "gravedad": "media",
+    "citas": [
+     {
+      "capitulo": 1,
+      "cita": "an unopened letter addressed to the last keeper"
+     }
+    ]
+   }
+  ],
+  "preguntas": [
+   {
+    "pregunta": "What do you want this book for?",
+    "porque": "So the summaries and the study material aim at what helps you.",
+    "opciones": [
+     "To study it",
+     "To apply it at work",
+     "A general summary"
+    ]
+   },
+   {
+    "pregunta": "How deep?",
+    "porque": "Deeper is longer and takes more time.",
+    "opciones": [
+     "Short",
+     "Normal",
+     "In depth"
+    ]
+   }
+  ]
+ }
+}

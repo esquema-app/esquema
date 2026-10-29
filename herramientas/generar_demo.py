@@ -17,10 +17,12 @@ import inventario  # noqa: E402
 import plantilla_formato  # noqa: E402
 import plantillas  # noqa: E402
 import proyecto  # noqa: E402
+import tipos  # noqa: E402
 
 EJEMPLO = os.path.join(RAIZ, "ejemplos", "proyecto-ejemplo")
 CATALOGO = os.path.join(RAIZ, "ejemplos", "catalogo-ejemplo")
 IA_SIMULADA = os.path.join(RAIZ, "ejemplos", "ia-simulada")
+AGREGAR = os.path.join(RAIZ, "ejemplos", "agregar")
 # La carpeta de ejemplo vive dentro del repo de Esquema: su «git» es inventado (nunca la historia real de este repo).
 GIT_FICTICIO = {"hay": True, "rama": "main", "ramas": ["main", "correos-en-cola"], "tags": ["v1.2.0", "v1.1.0"], "total": 48, "commits": [
     {"fecha": "2026-10-20", "mensaje": "La API responde sin esperar al correo"}, {"fecha": "2026-10-14", "mensaje": "Cola para los avisos de pago"},
@@ -52,6 +54,15 @@ def demo_proyecto():
     return {"encontrado": encontrado, "archivos": rutas, "codigo": codigo, "ia": ia, "arbol": {"archivos": x["archivos"], "perfil": x["perfil"]}}
 
 
+def demo_agregar():
+    """Para «Agregar» en la vista previa: una HU y un libro ficticios, y lo que «responde» la IA con ellos."""
+    r = {}
+    for idioma in ("es", "en"):
+        r[idioma] = {**json.loads(leer_texto(IA_SIMULADA, idioma, "agregar.json")),
+                     "textos": {"historia": leer_texto(AGREGAR, idioma, "historia.md"), "libro": leer_texto(AGREGAR, idioma, "libro.md")}}
+    return r
+
+
 def demo():
     lista = carpeta.listar(EJEMPLO)["archivos"]
     archivos = []
@@ -70,6 +81,8 @@ def demo():
         "catalogo": plantilla_formato.indice(CATALOGO)[0]["plantillas"],
         "estructura": {"archivos": est["archivos"], "omitidos": est["omitidos"], "manifiestos": est["manifiestos"]},
         "proyecto": demo_proyecto(),
+        "tipos": tipos.incluidos(),
+        "agregar": demo_agregar(),
     }
 
 
