@@ -20,7 +20,7 @@ import comun
 ID = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 FUENTES = ("carpeta", "texto")
 ICONOS = ("codigo", "libro", "proyecto", "doc", "diagrama", "persona", "elemento", "chispa", "carpeta", "historia", "datos", "archivo",
-          "flecha", "listo", "imagen")
+          "flecha", "listo", "imagen", "tarjetas")
 TIPOS_ELEMENTO = ("pantalla", "boton", "accion", "servicio", "modulo", "dato", "actor", "personaje", "concepto", "lugar", "otro")
 TIPOS_DOCUMENTO = ("vision", "arquitectura", "flujo", "glosario", "otro", "historia", "libro", "capitulo", "documento", "fuente", "estudio", "revision")
 #: Lo que la interfaz sabe mostrar y hacer. Un tipo solo puede nombrar estos.

@@ -993,6 +993,15 @@
   "Se quita: ya no está en la documentación": "Removed: it's no longer in the documentation",
   "Abrir GitHub": "Open GitHub",
   "Las respuestas sugeridas": "Suggested answers",
-  "Esquema no lee ese formato sin programas extra. Guárdalo como .docx, PDF o texto, o copia el texto y pégalo aquí.": "Esquema can't read that format without extra programs. Save it as .docx, PDF or text, or copy the text and paste it here."
+  "Esquema no lee ese formato sin programas extra. Guárdalo como .docx, PDF o texto, o copia el texto y pégalo aquí.": "Esquema can't read that format without extra programs. Save it as .docx, PDF or text, or copy the text and paste it here.",
+  "«{x}»: 1 commit la nombra. ¿Terminaste?": "«{x}»: 1 commit mentions it. Did you finish?",
+  "«{x}»: {n} commits la nombran. ¿Terminaste?": "«{x}»: {n} commits mention it. Did you finish?",
+  "La documentación de «{x}» queda aparte, en ~/Esquema, con su propio historial: Esquema nunca escribe en tu código.": "The documentation of «{x}» stays apart, in ~/Esquema, with its own history: Esquema never writes in your code.",
+  "«{x}» tiene textos, no código: parece un libro. Creo un proyecto Libro con sus textos, en orden, en ~/Esquema. Los archivos de la carpeta no se tocan.": "«{x}» has texts, not code: it looks like a book. I'll create a Book project with its texts, in order, in ~/Esquema. The folder's files aren't touched.",
+  "No encontré textos que pueda leer en esta carpeta (.md, .txt, PDF, Word, EPUB…).": "I found no texts I can read in this folder (.md, .txt, PDF, Word, EPUB…).",
+  "Le falta 1 cosa": "1 thing is missing",
+  "Le faltan {n} cosas": "{n} things are missing",
+  "Está completo": "It's complete",
+  "Índice de la wiki (_Sidebar)": "Wiki index (_Sidebar)"
  }
 }

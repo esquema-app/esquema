@@ -1322,6 +1322,22 @@ class Libros(unittest.TestCase):
         self.assertEqual(inc.count("revísala"), 1, "las citas reales no se marcan")
         self.assertIn("Revisé las incongruencias", git_en(base, "log", "--format=%s"))
 
+    def test_libro_desde_una_carpeta_de_escritos(self):
+        carpeta = tempfile.mkdtemp(dir=TMP)
+        for i, t in ((1, "La llegada"), (2, "La luz"), (3, "La tormenta")):
+            with open(os.path.join(carpeta, f"{i:02d}-capitulo.md"), "w", encoding="utf-8") as f:
+                f.write(f"# Capítulo {i}: {t}\n\n" + ("Marta cuida el faro. " * 40) + "\n")
+        with open(os.path.join(carpeta, "LICENSE.md"), "w", encoding="utf-8") as f:
+            f.write("# Licencia\n\nCC0\n")
+        import inventario
+        self.assertEqual(inventario.inventario(carpeta)["perfil"]["tipo"], "escritos")
+        c = orden("crear", {"carpeta": carpeta, "desde_carpeta": True, "titulo": "Cuaderno del faro", "idioma": "es"})
+        self.assertTrue(c["ok"], c)
+        self.assertEqual(c["trabajo"]["capitulos"], 3)
+        self.assertEqual(sorted(os.listdir(carpeta)), ["01-capitulo.md", "02-capitulo.md", "03-capitulo.md", "LICENSE.md"], "la carpeta de escritos no se toca")
+        base = os.path.realpath(os.path.join(os.path.expanduser("~"), c["ubicacion"][2:]))
+        self.assertNotIn("CC0", leer(os.path.join(base, "fuentes", "cuaderno-del-faro.md")))
+
 
 class Borrar(unittest.TestCase):
     def test_borrar_y_recuperar(self):

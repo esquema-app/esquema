@@ -71,7 +71,7 @@
   M.rutaDocProyecto = rutaDoc;
 
   // ───────────── Tipos de proyecto (tipos/<id>.json): la misma regla que bin/tipos.py (casos «tipos» de pruebas/casos.json) ─────────────
-  const T_ICONOS = ["codigo", "libro", "proyecto", "doc", "diagrama", "persona", "elemento", "chispa", "carpeta", "historia", "datos", "archivo", "flecha", "listo", "imagen"];
+  const T_ICONOS = ["codigo", "libro", "proyecto", "doc", "diagrama", "persona", "elemento", "chispa", "carpeta", "historia", "datos", "archivo", "flecha", "listo", "imagen", "tarjetas"];
   const T_FALTA = ["vision", "arquitectura", "segun-codigo", "flujos", "elementos", "elementos-usados", "al-dia", "capitulos", "resumenes", "libro-readme", "estudio", "incongruencias"];
   const T_ACCIONES = ["documentar", "completar", "flujo", "diagrama", "historia", "agregar", "readme", "wiki", "estudiar", "incongruencias"];
   const T_NUEVO = ["diagrama", "documento", "historia", "agregar"];

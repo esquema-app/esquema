@@ -294,6 +294,9 @@ button { cursor: pointer; }
 .cambio-ia .meta { color: var(--gris); font-size: 12.5px; }
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--texto); color: var(--fondo); padding: 9px 16px; border-radius: 10px; opacity: 0; pointer-events: none; transition: .18s; z-index: 80; max-width: calc(100% - 32px); }
 #toast.visible { opacity: 1; transform: translate(-50%, 0); }
+/* Con un diálogo abierto (que en el celular sale desde abajo), el aviso va arriba para no tapar sus botones. */
+body:has(.capa) #toast { top: calc(16px + env(safe-area-inset-top, 0px)); bottom: auto; transform: translate(-50%, -20px); }
+body:has(.capa) #toast.visible { transform: translate(-50%, 0); }
 
 /* ───── Celular (y ventanas angostas) ───── */
 @media (max-width: 760px) {
@@ -606,3 +609,5 @@ button { cursor: pointer; }
 .agregar-ayuda { margin-top: 12px; }
 .p-falta li { align-items: center; }
 .p-falta li > span { flex: 1; min-width: 0; }
+.preg-pie .boton.principal { margin-left: auto; }
+@media (max-width: 760px) { .preg-pie .espacio { display: none; } .preg-pie .boton.principal { flex: 1 0 100%; order: 9; } }

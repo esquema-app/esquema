@@ -5,6 +5,33 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Agrega lo que tengas:** «Agregar» recibe una historia de usuario, un acta, una especificación o un libro (pegado, un archivo
+  o soltándolo). Esquema adivina qué es, te dice por qué y puedes cambiarlo antes de que entre. El original queda guardado tal cual.
+  · *Add what you have: «Add» takes a user story, minutes, a spec or a book (pasted, a file or dropped). Esquema guesses what it is,
+  tells you why and lets you change it before it goes in. The original is kept as is.*
+- **Historias de usuario que se entienden:** tu IA la lee con tu documentación, te pregunta lo que falta (una pregunta a la vez; puedes
+  responder después, aunque cierres Esquema) y la deja documentada con criterios, partes que toca y un diagrama. Tu IA no programa.
+  Cada historia pasa por Por entender → Lista → En desarrollo → Terminada, y «Terminé el desarrollo» cuenta cómo quedó según los
+  commits y propone poner al día los demás documentos. · *User stories you understand: your AI reads it with your docs, asks what's
+  missing (one question at a time; answer later, even after closing Esquema) and documents it with criteria, affected parts and a
+  diagram. Your AI doesn't code. Each story goes To understand → Ready → In development → Done, and «I finished the development»
+  tells how it turned out from the commits and proposes updates to the other documents.*
+- **Proyectos de tipo Libro:** «Agregar proyecto» pregunta qué es: Software o Libro. Un libro se parte en capítulos, con un resumen
+  por capítulo, el mapa de ideas, personajes y conceptos, la línea de tiempo, material de estudio (esquema, preguntas y tarjetas) y
+  «Revisar incongruencias», con la cita y dónde está. · *Book projects: «Add project» asks what it is: Software or Book. A book is
+  split into chapters, with a summary per chapter, the map of ideas, characters and concepts, the timeline, study material (outline,
+  questions and flashcards) and «Check inconsistencies», with the quote and where it is.*
+- **Borrar sin miedo:** borra un documento, un diagrama, una historia o un capítulo desde la lista (clic derecho o Supr) o desde el
+  documento abierto. Los enlaces a él quedan como texto, se guarda una versión y tienes «Deshacer». Lo de tu carpeta de código nunca
+  se borra así: va a la papelera del sistema. · *Delete without fear: from the list (right click or Delete) or from the open
+  document. Links to it become plain text, a version is saved and you get «Undo». Files in your code folder are never deleted this
+  way: they go to the system Trash.*
+- **Publícala en la wiki de GitHub:** Esquema te muestra qué páginas son nuevas, cuáles cambian y cuáles quedan igual, y las sube con
+  tu git. Nunca toca las páginas que escribiste a mano. · *Publish it to the GitHub wiki: Esquema shows which pages are new, which
+  change and which stay the same, and pushes them with your git. It never touches pages you wrote by hand.*
+- **Más claro:** «Agregar proyecto» arriba de la lista de proyectos y «Nuevo en <proyecto>» dentro de cada uno, para que se entienda
+  dónde va lo nuevo. · *Clearer: «Add project» above the project list and «New in <project>» inside each one, so it's clear where new
+  things go.*
 - **Documentar ya no se pierde ni te deja esperando a ciegas:** tu IA trabaja por etapas (revisa los archivos, lee el código y arma
   un plan, escribe cada documento y guarda una versión) y ves en vivo qué archivo está leyendo, cuántos lleva, cuánto tiempo va y
   cómo va cada documento. Cada documento queda guardado apenas está listo, aunque cierres la ventana; puedes seguir usando Esquema

@@ -228,8 +228,9 @@
             E.proyecto = null; pj.pedido = false; E.panel = "proyecto"; E.encontrado = { cargando: true, docs: "" }; enviar("leer");
           } else {
             E.proyecto = null;
-            // «Agregar proyecto»: la documentación va aparte, en ~/Esquema, vinculada a esta carpeta.
-            if (pj.pedido) { pj.pedido = false; enviar("vincular"); }
+            // «Agregar proyecto»: la documentación va aparte, en ~/Esquema, vinculada a esta carpeta. Antes se mira qué hay
+            // (el árbol): una carpeta de escritos propone, ya elegido, el tipo Libro.
+            if (pj.pedido) { pj.pedido = false; pj.decidirTipo = true; if (E.codigoArbol) recibirArbol({ ok: true, ...E.codigoArbol.respuesta }); }
           }
           if (!E.codigoArbol) enviar("arbol");
           if (!pj.trabajo && !pj.esperando && !pj.pidioTrabajo) { pj.pidioTrabajo = true; enviar("trabajo"); }
@@ -245,7 +246,7 @@
         case "detectar": return alDetectar(r);
         case "crear": {
           const d = pj.dialogo;
-          if (!r.ok) { if (d) { d.paso = "detectado"; d.error = r.error; } else toast(r.error || "No pude crear el proyecto"); return api.pintar(); }
+          if (!r.ok) { if (d?.tipo === "nuevo-proyecto") { d.paso = d.det ? "detectado" : "carpeta"; toast(r.error || "No pude crear el proyecto"); } else toast(r.error || "No pude crear el proyecto"); return api.pintar(); }
           pj.dialogo = null;
           if (Array.isArray(r.recientes)) E.recientes = listaProyectos(r.recientes);
           toast(Tp("El libro quedó en {x}", { x: r.ubicacion }), true);
@@ -625,8 +626,13 @@
     function recibirArbol(r) {
       if (!r.ok) { E.codigoArbol = { base: [], archivos: [], raiz: nodoVacio(""), lecturas: {}, error: r.error || "" }; return api.pintar(); }
       const base = (Array.isArray(r.archivos) ? r.archivos : []).filter((a) => Array.isArray(a) && typeof a[0] === "string" && typeof a[2] === "string");
-      E.codigoArbol = { nombre: r.nombre || "", base, perfil: r.perfil || null, lecturas: r.lecturas && typeof r.lecturas === "object" ? r.lecturas : {}, omitidos: r.omitidos || 0, sinCodigo: !!r.sin_codigo };
+      E.codigoArbol = { nombre: r.nombre || "", base, perfil: r.perfil || null, lecturas: r.lecturas && typeof r.lecturas === "object" ? r.lecturas : {}, omitidos: r.omitidos || 0, sinCodigo: !!r.sin_codigo, respuesta: r };
       armarArbol();
+      if (pj.decidirTipo) {
+        pj.decidirTipo = false;
+        if (r.perfil?.tipo === "escritos" && tipos().some((t) => t.id === "libro")) pj.dialogo = { tipo: "nuevo-proyecto", t: "libro", paso: "carpeta", carpeta: E.carpeta?.nombre || "", titulo: E.carpeta?.nombre || "", archivos: [], texto: "", leyendo: 0 };
+        else enviar("vincular");
+      }
       api.pintar();
     }
     /** El árbol (carpetas primero, por nombre). En una carpeta sin vínculo, los .md/.mmd nuevos (creados en Esquema o afuera) se suman
@@ -822,8 +828,8 @@
         capitulos: [{ ok: capitulos > 0, titulo: "Capítulos", n: capitulos }],
         resumenes: [{ ok: capitulos > 0 && !(pj.trabajo?.tipo === "libro" && pj.trabajo.items?.some((i) => i.estado !== "listo")), titulo: "Un resumen por capítulo", accion: "p-seguir-libro" }],
         "libro-readme": [{ ok: tipos.includes("libro"), titulo: "De qué trata y el mapa de ideas" }],
-        estudio: [{ ok: rutas.some((r) => r.startsWith("estudio/")), titulo: "Material de estudio", accion: "p-estudiar" }],
-        incongruencias: [{ ok: tipos.includes("revision"), titulo: "Revisión de incongruencias", accion: "p-incongruencias" }],
+        estudio: [{ ok: rutas.some((r) => r.startsWith("estudio/")), titulo: "Material de estudio" }],
+        incongruencias: [{ ok: tipos.includes("revision"), titulo: "Revisión de incongruencias" }],
       };
       return t.falta.flatMap((k) => todos[k] || []);
     }
@@ -832,7 +838,7 @@
       const sinCuenta = ["Cada elemento aparece en un documento", "Al día con el código"];
       const fila = (i) => `<li class="${i.ok ? "hecho" : "pendiente"}">${ic(i.ok ? "listo" : "mas")}<span><b data-sin-traducir>${esc(tr(i.titulo))}</b>${i.n != null && (i.ok ? i.n && !sinCuenta.includes(i.titulo) : i.n) ? ` <small data-sin-traducir>${i.n}</small>` : ""}${i.nombres?.length ? `<small data-sin-traducir> · ${esc(i.nombres.slice(0, 4).join(", "))}${i.nombres.length > 4 ? "…" : ""}</small>` : ""}</span>${!i.ok && i.accion && !corriendo() ? `<button class="boton plano chico" data-accion="${i.accion}">Hacerlo</button>` : ""}</li>`;
       return `<section class="p-tarjeta p-falta">
-        <h3>${faltan.length ? (faltan.length === 1 ? frase("Le falta 1 cosa a la documentación") : frase("Le faltan {n} cosas a la documentación", { n: faltan.length })) : "La documentación está completa"}</h3>
+        <h3>${tipoActual().fuente === "texto" ? (faltan.length ? (faltan.length === 1 ? frase("Le falta 1 cosa") : frase("Le faltan {n} cosas", { n: faltan.length })) : "Está completo") : faltan.length ? (faltan.length === 1 ? frase("Le falta 1 cosa a la documentación") : frase("Le faltan {n} cosas a la documentación", { n: faltan.length })) : "La documentación está completa"}</h3>
         <ul>${items.map(fila).join("")}</ul>
         ${completar ? `<div class="p-acciones izq"><button class="boton principal" data-accion="p-completar">${ic("chispa")} Completar lo que falta</button></div>` : !faltan.length && ofrece("acciones", "flujo") ? `<div class="p-acciones izq"><button class="boton" data-accion="p-flujo">${ic("chispa")} Documentar otro flujo</button></div>` : ""}
       </section>`;
@@ -911,6 +917,7 @@
         ${E.proyecto.vinculado && pj.ofrecerPasar && !pj.espera && E.proyecto.codigo ? `<div class="p-aviso"><span>Guardé la versión. ¿Quieres llevar algo de esto al repo del proyecto?</span><button class="boton" data-accion="p-pasar">Pasar al proyecto</button></div>` : ""}
         ${ofrecerWiki ? `<div class="p-aviso"><span>¿Actualizo también la wiki de GitHub con esta versión?</span><button class="boton" data-accion="p-wiki">${ic("exportar")} Publicar en la wiki</button><button class="boton plano" data-accion="p-wiki-no">Ahora no</button></div>` : ""}
         ${esperanHTML()}
+        ${(E.proyecto.historias || []).filter((h) => h.estado === "en-desarrollo" && h.commits && !corriendo()).map((h) => `<div class="p-aviso"><span>${h.commits === 1 ? frase("«{x}»: 1 commit la nombra. ¿Terminaste?", { x: h.id }) : frase("«{x}»: {n} commits la nombran. ¿Terminaste?", { x: h.id, n: h.commits })}</span><button class="boton" data-p-cerrar-hu="${esc(h.ruta)}">${ic("listo")} Documentar cómo quedó</button></div>`).join("")}
         ${trabajoHTML()}
         ${x.documentos.length && !corriendo() ? faltaHTML() : ""}
         ${corriendo() ? "" : accionesHTML()}
@@ -969,7 +976,7 @@
       const tarjeta = (accion, icono, titulo, texto) => `<button class="tarjeta-inicio" data-accion="${accion}"><span class="ti-icono">${ic(icono)}</span><span class="ti-txt"><b>${titulo}</b><small>${texto}</small></span></button>`;
       const l = [];
       if (a("historia")) l.push(tarjeta("p-historia", "persona", "Historia de usuario", "Pégala y tu IA te ayuda a entenderla: te pregunta lo que falta y la documenta. No programa."));
-      if (a("estudiar")) l.push(tarjeta("p-estudiar", "listo", "Material de estudio", "Por capítulo: un esquema, preguntas de repaso con respuesta y tarjetas."));
+      if (a("estudiar")) l.push(tarjeta("p-estudiar", "tarjetas", "Material de estudio", "Por capítulo: un esquema, preguntas de repaso con respuesta y tarjetas."));
       if (a("incongruencias")) l.push(tarjeta("p-incongruencias", "chispa", "Revisar incongruencias", "Contradicciones, fechas o nombres que no calzan y cabos sueltos, con la cita y dónde está."));
       if (a("agregar")) l.push(tarjeta("p-agregar-algo", "archivo", "Agregar archivo o texto", t.fuente === "carpeta" ? "Un acta, una especificación, un artículo o un libro: Esquema detecta qué es y lo ordena." : "Notas, apuntes o textos de referencia: tu IA los resume y los deja en Notas."));
       if (a("diagrama")) l.push(tarjeta("crear-diagrama", "diagrama", "Crear diagrama", t.fuente === "carpeta" ? "Pídele a tu IA «el flujo de…», «la secuencia de…» o «la arquitectura de…». Puede leer tu código." : "Pídele a tu IA un mapa, una línea de tiempo o un esquema."));
@@ -1332,6 +1339,12 @@
       const t = tipoDe(d.t);
       const tarjetas = tipos().map((x) => `<button class="tipo-proyecto" role="radio" aria-checked="${x.id === t.id}" data-p-tipo-proyecto="${esc(x.id)}" data-sin-traducir><span class="ti-icono">${ic(x.icono)}</span><span class="ti-txt"><b>${esc(textoDe(x.nombre))}</b><small>${esc(textoDe(x.descripcion))}</small></span></button>`).join("");
       const cab = `<h2 id="t-pj">Agregar proyecto</h2><p id="t-tipo">¿Qué tipo de proyecto es?</p><div class="tipos-proyecto" role="radiogroup" aria-labelledby="t-tipo">${tarjetas}</div>`;
+      if (d.paso === "carpeta") return t.fuente === "carpeta"
+        ? `${cab}<p class="p-ayuda" data-sin-traducir>${T("La documentación de «{x}» queda aparte, en ~/Esquema, con su propio historial: Esquema nunca escribe en tu código.", { x: d.carpeta })}</p>
+          <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-vincular">Seguir</button></div>`
+        : `${cab}<p class="p-aviso" data-sin-traducir>${T("«{x}» tiene textos, no código: parece un libro. Creo un proyecto Libro con sus textos, en orden, en ~/Esquema. Los archivos de la carpeta no se tocan.", { x: d.carpeta })}</p>
+          <label for="p-titulo">Nombre del libro</label><input type="text" id="p-titulo" class="p-input" value="${esc(d.titulo || "")}" data-sin-traducir data-autofoco>
+          <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-crear-libro" data-sin-traducir>${ic("libro")} ${esc(tr("Crear proyecto"))}</button></div>`;
       if (t.fuente === "carpeta") return `${cab}<p class="p-ayuda" data-sin-traducir>${T("Elige la carpeta del código. La documentación queda aparte, en ~/Esquema, con su propio historial: Esquema nunca escribe en tu código.")}</p>
         <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-elegir-codigo" data-sin-traducir>${ic("carpeta")} ${esc(tr("Elegir la carpeta"))}</button></div>`;
       if (d.paso === "leyendo" || d.paso === "creando") return `${cab}<div class="esperando" data-sin-traducir><span class="giro"></span> ${esc(tr(d.paso === "creando" ? "Creando el proyecto…" : "Leyendo lo que agregaste…"))}</div>`;
@@ -1419,8 +1432,7 @@
       enviar("historia_estado", { ruta: h.ruta, estado });
       h.estado = estado; api.pintar();
     }
-    function terminarHU() {
-      const h = historiaAbierta();
+    function terminarHU(h = historiaAbierta()) {
       if (!h) return;
       E.confirmar = { titulo: frase("¿Terminaste «{x}»?", { x: h.id }), texto: esc(tr("Tu IA compara lo que se pidió con lo que cambió en el código (commits y archivos, solo leer) y escribe «Cómo quedó». También propone poner al día los demás documentos: tú decides cuáles.")),
         si: tr("Documentar cómo quedó"), no: tr("Todavía no"), traducido: true,
@@ -1492,7 +1504,7 @@
         <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cerrar</button>${d.web ? `<button class="boton" data-enlace="${esc(d.web)}">${ic("github")} Abrir GitHub</button>` : ""}${d.no_existe ? `<button class="boton principal" data-accion="p-wiki">Volver a revisar</button>` : ""}</div>`;
       const elegibles = d.paginas.filter((x) => ["nuevo", "cambia", "sobra"].includes(x.estado)), n = elegibles.filter((x) => x.elegida !== false).length;
       return `${cab}<p>${frase("Esto queda en la wiki de {x}. Uso tu git y tu cuenta: Esquema no guarda claves. Nunca toco las páginas escritas a mano.", { x: d.url })}</p>
-        <div class="p-pasar">${d.paginas.map((x, i) => `<div class="p-pasar-fila"><label class="marcar"><input type="checkbox" data-p-wiki-pag="${i}" ${["nuevo", "cambia", "sobra"].includes(x.estado) ? (x.elegida !== false ? "checked" : "") : "disabled"}><span><b data-sin-traducir>${esc(x.pagina.replace(/-/g, " "))}</b><small data-sin-traducir>${esc(x.ruta || "")}</small></span></label><span class="p-estado ${ESTADO_PAGINA[x.estado][1]}" data-sin-traducir>${esc(tr(ESTADO_PAGINA[x.estado][0]))}</span></div>`).join("")}</div>
+        <div class="p-pasar">${d.paginas.map((x, i) => `<div class="p-pasar-fila"><label class="marcar"><input type="checkbox" data-p-wiki-pag="${i}" ${["nuevo", "cambia", "sobra"].includes(x.estado) ? (x.elegida !== false ? "checked" : "") : "disabled"}><span><b data-sin-traducir>${esc(x.pagina === "_Sidebar" ? tr("Índice de la wiki (_Sidebar)") : x.pagina.replace(/-/g, " "))}</b><small data-sin-traducir>${esc(x.ruta || "")}</small></span></label><span class="p-estado ${ESTADO_PAGINA[x.estado][1]}" data-sin-traducir>${esc(tr(ESTADO_PAGINA[x.estado][0]))}</span></div>`).join("")}</div>
         <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-wiki-publicar" ${n ? "" : "disabled"} data-sin-traducir>${n === 1 ? T("Publicar 1 página") : n ? T("Publicar {n} páginas", { n }) : T("La wiki está al día")}</button></div>`;
     }
 
@@ -1545,6 +1557,7 @@
       if (d.pResponder !== undefined) { E.confirmar = null; abrirPreguntas(d.pResponder); return true; }
       if (d.pResp !== undefined && pj.preguntas) { responderPregunta("opcion", Number(d.pResp)); return true; }
       if (d.huEstado !== undefined) { cambiarEstadoHU(d.huEstado); return true; }
+      if (d.pCerrarHu !== undefined) { terminarHU((E.proyecto?.historias || []).find((x) => x.ruta === d.pCerrarHu)); return true; }
       if (d.pBorrar !== undefined) { pedirBorrar(d.pBorrar); return true; }
       if (d.pTipoProyecto !== undefined && pj.dialogo?.tipo === "nuevo-proyecto") { const x = pj.dialogo; x.texto = $("#p-pegar")?.value ?? x.texto; x.t = d.pTipoProyecto; api.pintar(); return true; }
       if (d.pContenido !== undefined && pj.dialogo?.tipo === "agregar") { const x = pj.dialogo; x.titulo = $("#p-titulo")?.value ?? x.titulo; x.elegido = d.pContenido; api.pintar(); return true; }
@@ -1605,7 +1618,8 @@
         case "p-volver-entrada": { const x = pj.dialogo; x.paso = "entrada"; x.det = null; api.pintar(); return true; }
         case "p-agregar-enviar": enviarAgregar(); return true;
         case "p-a-libro": { const x = pj.dialogo; pj.dialogo = { tipo: "nuevo-proyecto", t: "libro", paso: "detectado", det: x.det, titulo: $("#p-titulo")?.value || x.titulo, texto: x.texto, archivos: x.archivos, leyendo: 0 }; api.pintar(); return true; }
-        case "p-crear-libro": { const x = pj.dialogo, titulo = ($("#p-titulo")?.value || x.titulo || "").trim(); if (!titulo) { toast("Ponle un nombre"); return true; } x.titulo = titulo; x.paso = "creando"; enviar("crear", { token: x.det.token, titulo, idioma: E.idioma }); api.pintar(); return true; }
+        case "p-crear-libro": { const x = pj.dialogo, titulo = ($("#p-titulo")?.value || x.titulo || "").trim(); if (!titulo) { toast("Ponle un nombre"); return true; } const carpeta = x.paso === "carpeta"; x.titulo = titulo; x.paso = "creando"; enviar("crear", carpeta ? { desde_carpeta: true, titulo, idioma: E.idioma } : { token: x.det.token, titulo, idioma: E.idioma }); api.pintar(); return true; }
+        case "p-vincular": pj.dialogo = null; enviar("vincular"); api.pintar(); return true;
         case "p-elegir-codigo": pj.dialogo = null; pj.pedido = true; host.enviar("elegirCarpeta", { proyecto: true }); api.pintar(); return true;
         case "p-preg-siguiente": responderPregunta("siguiente"); return true;
         case "p-preg-nose": responderPregunta("nose"); return true;

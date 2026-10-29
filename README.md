@@ -41,6 +41,15 @@ formato que GitHub ya muestra (Markdown con bloques ```` ```mermaid ```` y archi
   guardado apenas está listo, aunque cierres la ventana, y puedes seguir trabajando; uno que falla se reintenta solo. **«Código»**
   muestra todos los archivos del proyecto con una marca en los que tu IA leyó (el código no se abre en Esquema: lo lee tu IA), y la
   documentación se ordena según el tipo de proyecto (app, biblioteca, sitio, varias partes o documentos).
+- **Agrega lo que tengas.** «Agregar» recibe una historia de usuario, un acta, una especificación o un libro (pegado o en un archivo:
+  Markdown, texto, PDF, Word, OpenDocument, EPUB o HTML). Esquema adivina qué es y te dice por qué; el original queda guardado tal cual.
+- **Historias de usuario.** Tu IA la entiende con tu documentación, te pregunta lo que falta (una pregunta a la vez, cuando
+  quieras) y la documenta con criterios, partes que toca y un diagrama. **Tu IA no programa.** Cada historia pasa por Por entender →
+  Lista → En desarrollo → Terminada, y «Terminé el desarrollo» cuenta cómo quedó según los commits.
+- **Libros.** Un proyecto de tipo Libro se parte en capítulos, con resúmenes, el mapa de ideas y personajes, la línea de tiempo,
+  material de estudio (esquema, preguntas y tarjetas) y «Revisar incongruencias», con la cita y dónde está. Los tipos de proyecto son
+  archivos abiertos en `tipos/`.
+- **Borrar con «Deshacer»** y **publicar en la wiki de GitHub** con tu git, sin tocar las páginas que escribiste a mano.
 - **Todo conectado.** Pantallas, botones y servicios son **elementos** (`esquema.json`); los diagramas y los textos los enlazan. Si
   renombras o quitas un botón, Esquema muestra cada documento y diagrama que cambia (antes y después, lo que queda suelto) y lo
   aplica todo en una sola versión que puedes deshacer. Si algo ahora funciona distinto, tu IA propone el cambio en cada documento.
@@ -208,6 +217,15 @@ already renders (Markdown with ```` ```mermaid ```` blocks and `.mmd` files), pl
   going. Each one is saved as soon as it's ready, even if you close the window, and you can keep working; a failed one is retried on
   its own. **“Code”** shows every file in the project, marking the ones your AI read (code doesn't open in Esquema: your AI reads it),
   and the documentation is organized for the kind of project (app, library, site, several parts or writing).
+- **Add what you have.** «Add» takes a user story, minutes, a spec or a book (pasted or as a file: Markdown, text, PDF, Word,
+  OpenDocument, EPUB or HTML). Esquema guesses what it is and tells you why; the original is kept as is.
+- **User stories.** Your AI understands it with your documentation, asks what's missing (one question at a time, whenever you
+  want) and documents it with criteria, affected parts and a diagram. **Your AI doesn't code.** Each story goes To understand →
+  Ready → In development → Done, and «I finished the development» tells how it turned out from the commits.
+- **Books.** A Book project is split into chapters, with summaries, the map of ideas and characters, the timeline, study material
+  (outline, questions and flashcards) and «Check inconsistencies», with the quote and where it is. Project types are open files in
+  `tipos/`.
+- **Delete with «Undo»** and **publish to the GitHub wiki** with your git, never touching pages you wrote by hand.
 - **Everything connected.** Screens, buttons and services are **elements** (`esquema.json`) that diagrams and text link to. Rename
   or remove a button and Esquema previews every document and diagram that changes, then applies it all as one version you can undo.
 - **Versions.** Each “Save version” is a git commit of **only** the documentation folder (without git, a copy in `.versiones/`).

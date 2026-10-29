@@ -161,15 +161,43 @@ def _hu_existentes(L):
 
 
 # ───────────── crear: un proyecto Libro nuevo ─────────────
+def _entrada_carpeta(e):
+    """Los textos de la carpeta abierta como un solo libro (una carpeta de escritos: capítulos en .md, un PDF, un EPUB…), en orden.
+    Los archivos se leen donde están; al proyecto Libro va su texto (fuentes/<nombre>.md)."""
+    base = P.base_de(e)
+    rutas, _ = comun.recorrer(base, maximo=400)
+    partes, total = [], 0
+    for r in sorted(rutas, key=lambda x: (x.count("/"), x.lower())):
+        if C.extension(r) not in C.LEE or os.path.basename(r).lower() in ("license.md", "changelog.md", "contributing.md", "code_of_conduct.md"):
+            continue
+        ruta = os.path.join(base, *r.split("/"))
+        try:
+            if os.path.getsize(ruta) > C.MAX_ARCHIVO:
+                continue
+            with open(ruta, "rb") as f:
+                x = C.extraer(r, f.read())
+        except (OSError, C.NoSePuede):
+            continue
+        texto = x["texto"] if x["texto"].lstrip().startswith("#") else f"# {os.path.splitext(os.path.basename(r))[0]}\n\n{x['texto']}"
+        partes.append(texto)
+        total += len(texto)
+        if total > C.MAX_TEXTO:
+            break
+    if not partes:
+        raise ValueError("No encontré textos que pueda leer en esta carpeta (.md, .txt, PDF, Word, EPUB…).")
+    return {"texto": "\n\n".join(partes)[:C.MAX_TEXTO], "titulo": os.path.basename(base), "originales": [], "carpeta": None}
+
+
 def crear(e):
-    entrada = _entrada(e.get("token"))
+    entrada = _entrada_carpeta(e) if e.get("desde_carpeta") else _entrada(e.get("token"))
     titulo = _titulo(e, entrada)
     idioma = "en" if e.get("idioma") == "en" else "es"
     if len(entrada["texto"]) < 200:
         raise ValueError("Ese texto es muy corto para un libro. Agrégalo a un proyecto como documento.")
     destino = LB.crear_proyecto(titulo, idioma)
     t = LB.nuevo_libro(destino, entrada, titulo, idioma)
-    shutil.rmtree(entrada["carpeta"], ignore_errors=True)
+    if entrada.get("carpeta"):
+        shutil.rmtree(entrada["carpeta"], ignore_errors=True)
     indice = next(i for i, p in enumerate(P.recientes()) if os.path.realpath(p["ruta"]) == destino)
     return {"ok": True, "indice": indice, "ubicacion": P.ubicacion(destino), "recientes": P.para_interfaz(P.recientes()), "trabajo": t.vista()}
 

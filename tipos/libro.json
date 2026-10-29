@@ -9,7 +9,7 @@
   "secciones": [
     {"id": "libro", "nombre": {"es": "El libro", "en": "The book"}, "icono": "libro", "carpetas": [""], "tipos": ["libro", "vision", "otro"]},
     {"id": "capitulos", "nombre": {"es": "Capítulos", "en": "Chapters"}, "icono": "doc", "carpetas": ["capitulos"]},
-    {"id": "estudio", "nombre": {"es": "Para estudiar", "en": "Study material"}, "icono": "listo", "carpetas": ["estudio"]},
+    {"id": "estudio", "nombre": {"es": "Para estudiar", "en": "Study material"}, "icono": "tarjetas", "carpetas": ["estudio"]},
     {"id": "revision", "nombre": {"es": "Revisión", "en": "Review"}, "icono": "chispa", "tipos": ["revision"]},
     {"id": "documentos", "nombre": {"es": "Notas", "en": "Notes"}, "icono": "doc", "carpetas": []},
     {"id": "fuentes", "nombre": {"es": "Original", "en": "Original"}, "icono": "archivo", "carpetas": ["fuentes"]},
