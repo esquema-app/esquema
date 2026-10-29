@@ -48,6 +48,7 @@ import asistente
 import carpeta as carpeta_mod
 import comun
 import ia
+import tipos as tipos_mod
 
 DOCS_DEFECTO = "docs/esquema"
 ESQUEMA = "esquema.json"
@@ -58,8 +59,10 @@ MAX_LEER = 60_000          # por archivo que va a la IA
 MAX_ENVIO = 260_000        # todo lo que va a la IA en un pedido
 MAX_DOC = 200_000          # un documento propuesto o enviado
 MAX_PROYECTOS = 30
-TIPOS_ELEMENTO = ("pantalla", "boton", "accion", "servicio", "modulo", "dato", "actor", "otro")
-TIPOS_DOCUMENTO = ("vision", "arquitectura", "flujo", "glosario", "otro")
+TIPOS_ELEMENTO = tipos_mod.TIPOS_ELEMENTO
+TIPOS_DOCUMENTO = tipos_mod.TIPOS_DOCUMENTO
+#: Los originales que se agregan a un proyecto (en fuentes/, tal cual: son de la persona).
+EXT_FUENTE = ("md", "txt", "pdf", "docx", "epub", "odt", "html", "htm")
 ID = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 TAREAS = ("inicial", "flujo", "cambio", "revisar", "completar")
 #: Revisión a fondo: la IA lee la carpeta del código por su cuenta (solo leer). Lo que nunca puede abrir:
@@ -120,14 +123,22 @@ def vinculo(base):
     return None
 
 
+def sola(base):
+    """¿La carpeta es un proyecto que es solo documentación (un libro), sin carpeta de código?"""
+    return any(p.get("sola") and os.path.realpath(p["ruta"]) == base for p in recientes())
+
+
 def lugares(e):
-    """Dónde está cada cosa: {codigo, dir_docs, docs, repo, spec, vinculado}. «repo» y «spec» son dónde y qué versiona git."""
+    """Dónde está cada cosa: {codigo, dir_docs, docs, repo, spec, vinculado, sola}. «repo» y «spec» son dónde y qué versiona git.
+    En un proyecto que es solo documentación (un libro), «codigo» es None."""
     base = base_de(e)
+    if sola(base):
+        return {"codigo": None, "dir_docs": base, "docs": "", "repo": base, "spec": ".", "vinculado": True, "sola": True}
     cod = vinculo(base)
     if cod:
-        return {"codigo": cod, "dir_docs": base, "docs": "", "repo": base, "spec": ".", "vinculado": True}
+        return {"codigo": cod, "dir_docs": base, "docs": "", "repo": base, "spec": ".", "vinculado": True, "sola": False}
     docs = docs_de(base, e)
-    return {"codigo": base, "dir_docs": ruta_docs(base, docs), "docs": docs, "repo": base, "spec": docs, "vinculado": False}
+    return {"codigo": base, "dir_docs": ruta_docs(base, docs), "docs": docs, "repo": base, "spec": docs, "vinculado": False, "sola": False}
 
 
 def ubicacion(ruta):
@@ -140,6 +151,11 @@ def doc_valido(r):
     """Ruta de un documento dentro de la carpeta de docs: «arquitectura.md», «flujos/grabar.md» (hasta dos carpetas)."""
     return (isinstance(r, str) and 0 < len(r) <= 160 and re.fullmatch(r"[\w.-]+(/[\w.-]+){0,2}\.(md|mmd)", r) is not None
             and not any(p.startswith(".") for p in r.split("/")))
+
+
+def fuente_valida(r):
+    """Un original en fuentes/ («fuentes/hu-12-pagar.md», «fuentes/el-libro.pdf»): un solo nivel, extensión conocida."""
+    return (isinstance(r, str) and 0 < len(r) <= 160 and re.fullmatch(r"fuentes/[\w-][\w.-]*\.(" + "|".join(EXT_FUENTE) + ")", r) is not None)
 
 
 def codigo_valido(r):
@@ -171,9 +187,11 @@ def validar_elemento(el):
 def validar_esquema(x):
     if not isinstance(x, dict):
         return ["no es un objeto"]
-    e = [f"campo desconocido: {k}" for k in x if k not in ("formato", "nombre", "descripcion", "documentos", "elementos", "fuentes")]
+    e = [f"campo desconocido: {k}" for k in x if k not in ("formato", "tipo", "nombre", "descripcion", "documentos", "elementos", "fuentes")]
     if x.get("formato") != 1:
         e.append("formato")
+    if "tipo" in x and not (isinstance(x["tipo"], str) and len(x["tipo"]) <= 40 and ID.fullmatch(x["tipo"])):
+        e.append("tipo")
     if not isinstance(x.get("nombre"), str) or not x["nombre"].strip() or len(x["nombre"]) > 80:
         e.append("nombre")
     if "descripcion" in x and (not isinstance(x["descripcion"], str) or len(x["descripcion"]) > 1000):
@@ -184,7 +202,8 @@ def validar_esquema(x):
     else:
         vistas = set()
         for d in docs:
-            if (not isinstance(d, dict) or set(d) - {"ruta", "titulo", "tipo"} or not doc_valido(d.get("ruta")) or d.get("tipo") not in TIPOS_DOCUMENTO
+            ruta_ok = fuente_valida(d.get("ruta")) if isinstance(d, dict) and d.get("tipo") == "fuente" else doc_valido(d.get("ruta") if isinstance(d, dict) else None)
+            if (not isinstance(d, dict) or set(d) - {"ruta", "titulo", "tipo"} or not ruta_ok or d.get("tipo") not in TIPOS_DOCUMENTO
                     or not isinstance(d.get("titulo"), str) or not d["titulo"].strip() or len(d["titulo"]) > 120 or d["ruta"] in vistas):
                 e.append("documento: " + json.dumps(d, ensure_ascii=False)[:60])
                 continue
@@ -229,7 +248,7 @@ def leer_esquema(dir_docs):
 
 def texto_esquema(x):
     """Siempre con el mismo orden de claves: así el diff de git es chico y legible."""
-    orden = ["formato", "nombre", "descripcion", "documentos", "elementos", "fuentes"]
+    orden = ["formato", "tipo", "nombre", "descripcion", "documentos", "elementos", "fuentes"]
     limpio = {k: x[k] for k in orden if k in x}
     limpio["documentos"] = [{k: d[k] for k in ("ruta", "titulo", "tipo")} for d in x["documentos"]]
     limpio["elementos"] = [{k: el[k] for k in ("id", "tipo", "nombre", "descripcion", "codigo") if k in el} for el in x["elementos"]]
@@ -244,34 +263,58 @@ def _ruta_recientes():
 
 
 def recientes():
+    """[{ruta, nombre, docs, codigo?, sola?, tipo?}]: con `codigo`, la documentación aparte de un repo; con `sola`, un proyecto que es
+    solo documentación (un libro); sin nada, los de antes (docs/esquema dentro del repo)."""
     d = comun.leer_json(_ruta_recientes(), {}) or {}
     r = []
     for p in d.get("recientes", []) if isinstance(d, dict) else []:
         if isinstance(p, dict) and isinstance(p.get("ruta"), str) and os.path.isabs(p["ruta"]) and isinstance(p.get("nombre"), str):
+            extra = {"tipo": p["tipo"]} if isinstance(p.get("tipo"), str) and ID.fullmatch(p["tipo"]) and len(p["tipo"]) <= 40 else {}
+            if isinstance(p.get("wiki"), str) and _url_wiki_valida(p["wiki"]):
+                extra["wiki"] = p["wiki"]
             if isinstance(p.get("codigo"), str) and os.path.isabs(p["codigo"]):
-                r.append({"ruta": p["ruta"], "nombre": p["nombre"][:80], "docs": "", "codigo": p["codigo"]})
+                r.append({"ruta": p["ruta"], "nombre": p["nombre"][:80], "docs": "", "codigo": p["codigo"], **extra})
+                continue
+            if p.get("sola") is True:
+                r.append({"ruta": p["ruta"], "nombre": p["nombre"][:80], "docs": "", "sola": True, **extra})
                 continue
             try:
                 docs = carpeta_docs(p.get("docs"))
             except ValueError:
                 docs = DOCS_DEFECTO
-            r.append({"ruta": p["ruta"], "nombre": p["nombre"][:80], "docs": docs})
+            r.append({"ruta": p["ruta"], "nombre": p["nombre"][:80], "docs": docs, **extra})
     return r[:MAX_PROYECTOS]
 
 
-def recordar(base, nombre, docs, codigo=None):
-    """El proyecto queda primero en la lista (conserva su vínculo con el código si ya lo tenía)."""
-    anterior = next((p for p in recientes() if os.path.realpath(p["ruta"]) == base), None)
-    codigo = codigo or (anterior or {}).get("codigo")
+def _url_wiki_valida(u):
+    return isinstance(u, str) and len(u) <= 300 and re.fullmatch(r"(https://[\w.-]+/[\w.-]+/[\w.-]+?(\.wiki)?(\.git)?/?|git@[\w.-]+:[\w.-]+/[\w.-]+?(\.wiki)?(\.git)?)", u) is not None
+
+
+def recordar(base, nombre, docs, codigo=None, sola=None, tipo=None, wiki=None):
+    """El proyecto queda primero en la lista (conserva su vínculo con el código, su tipo y su wiki si ya los tenía)."""
+    anterior = next((p for p in recientes() if os.path.realpath(p["ruta"]) == base), None) or {}
+    codigo = codigo or anterior.get("codigo")
+    sola = sola if sola is not None else anterior.get("sola")
+    tipo = tipo or anterior.get("tipo")
+    wiki = wiki if wiki is not None else anterior.get("wiki")
     lista = [p for p in recientes() if os.path.realpath(p["ruta"]) != base]
-    lista.insert(0, {"ruta": base, "nombre": str(nombre)[:80], "docs": "" if codigo else docs, **({"codigo": codigo} if codigo else {})})
+    x = {"ruta": base, "nombre": str(nombre)[:80], "docs": "" if codigo or sola else docs}
+    if codigo:
+        x["codigo"] = codigo
+    elif sola:
+        x["sola"] = True
+    if tipo and tipo != tipos_mod.DEFECTO:
+        x["tipo"] = tipo
+    if wiki:
+        x["wiki"] = wiki
+    lista.insert(0, x)
     comun.carpeta_privada(comun.carpeta_app())
     comun.escribir_json(_ruta_recientes(), {"recientes": lista[:MAX_PROYECTOS]})
 
 
 def para_interfaz(lista):
     """Los proyectos como los ve la interfaz: nombre, dónde está la documentación y el nombre de la carpeta del código."""
-    return [{"nombre": p["nombre"], "ruta": p["ruta"], "ubicacion": ubicacion(os.path.realpath(p["ruta"])),
+    return [{"nombre": p["nombre"], "ruta": p["ruta"], "ubicacion": ubicacion(os.path.realpath(p["ruta"])), "tipo": p.get("tipo") or tipos_mod.DEFECTO,
              **({"codigo": os.path.basename(p["codigo"].rstrip("/\\"))} if p.get("codigo") else {})} for p in lista]
 
 
@@ -394,6 +437,8 @@ def cambios_vinculado(codigo, dir_docs):
 
 
 def cambios(L):
+    if not L["codigo"]:
+        return None
     return cambios_vinculado(L["codigo"], L["dir_docs"]) if L["vinculado"] else cambios_codigo(L["codigo"], L["docs"])
 
 
@@ -449,6 +494,8 @@ def archivos_del_repo(base):
 
 def leer(e):
     L = lugares(e)
+    if not L["codigo"]:
+        raise ValueError("Este proyecto no tiene una carpeta de código.")
     base, docs = L["codigo"], L["docs"]
     rutas, omitidos = archivos_del_repo(base)
     conjunto = set(rutas)
@@ -524,15 +571,23 @@ def abrir(e):
     L = lugares(e)
     esquema, error = leer_esquema(L["dir_docs"])
     r = {"ok": True, "existe": esquema is not None, "docs": L["docs"], "esquema": esquema, "error": error, "vinculado": L["vinculado"],
-         "ubicacion": ubicacion(L["dir_docs"]), "codigo": os.path.basename(L["codigo"]), "recientes": para_interfaz(recientes())}
+         "sola": L["sola"], "ubicacion": ubicacion(L["dir_docs"]), "codigo": os.path.basename(L["codigo"]) if L["codigo"] else "",
+         "tipo": (esquema or {}).get("tipo") or next((p.get("tipo") for p in recientes() if os.path.realpath(p["ruta"]) == base), None) or tipos_mod.DEFECTO,
+         "recientes": para_interfaz(recientes())}
     if L["vinculado"] and esquema is None:
         r["vacio"] = True  # recién vinculado: falta escribir la documentación
     if esquema is not None:
-        recordar(base, esquema["nombre"], L["docs"])
+        recordar(base, esquema["nombre"], L["docs"], tipo=esquema.get("tipo"))
         r["recientes"] = para_interfaz(recientes())
-        r["git"] = {"hay": es_repo(L["codigo"])}
+        r["git"] = {"hay": es_repo(L["codigo"] or L["repo"])}
         r["cambios"] = cambios(L) if r["git"]["hay"] else None
         r["pendiente"] = versiones(e)["pendiente"]
+        import historias
+        import trabajos
+        r["historias"] = historias.listar(L)
+        r["esperan"] = [t.vista() for t in trabajos.esperando(base)][:20]
+        import wiki
+        r["wiki"] = bool(wiki.url_de(e, L))
     return r
 
 
@@ -567,6 +622,8 @@ def _archivo(base, rel, conjunto, maximo):
 def piezas(e):
     """Todo lo que se manda a la IA, en orden. «Ver lo que se envía» muestra exactamente esto."""
     L = lugares(e)
+    if not L["codigo"]:
+        raise ValueError("Este proyecto no tiene una carpeta de código.")
     base, docs = L["codigo"], L["docs"]
     tarea = e.get("tarea") if e.get("tarea") in TAREAS else "inicial"
     rutas, _ = archivos_del_repo(base)
@@ -1057,8 +1114,8 @@ def _destino(codigo, rel):
 
 def destinos(e):
     L = lugares(e)
-    if not L["vinculado"]:
-        raise ValueError("Esta documentación ya está dentro del proyecto.")
+    if not L["vinculado"] or not L["codigo"]:
+        raise ValueError("Esta documentación ya está dentro del proyecto." if L["codigo"] else "Este proyecto no tiene una carpeta de código.")
     estados = {}
     for rel in list(e.get("rutas") or [])[:200]:
         ruta = _destino(L["codigo"], rel) if isinstance(rel, str) else None
@@ -1075,8 +1132,8 @@ def destinos(e):
 def pasar(e):
     """Copia al repo los documentos que la persona eligió. Lo que ya existe se reemplaza solo si lo pidió."""
     L = lugares(e)
-    if not L["vinculado"]:
-        raise ValueError("Esta documentación ya está dentro del proyecto.")
+    if not L["vinculado"] or not L["codigo"]:
+        raise ValueError("Esta documentación ya está dentro del proyecto." if L["codigo"] else "Este proyecto no tiene una carpeta de código.")
     escritos, saltados = [], []
     for a in list(e.get("archivos") or [])[:200]:
         if not isinstance(a, dict):
@@ -1103,7 +1160,7 @@ def pasar(e):
 # ───────────── Los documentos del código (proyecto con la documentación aparte) ─────────────
 def _carpeta_codigo(e):
     L = lugares(e)
-    if not L["vinculado"] or not os.path.isdir(L["codigo"]):
+    if not L["vinculado"] or not L["codigo"] or not os.path.isdir(L["codigo"]):
         raise ValueError("Este proyecto no tiene una carpeta de código vinculada.")
     return L["codigo"]
 
@@ -1131,6 +1188,8 @@ def arbol(e):
     {archivos: [[ruta, tamaño, clase]], omitidos, perfil, lecturas: {ruta: {f, c?}}, md: true si los .md se abren con @codigo/}."""
     import inventario as inv
     L = lugares(e)
+    if not L["codigo"]:
+        return {"ok": True, "nombre": "", "ubicacion": "", "vinculado": True, "sin_codigo": True, "archivos": [], "omitidos": 0, "perfil": None, "lecturas": {}}
     x = inv.inventario(L["codigo"], excluir="" if L["vinculado"] else L["docs"] if leer_esquema(L["dir_docs"])[0] else "")
     pid = inv.id_proyecto(base_de(e))
     inv.guardar_perfil(pid, x["perfil"])
@@ -1145,11 +1204,33 @@ def _documentar(orden):
     return f
 
 
+def _agregar(orden):
+    def f(e):
+        import agregar
+        return agregar.ORDENES[orden](e)
+    return f
+
+
+def _wiki(orden):
+    def f(e):
+        import wiki
+        return getattr(wiki, orden)(e)
+    return f
+
+
 ORDENES = {"abrir": abrir, "leer": leer, "preparar": preparar, "generar": generar, "guardar": guardar, "version": version,
            "versiones": versiones, "ver": ver, "restaurar": restaurar, "vincular": vincular, "mover": mover, "destinos": destinos,
            "pasar": pasar, "codigo": codigo, "codigo_leer": codigo_leer, "codigo_guardar": codigo_guardar,
            "arbol": arbol, "documentar": _documentar("documentar"), "trabajo": _documentar("trabajo"), "detener": _documentar("detener"),
-           "quitar": _documentar("quitar")}
+           "quitar": _documentar("quitar"), "detectar": _agregar("detectar"), "agregar": _agregar("agregar"), "crear": _agregar("crear"),
+           "responder": _agregar("responder"), "continuar": _agregar("continuar"), "borrar": _agregar("borrar"), "recuperar": _agregar("recuperar"),
+           "historia_estado": _agregar("historia_estado"), "historia_cierre": _agregar("historia_cierre"), "estudiar": _agregar("estudiar"),
+           "incongruencias": _agregar("incongruencias"), "wiki_preparar": _wiki("preparar"), "wiki_publicar": _wiki("publicar")}
+#: Las órdenes largas: las apps les pasan ESQUEMA_PROGRESO y mandan sus eventos a la interfaz (`proyectoProgreso`). La misma lista
+#: en Ventana.ordenesConProgreso (Mac) y ORDENES_CON_PROGRESO (main.js); pruebas/contrato.py lo revisa.
+CON_PROGRESO = ("documentar", "agregar", "crear", "responder", "continuar", "historia_cierre", "estudiar", "incongruencias")
+#: Las que se pueden pedir sin una carpeta abierta (crear un proyecto Libro desde cero). Ventana.ordenesSinCarpeta / ORDENES_SIN_CARPETA.
+SIN_CARPETA = ("detectar", "crear")
 
 
 def main(args):
@@ -1157,6 +1238,8 @@ def main(args):
         print(__doc__)
         return 2
     entrada = comun.leer_json(args[1], {}) or {}
+    if isinstance(entrada, dict) and args[0] in SIN_CARPETA and not entrada.get("carpeta"):
+        entrada.pop("carpeta", None)
     try:
         r = ORDENES[args[0]](entrada if isinstance(entrada, dict) else {})
     except ValueError as ex:

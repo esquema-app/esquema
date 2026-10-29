@@ -9,9 +9,12 @@ Un trabajo corre por etapas y deja TODO en disco a medida que avanza, así nada 
   queda «interrumpido», listo para «Seguir» (lo ya hecho no se repite);
 - «Detener» deja el archivo trabajos/<id>.detener: el trabajo lo ve, corta la IA y queda «detenido».
 
+- «esperando»: el trabajo le preguntó algo a la persona (publico.preguntas) y terminó su proceso; todo queda en disco y la respuesta lo
+  retoma (orden `responder`). Un trabajo que espera no se borra con los viejos.
+
 Cómo se agrega un tipo de trabajo nuevo: ver AGENTS.md («Trabajos»). En corto: un módulo con ETAPAS y una función correr(t) que
-avanza con t.etapa(...), t.items, t.guardar() y t.detenido(); se registra en TIPOS (proyecto.py) y la interfaz lo muestra con la
-misma tarjeta (etapas + lista de ítems con su estado).
+avanza con t.etapa(...), t.items, t.guardar() y t.detenido(); si necesita a la persona, t.esperar(preguntas); se registra en las órdenes
+de proyecto.py y la interfaz lo muestra con la misma tarjeta (etapas + lista de ítems con su estado) y la tarjeta de preguntas.
 """
 import datetime
 import json
@@ -120,6 +123,24 @@ class Trabajo:
         except OSError:
             pass
 
+    def esperar(self, preguntas, **publico):
+        """Le pregunta algo a la persona: queda «esperando» con las preguntas (ya validadas) y el proceso termina. La respuesta llega
+        con la orden `responder` y el trabajo sigue donde quedó."""
+        with self._lock:
+            self.x.setdefault("publico", {}).update({"preguntas": preguntas, **publico})
+            self.x["publico"].pop("visto", None)
+            self.x.update({"estado": "esperando", "fin": ahora(), "error": "", "leyendo": ""})
+            self.guardar()
+        self._latiendo = False
+
+    def seguir(self):
+        """Vuelve a correr (después de «responder», «Seguir» o «Reintentar»)."""
+        with self._lock:
+            self.x.update({"estado": "corriendo", "error": "", "latido": time.time()})
+            self.x.pop("fin", None)
+            self.x.setdefault("publico", {}).pop("preguntas", None)
+            self.guardar()
+
     def item(self, ruta):
         return next((i for i in self.x["items"] if i["ruta"] == ruta), None)
 
@@ -182,27 +203,68 @@ def estado_real(x):
     return x.get("estado")
 
 
-def del_proyecto(proyecto, tipo=None):
-    """El último trabajo de esta carpeta (el más nuevo primero), o None."""
+def _nombres():
     try:
-        nombres = sorted((n for n in os.listdir(carpeta()) if n.endswith(".json") and id_valido(n[:-5])), reverse=True)
+        return sorted((n for n in os.listdir(carpeta()) if n.endswith(".json") and id_valido(n[:-5])), reverse=True)
     except OSError:
-        return None
-    for n in nombres[:MAX_GUARDADOS]:
+        return []
+
+
+def del_proyecto(proyecto, tipo=None):
+    """El último trabajo de esta carpeta (el más nuevo primero), o None. `tipo`: uno o varios tipos de trabajo."""
+    tipos = (tipo,) if isinstance(tipo, str) else tipo
+    for n in _nombres()[:MAX_GUARDADOS * 3]:
         x = comun.leer_json(os.path.join(carpeta(), n), None)
-        if isinstance(x, dict) and x.get("proyecto") == proyecto and (tipo is None or x.get("tipo") == tipo):
+        if isinstance(x, dict) and x.get("proyecto") == proyecto and (tipos is None or x.get("tipo") in tipos):
             return Trabajo(x)
     return None
 
 
+def esperando(proyecto):
+    """Los trabajos de esta carpeta que esperan respuestas de la persona (el más nuevo primero)."""
+    r = []
+    for n in _nombres()[:MAX_GUARDADOS * 3]:
+        x = comun.leer_json(os.path.join(carpeta(), n), None)
+        if isinstance(x, dict) and x.get("proyecto") == proyecto and x.get("estado") == "esperando":
+            r.append(Trabajo(x))
+    return r
+
+
 def limpiar_viejos():
-    try:
-        nombres = sorted((n for n in os.listdir(carpeta()) if n.endswith(".json") and id_valido(n[:-5])), reverse=True)
-    except OSError:
-        return
-    for n in nombres[MAX_GUARDADOS:]:
+    nombres = _nombres()
+    # Los que esperan respuestas no se borran: son de la persona hasta que responda o los descarte.
+    viejos = [n for n in nombres[MAX_GUARDADOS:] if (comun.leer_json(os.path.join(carpeta(), n), {}) or {}).get("estado") != "esperando"]
+    for n in viejos:
         for ext in (".json", ".antes.json", ".detener"):
             try:
                 os.unlink(os.path.join(carpeta(), n[:-5] + ext))
             except OSError:
                 pass
+
+
+def limpiar_preguntas(lista, prefijo, maximo=5):
+    """Las preguntas para la persona, validadas: [{id, pregunta, porque, opciones}] (de la IA o fijas). Lo que no sirve se descarta."""
+    r = []
+    for p in lista if isinstance(lista, list) else []:
+        if not isinstance(p, dict) or not isinstance(p.get("pregunta"), str) or not p["pregunta"].strip():
+            continue
+        opciones = [re.sub(r"\s+", " ", o).strip()[:100] for o in (p.get("opciones") or []) if isinstance(o, str) and o.strip()][:5]
+        r.append({"id": f"{prefijo}-{len(r) + 1}", "pregunta": re.sub(r"\s+", " ", p["pregunta"]).strip()[:300],
+                  "porque": re.sub(r"\s+", " ", str(p.get("porque") or "")).strip()[:200], "opciones": list(dict.fromkeys(opciones))})
+        if len(r) >= maximo:
+            break
+    return r
+
+
+def limpiar_respuestas(respuestas, preguntas):
+    """Lo que respondió la persona, contra las preguntas que se le hicieron: {id: {respuesta, nose, saltada}}. Lo desconocido se ignora."""
+    ids = {p["id"] for p in preguntas}
+    r = {}
+    for x in respuestas if isinstance(respuestas, list) else []:
+        if not isinstance(x, dict) or x.get("id") not in ids:
+            continue
+        texto = re.sub(r"\s+", " ", str(x.get("respuesta") or "")).strip()[:1000]
+        r[x["id"]] = {"respuesta": texto, "nose": bool(x.get("nose")) and not texto, "saltada": not texto and not x.get("nose")}
+    for i in ids - set(r):
+        r[i] = {"respuesta": "", "nose": False, "saltada": True}
+    return r

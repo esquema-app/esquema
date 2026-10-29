@@ -173,12 +173,14 @@ def validar_plan(texto, perfil, existentes=(), solo_faltan=False):
     return {"tipo": tipo, "resumen": resumen, "componentes": componentes[:12], "elementos": elementos, "documentos": documentos}, descartados
 
 
-ORDEN_CARPETA = {"": 0, "componentes": 1, "flujos": 2, "secciones": 3, "diagramas": 4}
-ORDEN_TIPO = {"vision": 0, "arquitectura": 1, "otro": 2, "flujo": 3, "glosario": 9}
+ORDEN_CARPETA = {"": 0, "componentes": 1, "flujos": 2, "secciones": 3, "diagramas": 4, "capitulos": 5, "historias": 6, "estudio": 7,
+                 "documentos": 8, "fuentes": 10}
+ORDEN_TIPO = {"vision": 0, "libro": 0, "arquitectura": 1, "otro": 2, "revision": 2, "flujo": 3, "glosario": 9}
 
 
 def orden_doc(d):
-    """Visión arriba, arquitectura, lo de la raíz, componentes, flujos, secciones, diagramas."""
+    """Visión arriba, arquitectura, lo de la raíz, componentes, flujos, secciones, diagramas, capítulos, historias, estudio, documentos
+    y los originales al final (lo mismo que ordenDocs en ui/proyectos.js)."""
     carpeta = d["ruta"].split("/")[0] if "/" in d["ruta"] else ""
     return (ORDEN_TIPO.get(d["tipo"], 2) if not carpeta else 5, ORDEN_CARPETA.get(carpeta, 6), d["ruta"])
 
@@ -312,8 +314,8 @@ def limpiar_respuesta_doc(texto, titulo):
 
 # ───────────── El glosario (lo mismo que M.glosario en ui/motor/proyecto.js) ─────────────
 NOMBRE_TIPO = {
-    "es": {"pantalla": "Pantallas", "boton": "Botones", "accion": "Acciones", "servicio": "Servicios", "modulo": "Módulos y archivos", "dato": "Datos", "actor": "Personas y sistemas", "otro": "Otros"},
-    "en": {"pantalla": "Screens", "boton": "Buttons", "accion": "Actions", "servicio": "Services", "modulo": "Modules and files", "dato": "Data", "actor": "People and systems", "otro": "Other"},
+    "es": {"pantalla": "Pantallas", "boton": "Botones", "accion": "Acciones", "servicio": "Servicios", "modulo": "Módulos y archivos", "dato": "Datos", "actor": "Personas y sistemas", "personaje": "Personajes", "concepto": "Conceptos", "lugar": "Lugares", "otro": "Otros"},
+    "en": {"pantalla": "Screens", "boton": "Buttons", "accion": "Actions", "servicio": "Services", "modulo": "Modules and files", "dato": "Data", "actor": "People and systems", "personaje": "Characters", "concepto": "Concepts", "lugar": "Places", "otro": "Other"},
 }
 
 
@@ -343,8 +345,16 @@ def _antes_ruta(t):
     return os.path.join(trabajos.carpeta(), t.id + ".antes.json")
 
 
+_lock_antes = threading.Lock()
+
+
 def _guardar_antes(t, dir_docs, rel):
     """Antes de escribir un documento por primera vez en este trabajo: cómo estaba (o null si no existía)."""
+    with _lock_antes:
+        _guardar_antes_(t, dir_docs, rel)
+
+
+def _guardar_antes_(t, dir_docs, rel):
     antes = comun.leer_json(_antes_ruta(t), {}) or {}
     if rel in antes:
         return
@@ -399,6 +409,55 @@ def _esquema_al_dia_(L, t, plan, nombre, idioma):
         _guardar_antes(t, L["dir_docs"], P.GLOSARIO)
         comun.escribir_atomico(g, nuevo)
     return x
+
+
+def registrar(dir_docs, t=None, documentos=(), elementos=(), nombre=None, idioma="es", tipo=None, quitar=()):
+    """Pone al día esquema.json (y el glosario) con documentos y elementos nuevos o que cambian; saca los de `quitar`. Lo usan los
+    trabajos de historias, libros y documentos. Si no había esquema.json, lo crea (con el tipo del proyecto). Devuelve el esquema."""
+    with _lock_esquema:
+        actual, _ = P.leer_esquema(dir_docs)
+        x = json.loads(json.dumps(actual)) if actual else {"formato": 1, "nombre": (nombre or os.path.basename(dir_docs) or "Proyecto")[:80], "documentos": [], "elementos": []}
+        if tipo and tipo != "software" and not x.get("tipo"):
+            x["tipo"] = tipo
+        for el in elementos:
+            if P.validar_elemento(el):
+                continue
+            k = next((i for i, y in enumerate(x["elementos"]) if y["id"] == el["id"]), None)
+            if k is None:
+                if len(x["elementos"]) < 1000:
+                    x["elementos"].append(el)
+            else:
+                x["elementos"][k] = {**x["elementos"][k], **{c: v for c, v in el.items() if c != "codigo" or v}}
+        x["documentos"] = [d for d in x["documentos"] if d["ruta"] not in set(quitar)]
+        for d in documentos:
+            y = next((y for y in x["documentos"] if y["ruta"] == d["ruta"]), None)
+            if y:
+                y.update({"titulo": d["titulo"][:120], "tipo": d["tipo"]})
+            elif len(x["documentos"]) < 300:
+                x["documentos"].append({"ruta": d["ruta"], "titulo": d["titulo"][:120], "tipo": d["tipo"]})
+        if not any(d["ruta"] == P.GLOSARIO for d in x["documentos"]):
+            x["documentos"].append({"ruta": P.GLOSARIO, "titulo": "Elements" if idioma == "en" else "Elementos", "tipo": "glosario"})
+        x["documentos"].sort(key=orden_doc)
+        if P.validar_esquema(x):
+            raise ValueError("No pude poner al día esquema.json: " + "; ".join(P.validar_esquema(x)[:2]))
+        comun.escribir_atomico(os.path.join(dir_docs, P.ESQUEMA), P.texto_esquema(x))
+        g = os.path.join(dir_docs, P.GLOSARIO)
+        nuevo = glosario(x, idioma)
+        if not os.path.isfile(g) or open(g, encoding="utf-8").read() != nuevo:
+            if t is not None:
+                _guardar_antes(t, dir_docs, P.GLOSARIO)
+            comun.escribir_atomico(g, nuevo)
+        return x
+
+
+def escribir_doc(t, dir_docs, ruta, texto):
+    """Escribe un documento al tiro (lo de antes queda en trabajos/<id>.antes.json para «Quitar este cambio»)."""
+    if t is not None:
+        _guardar_antes(t, dir_docs, ruta)
+    destino = os.path.realpath(os.path.join(dir_docs, *ruta.split("/")))
+    if os.path.commonpath([os.path.realpath(dir_docs), destino]) != os.path.realpath(dir_docs):
+        raise ValueError("Esa ruta está fuera de la documentación.")
+    comun.escribir_atomico(destino, texto)
 
 
 def _relativa(codigo, ruta):
@@ -581,7 +640,8 @@ def documentar(e):
     """{tarea: inicial | completar, idioma, pedido?, a_fondo?} empieza uno nuevo; {seguir: id} sigue uno interrumpido o detenido;
     {reintentar: id, ruta} vuelve a escribir un documento que falló (si el trabajo sigue corriendo, solo lo pone en su cola)."""
     base = P.base_de(e)
-    P.lugares(e)  # valida la carpeta (y que el código vinculado exista)
+    if not P.lugares(e)["codigo"]:  # valida la carpeta (y que el código vinculado exista)
+        raise ValueError("Este proyecto no tiene una carpeta de código.")
     if e.get("seguir") or e.get("reintentar"):
         t = trabajos.Trabajo.cargar(e.get("seguir") or e.get("reintentar"))
         if t.x.get("proyecto") != base:
@@ -654,7 +714,10 @@ def trabajo(e):
     if e.get("visto"):
         t.x.setdefault("publico", {})["visto"] = True
         t.guardar(emitir_estado=False)
-    return {"ok": True, "trabajo": t.vista()}
+    r = {"ok": True, "trabajo": t.vista(), "esperan": [x.vista() for x in trabajos.esperando(base)][:20]}
+    if e.get("propuestas") and isinstance(t.x.get("datos", {}).get("propuestas"), dict):
+        r["propuestas"] = t.x["datos"]["propuestas"]
+    return r
 
 
 def detener(e):

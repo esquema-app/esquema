@@ -1,0 +1,23 @@
+{
+  "formato": 1,
+  "id": "libro",
+  "icono": "libro",
+  "nombre": {"es": "Libro", "en": "Book"},
+  "descripcion": {"es": "Un libro o un texto largo, partido en capítulos para estudiarlo, resumirlo y revisarlo.", "en": "A book or a long text, split into chapters to study it, summarize it and review it."},
+  "fuente": "texto",
+  "elementos": ["personaje", "concepto", "lugar", "otro"],
+  "secciones": [
+    {"id": "libro", "nombre": {"es": "El libro", "en": "The book"}, "icono": "libro", "carpetas": [""], "tipos": ["libro", "vision", "otro"]},
+    {"id": "capitulos", "nombre": {"es": "Capítulos", "en": "Chapters"}, "icono": "doc", "carpetas": ["capitulos"]},
+    {"id": "estudio", "nombre": {"es": "Para estudiar", "en": "Study material"}, "icono": "listo", "carpetas": ["estudio"]},
+    {"id": "revision", "nombre": {"es": "Revisión", "en": "Review"}, "icono": "chispa", "tipos": ["revision"]},
+    {"id": "documentos", "nombre": {"es": "Notas", "en": "Notes"}, "icono": "doc", "carpetas": []},
+    {"id": "fuentes", "nombre": {"es": "Original", "en": "Original"}, "icono": "archivo", "carpetas": ["fuentes"]},
+    {"id": "elementos", "nombre": {"es": "Personajes y conceptos", "en": "Characters and concepts"}},
+    {"id": "versiones", "nombre": {"es": "Versiones", "en": "Versions"}}
+  ],
+  "falta": ["capitulos", "resumenes", "libro-readme", "estudio", "incongruencias", "elementos"],
+  "acciones": ["estudiar", "incongruencias", "diagrama", "agregar", "wiki"],
+  "nuevo": ["documento", "diagrama", "agregar"],
+  "agregar": ["documento"]
+}

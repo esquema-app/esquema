@@ -526,7 +526,7 @@ class Proyecto(unittest.TestCase):
         self.assertEqual(a["esquema"], ESQUEMA_MIN)
         self.assertEqual(a["recientes"][0]["ruta"], os.path.realpath(p))
         e = correr("estado.py")
-        self.assertEqual(e["proyectos"][0], {"nombre": "Minutero", "ruta": os.path.realpath(p), "ubicacion": os.path.realpath(p)})
+        self.assertEqual(e["proyectos"][0], {"nombre": "Minutero", "ruta": os.path.realpath(p), "ubicacion": os.path.realpath(p), "tipo": "software"})
         # Un esquema.json roto no tumba nada: se avisa.
         with open(os.path.join(p, "docs", "esquema", "esquema.json"), "w", encoding="utf-8") as f:
             f.write('{"formato": 1, "nombre": "x", "documentos": [], "elementos": [{"id": "MAL"}]}')
@@ -1033,15 +1033,398 @@ class Repo(unittest.TestCase):
 
     def test_solo_biblioteca_estandar(self):
         permitidos = set(sys.stdlib_module_names) | {"comun", "carpeta", "ia", "asistente", "plantillas", "plantilla_formato", "estado", "proyecto",
-                                                     "inventario", "trabajos", "documentar"}
+                                                     "inventario", "trabajos", "documentar", "tipos", "contenido", "historias", "libros", "agregar", "wiki"}
         for f in os.listdir(BIN):
             if not f.endswith(".py"):
                 continue
-            for linea in open(os.path.join(BIN, f), encoding="utf-8"):
+            with open(os.path.join(BIN, f), encoding="utf-8") as archivo:
+                lineas = archivo.read().split("\n")
+            for linea in lineas:
                 l = linea.strip()
                 if l.startswith(("import ", "from ")) and not l.startswith("from __future__"):
                     mod = l.split()[1].split(".")[0]
                     self.assertIn(mod, permitidos, f"{f}: {l}")
+
+
+# ───────────── Tipos de proyecto, agregar, historias de usuario, libros y borrar ─────────────
+import base64  # noqa: E402
+import io  # noqa: E402
+import zipfile  # noqa: E402
+import zlib  # noqa: E402
+
+HU = ("HU-42 Pagar en cuotas\n\nComo cliente de Banco Ejemplo quiero pagar una cuenta en cuotas para no pagar todo de una vez.\n\n"
+      "Criterios de aceptación\n- Dado que tengo una cuenta\n  Cuando elijo 3 cuotas\n  Entonces veo el total\n")
+LIBRO = "# El faro de Isla Ejemplo\n\n" + "".join(
+    f"## Capítulo {i}\n\n" + (f"Marta sube al faro en la noche {i}. " * 30) + "\n\n" for i in (1, 2, 3, 4))
+
+
+def leer(ruta):
+    with open(ruta, encoding="utf-8") as f:
+        return f.read()
+
+
+def b64(datos):
+    return base64.b64encode(datos if isinstance(datos, bytes) else datos.encode("utf-8")).decode()
+
+
+class Contenido(unittest.TestCase):
+    """bin/contenido.py: leer formatos sin dependencias, adivinar el tipo y partir capítulos (sin IA)."""
+
+    def test_detecta_el_tipo(self):
+        import contenido as C
+        self.assertEqual(C.detectar(HU)["tipo"], "historia")
+        self.assertIn("Trae criterios de aceptación", C.detectar(HU)["razones"])
+        self.assertEqual(C.detectar("As a user I want to export my notes so that I can share them.\n\nAcceptance criteria\n- Given x\n  When y")["tipo"], "historia")
+        self.assertEqual(C.detectar(LIBRO + "ISBN 978-0-00-000000-0\n")["tipo"], "libro")
+        acta = C.detectar("Acta de reunión del equipo\n\nAsistentes: Ana Pérez, Matías Soto\n\nAcuerdos: publicar el lunes.")
+        self.assertEqual((acta["tipo"], acta["subtipo"]), ("documento", "acta"))
+        self.assertEqual(C.detectar("Una nota corta sin nada especial.")["tipo"], "documento")
+        self.assertEqual(C.id_historia(HU), "HU-42")
+        self.assertEqual(C.id_historia("Ver https://github.com/ana/app/issues/45 por favor"), "#45")
+        self.assertEqual(C.id_historia("https://ejemplo.atlassian.net/browse/PAGO-7\nAlgo"), "PAGO-7")
+        self.assertEqual(C.id_historia("Usa UTF-8 en todo", ["hu-001-a.md", "hu-004-b.md"]), "HU-005")
+        self.assertTrue(C.solo_enlace("  https://github.com/ana/app/issues/45 "))
+
+    def test_parte_capitulos_sin_indice(self):
+        import contenido as C
+        libro = "Índice\n\nCapítulo 1 .... 3\nCapítulo 2 .... 9\nCapítulo 3 .... 12\n\n" + "".join(f"Capítulo {i}\n\n" + ("Texto. " * 120) + "\n\n" for i in (1, 2, 3))
+        caps = C.partir_capitulos(libro)
+        self.assertEqual([c["titulo"] for c in caps], ["Capítulo 1", "Capítulo 2", "Capítulo 3"], "las líneas del índice no son capítulos")
+        self.assertEqual(caps[0]["archivo"], "01-capitulo-1.md")
+        self.assertEqual([c["titulo"] for c in C.partir_capitulos(LIBRO)], ["Capítulo 1", "Capítulo 2", "Capítulo 3", "Capítulo 4"])
+        # Sin capítulos ni títulos: partes de tamaño parecido, cortadas en un párrafo.
+        partes = C.partir_capitulos(("Un párrafo largo. " * 50 + "\n\n") * 60)
+        self.assertGreater(len(partes), 1)
+        self.assertTrue(all(p["titulo"].startswith("Parte ") for p in partes))
+
+    def test_lee_formatos_sin_dependencias(self):
+        import contenido as C
+        cont = b"BT /F1 12 Tf 72 720 Td (Hola mundo, este es un PDF de prueba con texto.) Tj 0 -14 Td [(Segunda) -250 (l\\355nea)] TJ ET"
+        z = zlib.compress(cont)
+        pdf = b"%PDF-1.4\n1 0 obj << /Length " + str(len(z)).encode() + b" /Filter /FlateDecode >>\nstream\n" + z + b"\nendstream\nendobj\n%%EOF"
+        self.assertIn("Segunda línea", C.extraer("a.pdf", pdf)["texto"])
+        b = io.BytesIO()
+        with zipfile.ZipFile(b, "w") as zz:
+            W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+            zz.writestr("word/document.xml", f'<w:document {W}><w:body><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Título</w:t></w:r></w:p><w:p><w:r><w:t>Hola</w:t></w:r></w:p></w:body></w:document>')
+        b.seek(0)
+        self.assertEqual(C.extraer("a.docx", b.read())["texto"], "# Título\n\nHola\n")
+        for nombre, datos in (("a.doc", b"x"), ("a.pdf", b"%PDF-1.4 sin texto"), ("a.bin", b"\x00\x01\x02\x03"), ("a.pages", b"x")):
+            with self.assertRaises(C.NoSePuede):
+                C.extraer(nombre, datos)
+        # Un XML con entidades (bomba) no se abre.
+        b = io.BytesIO()
+        with zipfile.ZipFile(b, "w") as zz:
+            zz.writestr("word/document.xml", '<!DOCTYPE x [<!ENTITY a "aaaa">]><w:document>&a;</w:document>')
+        b.seek(0)
+        with self.assertRaises(C.NoSePuede):
+            C.extraer("a.docx", b.read())
+
+
+class Tipos(unittest.TestCase):
+    def test_tipos_incluidos_y_casos(self):
+        import tipos
+        self.assertEqual(tipos.ids()[0], "software")
+        self.assertIn("libro", tipos.ids())
+        for c in CASOS["tipos"]:
+            self.assertEqual(not tipos.validar(c["tipo"]), c["valido"], json.dumps(c, ensure_ascii=False)[:120])
+
+    def test_estado_trae_los_tipos(self):
+        r = correr("estado.py")
+        self.assertEqual([t["id"] for t in r["tipos"]][:1], ["software"])
+
+
+class Historias(unittest.TestCase):
+    """Agregar una HU: detectar, analizar con preguntas, esperar (aunque se «cierre» la app), responder, estados y «Terminé el desarrollo»."""
+
+    def setUp(self):
+        os.environ.pop("IA_FALSA_MODO", None)
+        self.progreso = os.path.join(TMP, "progreso-hu.jsonl")
+        open(self.progreso, "w").close()
+        os.environ["ESQUEMA_PROGRESO"] = self.progreso
+
+    def tearDown(self):
+        os.environ.pop("ESQUEMA_PROGRESO", None)
+        os.environ.pop("IA_FALSA_MODO", None)
+
+    def vinculado(self):
+        codigo = repo_de_prueba()
+        v = proyecto_mod.vincular({"carpeta": codigo})
+        docs = os.path.realpath(os.path.join(os.path.expanduser("~"), v["ubicacion"][2:]))
+        with open(os.path.join(docs, "esquema.json"), "w", encoding="utf-8") as f:
+            json.dump(ESQUEMA_MIN, f)
+        with open(os.path.join(docs, "arquitectura.md"), "w", encoding="utf-8") as f:
+            f.write("# Arquitectura\n\nUsa `src/grabar.py`.\n")
+        return codigo, docs
+
+    def test_ciclo_de_preguntas_y_estados(self):
+        codigo, docs = self.vinculado()
+        d = orden("detectar", {"carpeta": docs, "texto": HU})
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["tipo"], "historia")
+        open(REGISTRO, "w").close()
+        r = orden("agregar", {"carpeta": docs, "token": d["token"], "tipo": "historia", "idioma": "es"})
+        self.assertTrue(r["ok"], r)
+        t = r["trabajo"]
+        self.assertEqual(t["estado"], "esperando")
+        self.assertEqual(len(t["preguntas"]), 3)
+        self.assertEqual(t["preguntas"][0]["opciones"], ["3", "6", "12"])
+        ruta = t["ruta"]
+        self.assertTrue(ruta.startswith("historias/hu-42-"), ruta)
+        texto = leer(os.path.join(docs, *ruta.split("/")))
+        self.assertTrue(texto.startswith("---\nestado: por-entender\nid: HU-42\n"), texto[:80])
+        self.assertIn("# HU-42 · Pagar en cuotas", texto)
+        self.assertIn("## Preguntas abiertas", texto)
+        self.assertIn("¿Cuántas cuotas como máximo?", texto)
+        self.assertEqual(texto.count("## Preguntas abiertas"), 1, "la sección de la IA se reemplaza por la de Esquema")
+        self.assertNotIn("el-no-existe", texto, "los enlaces a elementos que no existen quedan como texto")
+        self.assertTrue(any(f.startswith("hu-42") for f in os.listdir(os.path.join(docs, "fuentes"))), "el original queda en fuentes/")
+        x = json.loads(leer(os.path.join(docs, "esquema.json")))
+        self.assertIn({"ruta": ruta, "titulo": "HU-42 · Pagar en cuotas", "tipo": "historia"}, x["documentos"])
+        self.assertTrue(any(d_["tipo"] == "fuente" for d_ in x["documentos"]))
+        # Los prompts dicen que NO programe.
+        prompts = [json.loads(l)["prompt"] for l in leer(REGISTRO).split("\n") if l.strip()]
+        self.assertTrue(prompts and all(asistente.NO_PROGRAMAR in p for p in prompts))
+        # «Se cierra la app»: el trabajo sigue esperando en disco y abrir lo cuenta.
+        a = orden("abrir", {"carpeta": docs})
+        self.assertEqual([e["id"] for e in a["esperan"]], [t["id"]])
+        self.assertEqual(a["historias"][0]["estado"], "por-entender")
+        # Responder: una con opción, una «No sé todavía» y una saltada.
+        p = t["preguntas"]
+        r = orden("responder", {"carpeta": docs, "id": t["id"], "respuestas": [{"id": p[0]["id"], "respuesta": "6"}, {"id": p[1]["id"], "nose": True}]})
+        self.assertTrue(r["ok"], r)
+        t2 = r["trabajo"]
+        self.assertEqual(t2["estado"], "esperando", "la ronda 2 trae una pregunta más")
+        self.assertEqual(t2["ronda"], 2)
+        texto = leer(os.path.join(docs, *ruta.split("/")))
+        self.assertIn("## Decisiones", texto)
+        self.assertRegex(texto, r"\*\*\d{4}-\d{2}-\d{2}\*\* · ¿Cuántas cuotas como máximo\? → 6")
+        self.assertIn("_No se sabe todavía_", texto)
+        self.assertIn("¿Qué pasa si falla el pago de una cuota?", texto, "la saltada sigue abierta")
+        self.assertIn("Decidido:", texto, "la IA recibió lo decidido")
+        r = orden("responder", {"carpeta": docs, "id": t["id"], "respuestas": [{"id": t2["preguntas"][0]["id"], "respuesta": "Se avisa"}]})
+        self.assertEqual(r["trabajo"]["estado"], "listo")
+        self.assertEqual(orden("responder", {"carpeta": docs, "id": t["id"], "respuestas": []})["ok"], False)
+        self.assertEqual(orden("abrir", {"carpeta": docs})["esperan"], [])
+        # Estados: En desarrollo anota desde cuándo y el commit; un commit que nombra la HU se cuenta.
+        e = orden("historia_estado", {"carpeta": docs, "ruta": ruta, "estado": "en-desarrollo"})
+        self.assertTrue(e["ok"], e)
+        meta = leer(os.path.join(docs, *ruta.split("/")))
+        self.assertIn("estado: en-desarrollo", meta)
+        self.assertRegex(meta, r"commit: [0-9a-f]{12}")
+        self.assertEqual(orden("historia_estado", {"carpeta": docs, "ruta": ruta, "estado": "inventado"})["ok"], False)
+        self.assertEqual(orden("historia_estado", {"carpeta": docs, "ruta": "../x.md", "estado": "lista"})["ok"], False)
+        with open(os.path.join(codigo, "src", "grabar.py"), "a", encoding="utf-8") as f:
+            f.write("def cuotas(n):\n    return n\n")
+        git_en(codigo, "commit", "-qam", "HU-42: pagar en cuotas")
+        with open(os.path.join(codigo, "src", "ui", "boton.js"), "a", encoding="utf-8") as f:
+            f.write("// otra cosa\n")
+        git_en(codigo, "commit", "-qam", "Otra cosa")
+        h = next(x for x in orden("abrir", {"carpeta": docs})["historias"] if x["ruta"] == ruta)
+        self.assertEqual(h["commits"], 1)
+        # «Terminé el desarrollo»: compara, escribe «Cómo quedó», queda Terminada y propone poner al día otros documentos.
+        open(REGISTRO, "w").close()
+        c = orden("historia_cierre", {"carpeta": docs, "ruta": ruta, "idioma": "es"})
+        self.assertTrue(c["ok"], c)
+        self.assertEqual(c["trabajo"]["estado"], "listo", c["trabajo"].get("error"))
+        texto = leer(os.path.join(docs, *ruta.split("/")))
+        self.assertIn("estado: terminada", texto)
+        self.assertIn("## Cómo quedó", texto)
+        self.assertIn("## Decisiones", texto, "lo decidido se conserva")
+        self.assertEqual([p_["ruta"] for p_ in c["propuestas"]["propuestas"]], ["arquitectura.md"], "nunca propone cambiar la HU por fuera")
+        prompt = json.loads(leer(REGISTRO).split("\n")[0])["prompt"]
+        self.assertIn("HU-42: pagar en cuotas", prompt)
+        self.assertIn("def cuotas", prompt, "va la diferencia del commit")
+        self.assertNotIn("CLAVE=secreta", prompt)
+        self.assertIn(asistente.NO_PROGRAMAR, prompt)
+        self.assertEqual(leer(os.path.join(docs, "arquitectura.md")), "# Arquitectura\n\nUsa `src/grabar.py`.\n", "las propuestas no se escriben solas")
+        log = git_en(docs, "log", "--format=%s")
+        self.assertIn("HU-42 terminada: cómo quedó", log)
+        # La IA nunca escribió en la carpeta del código.
+        self.assertEqual(git_en(codigo, "status", "--porcelain"), "")
+
+    def test_la_ia_corrige_el_tipo_y_solo_un_enlace(self):
+        codigo, docs = self.vinculado()
+        os.environ["IA_FALSA_MODO"] = "tipo-libro"
+        d = orden("detectar", {"carpeta": docs, "texto": HU})
+        r = orden("agregar", {"carpeta": docs, "token": d["token"], "tipo": "historia", "idioma": "es"})
+        self.assertEqual(r["trabajo"]["tipo_ia"], "libro")
+        d = orden("detectar", {"carpeta": docs, "texto": "https://github.com/ana/app/issues/45"})
+        self.assertTrue(d["solo_enlace"])
+        r = orden("agregar", {"carpeta": docs, "token": d["token"], "tipo": "historia"})
+        self.assertFalse(r["ok"])
+        self.assertIn("Pega también el texto", r["error"])
+
+    def test_archivos_que_no_se_pueden_leer(self):
+        codigo, docs = self.vinculado()
+        d = orden("detectar", {"carpeta": docs, "archivos": [{"nombre": "viejo.doc", "datos": b64("x")}]})
+        self.assertFalse(d["ok"])
+        self.assertIn("pégalo", d["error"])
+        d = orden("detectar", {"carpeta": docs, "archivos": [{"nombre": "../../nota.md", "datos": b64("# Nota\n\nAlgo corto.")}, {"nombre": "viejo.doc", "datos": b64("x")}]})
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["archivos"], ["nota.md"])
+        self.assertEqual(d["avisos"][0]["nombre"], "viejo.doc")
+        r = orden("agregar", {"carpeta": docs, "token": d["token"], "tipo": "documento", "idioma": "es"})
+        self.assertEqual(r["trabajo"]["estado"], "listo", r)
+        self.assertTrue(os.path.isfile(os.path.join(docs, "documentos", "nota.md")))
+        self.assertTrue(os.path.isfile(os.path.join(docs, "fuentes", "nota.md")))
+        self.assertEqual(orden("agregar", {"carpeta": docs, "token": "../../x", "tipo": "documento"})["ok"], False)
+
+
+class Libros(unittest.TestCase):
+    """Un proyecto Libro: crear (sin carpeta abierta), preguntar para qué, resumir capítulos, estudio e incongruencias."""
+
+    def setUp(self):
+        os.environ.pop("IA_FALSA_MODO", None)
+
+    def test_proyecto_libro_entero(self):
+        d = orden("detectar", {"archivos": [{"nombre": "el-faro.md", "datos": b64(LIBRO)}]})
+        self.assertEqual(d["tipo"], "libro", d)
+        self.assertEqual(d["capitulos"], 4)
+        c = orden("crear", {"token": d["token"], "titulo": "El faro de Isla Ejemplo", "idioma": "es"})
+        self.assertTrue(c["ok"], c)
+        self.assertEqual(c["indice"], 0)
+        base = os.path.realpath(os.path.join(os.path.expanduser("~"), c["ubicacion"][2:]))
+        self.assertEqual(c["trabajo"]["estado"], "esperando")
+        self.assertEqual(c["trabajo"]["preguntas"][0]["pregunta"], "¿Para qué quieres este libro?")
+        a = orden("abrir", {"carpeta": base})
+        self.assertEqual((a["tipo"], a["sola"], a["existe"]), ("libro", True, True))
+        self.assertEqual(c["recientes"][0]["tipo"], "libro")
+        self.assertEqual(orden("arbol", {"carpeta": base})["sin_codigo"], True)
+        self.assertFalse(orden("leer", {"carpeta": base})["ok"])
+        p = c["trabajo"]["preguntas"]
+        r = orden("responder", {"carpeta": base, "id": c["trabajo"]["id"], "respuestas": [{"id": p[0]["id"], "respuesta": "Para estudiarlo"}, {"id": p[1]["id"], "respuesta": "Corto"}]})
+        t = r["trabajo"]
+        self.assertEqual(t["estado"], "listo", t)
+        self.assertEqual(sorted(os.listdir(os.path.join(base, "capitulos"))), ["01-capitulo-1.md", "02-capitulo-2.md", "03-capitulo-3.md", "04-capitulo-4.md"])
+        x = json.loads(leer(os.path.join(base, "esquema.json")))
+        self.assertEqual(x["tipo"], "libro")
+        self.assertIn({"id": "marta", "tipo": "personaje", "nombre": "Marta", "descripcion": "La guardiana."}, x["elementos"])
+        self.assertTrue(os.path.isfile(os.path.join(base, "README.md")))
+        self.assertIn("## Capítulos", leer(os.path.join(base, "README.md")))
+        self.assertTrue(os.path.isfile(os.path.join(base, "mapa.md")))
+        self.assertFalse(os.path.exists(os.path.join(base, "linea-de-tiempo.md")), "NO APLICA: sin línea de tiempo")
+        self.assertIn("Personajes", leer(os.path.join(base, "elementos.md")))
+        self.assertIn("Para qué lo quiere la persona: Para estudiarlo", "\n".join(json.loads(l)["prompt"] for l in leer(REGISTRO).split("\n") if l.strip()))
+        # Material de estudio.
+        e = orden("estudiar", {"carpeta": base, "idioma": "es"})
+        self.assertEqual(e["trabajo"]["estado"], "listo", e)
+        self.assertTrue(os.path.isfile(os.path.join(base, "estudio", "README.md")))
+        self.assertIn("**R:** Marta.", leer(os.path.join(base, "estudio", "01-capitulo-1.md")))
+        # Incongruencias: cada hallazgo con su cita y dónde está; la cita que no está en el texto se avisa.
+        i = orden("incongruencias", {"carpeta": base, "idioma": "es"})
+        self.assertEqual(i["trabajo"]["estado"], "listo", i)
+        self.assertEqual(i["trabajo"]["hallazgos"], 1)
+        inc = leer(os.path.join(base, "incongruencias.md"))
+        self.assertIn("## Fechas y edades", inc)
+        self.assertIn("[Cap. 1: Capítulo 1](capitulos/01-capitulo-1.md)", inc)
+        self.assertIn("no está tal cual en el texto", inc)
+        self.assertEqual(inc.count("revísala"), 1, "las citas reales no se marcan")
+        self.assertIn("Revisé las incongruencias", git_en(base, "log", "--format=%s"))
+
+
+class Borrar(unittest.TestCase):
+    def test_borrar_y_recuperar(self):
+        codigo = repo_de_prueba()
+        v = proyecto_mod.vincular({"carpeta": codigo})
+        docs = os.path.realpath(os.path.join(os.path.expanduser("~"), v["ubicacion"][2:]))
+        x = {**ESQUEMA_MIN, "documentos": ESQUEMA_MIN["documentos"] + [{"ruta": "diagramas/sin-querer.md", "titulo": "Sin querer", "tipo": "otro"}]}
+        archivos = {"esquema.json": json.dumps(x), "README.md": "# Visión\n\nMira [el diagrama](diagramas/sin-querer.md) y [otro](https://x.cl).\n",
+                    "diagramas/sin-querer.md": "# Sin querer\n", "flujos/a.md": "# A\n\nVer [esto](../diagramas/sin-querer.md#arriba).\n"}
+        for r, t in archivos.items():
+            os.makedirs(os.path.dirname(os.path.join(docs, r)), exist_ok=True)
+            with open(os.path.join(docs, r), "w", encoding="utf-8") as f:
+                f.write(t)
+        orden("version", {"carpeta": docs, "mensaje": "Antes"})
+        b = orden("borrar", {"carpeta": docs, "ruta": "diagramas/sin-querer.md"})
+        self.assertTrue(b["ok"], b)
+        self.assertFalse(os.path.exists(os.path.join(docs, "diagramas", "sin-querer.md")))
+        self.assertEqual(sorted(b["cambiados"]), ["README.md", "flujos/a.md"])
+        self.assertEqual(leer(os.path.join(docs, "README.md")), "# Visión\n\nMira el diagrama y [otro](https://x.cl).\n")
+        self.assertNotIn("diagramas/sin-querer.md", leer(os.path.join(docs, "esquema.json")))
+        self.assertIn("Borré «Sin querer»", git_en(docs, "log", "--format=%s"))
+        for malo in ("esquema.json", "elementos.md", "../x.md", "no-existe.md"):
+            self.assertFalse(orden("borrar", {"carpeta": docs, "ruta": malo})["ok"], malo)
+        r = orden("recuperar", {"carpeta": docs, "id": b["id"]})
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(leer(os.path.join(docs, "diagramas", "sin-querer.md")), "# Sin querer\n")
+        self.assertIn("[el diagrama](diagramas/sin-querer.md)", leer(os.path.join(docs, "README.md")))
+        self.assertIn("diagramas/sin-querer.md", leer(os.path.join(docs, "esquema.json")))
+        self.assertFalse(orden("recuperar", {"carpeta": docs, "id": b["id"]})["ok"], "una sola vez")
+        # Nunca toca la carpeta del código.
+        self.assertEqual(git_en(codigo, "status", "--porcelain"), "")
+
+
+class Wiki(unittest.TestCase):
+    """Publicar en la wiki: un repo git local hace de wiki (<repo>.wiki.git). Nunca pisa ni borra páginas escritas a mano."""
+
+    def test_publicar_en_la_wiki(self):
+        servidor = tempfile.mkdtemp(dir=TMP)
+        origen, wiki = os.path.join(servidor, "app.git"), os.path.join(servidor, "app.wiki.git")
+        git_en(servidor, "init", "-q", "--bare", origen)
+        codigo = repo_de_prueba()
+        git_en(codigo, "remote", "add", "origin", origen)
+        v = proyecto_mod.vincular({"carpeta": codigo})
+        docs = os.path.realpath(os.path.join(os.path.expanduser("~"), v["ubicacion"][2:]))
+        x = {**ESQUEMA_MIN, "documentos": [{"ruta": "README.md", "titulo": "Visión", "tipo": "vision"}, {"ruta": "flujos/grabar.md", "titulo": "Grabar una reunión", "tipo": "flujo"},
+                                            {"ruta": "historias/hu-1-x.md", "titulo": "HU-1 · Exportar", "tipo": "historia"}, {"ruta": "fuentes/hu-1.md", "titulo": "Original", "tipo": "fuente"}]}
+        archivos = {"esquema.json": json.dumps(x), "README.md": "# Minutero\n\nMira [cómo se graba](flujos/grabar.md#pasos) y [Grabar](elementos.md#el-boton-grabar).\n",
+                    "flujos/grabar.md": "# Grabar\n\n```mermaid\nflowchart TD\n    A[Grabar] --> B[Guardar]\n```\n\nVolver al [inicio](../README.md).\n",
+                    "historias/hu-1-x.md": "---\nestado: en-desarrollo\nid: HU-1\nactualizada: 2026-10-29\n---\n\n# HU-1 · Exportar\n\nAlgo.\n",
+                    "fuentes/hu-1.md": "texto original", "elementos.md": "# Elementos\n\n### Grabar\n"}
+        for r, t in archivos.items():
+            os.makedirs(os.path.dirname(os.path.join(docs, r)), exist_ok=True)
+            with open(os.path.join(docs, r), "w", encoding="utf-8") as f:
+                f.write(t)
+        # Sin wiki todavía: se explica cómo crearla.
+        r = orden("wiki_preparar", {"carpeta": docs})
+        self.assertFalse(r["ok"])
+        self.assertTrue(r["no_existe"], r)
+        self.assertIn("Create the first page", r["error"])
+        # La wiki existe, con una página escrita a mano llamada como una nuestra y otra suelta.
+        git_en(servidor, "init", "-q", "--bare", wiki)
+        mano = tempfile.mkdtemp(dir=TMP)
+        git_en(mano, "clone", "-q", wiki, ".")
+        for n, t in (("Home.md", "# Mi portada a mano\n"), ("Notas.md", "# Notas\n")):
+            with open(os.path.join(mano, n), "w", encoding="utf-8") as f:
+                f.write(t)
+        git_en(mano, "add", "-A")
+        git_en(mano, "commit", "-qm", "A mano")
+        git_en(mano, "push", "-q", "origin", "HEAD")
+        r = orden("wiki_preparar", {"carpeta": docs})
+        self.assertTrue(r["ok"], r)
+        estados = {p["pagina"]: p["estado"] for p in r["paginas"]}
+        self.assertEqual(estados["Home"], "mano", "una página escrita a mano no se pisa")
+        self.assertEqual(estados["Grabar-una-reunión"], "nuevo")
+        self.assertEqual(estados["HU-1-Exportar"], "nuevo")
+        self.assertNotIn("Notas", estados)
+        self.assertFalse(any("hu-1" == p["pagina"].lower() or p["ruta"].startswith("fuentes/") for p in r["paginas"]), "los originales no se publican")
+        p = orden("wiki_publicar", {"carpeta": docs})
+        self.assertTrue(p["ok"], p)
+        self.assertIn("Home", p["a_mano"])
+        mira = tempfile.mkdtemp(dir=TMP)
+        git_en(mira, "clone", "-q", wiki, ".")
+        self.assertEqual(leer(os.path.join(mira, "Home.md")), "# Mi portada a mano\n")
+        self.assertEqual(leer(os.path.join(mira, "Notas.md")), "# Notas\n")
+        g = leer(os.path.join(mira, "Grabar-una-reunión.md"))
+        self.assertIn("```mermaid\nflowchart TD", g)
+        self.assertIn("[inicio](Home)", g, "los enlaces van a la página, sin .md")
+        hu = leer(os.path.join(mira, "HU-1-Exportar.md"))
+        self.assertTrue(hu.startswith("# HU-1 · Exportar\n\n> **Estado:** En desarrollo"), hu[:80])
+        self.assertIn("[Grabar una reunión](Grabar-una-reunión)", leer(os.path.join(mira, "_Sidebar.md")))
+        # Al volver a preparar, lo publicado está igual; si un documento se borra, su página (de Esquema) sobra y se quita.
+        r = orden("wiki_preparar", {"carpeta": docs})
+        self.assertEqual({p["pagina"]: p["estado"] for p in r["paginas"]}["Grabar-una-reunión"], "igual")
+        orden("borrar", {"carpeta": docs, "ruta": "flujos/grabar.md"})
+        r = orden("wiki_preparar", {"carpeta": docs})
+        self.assertIn({"pagina": "Grabar-una-reunión", "ruta": "", "estado": "sobra"}, r["paginas"])
+        p = orden("wiki_publicar", {"carpeta": docs})
+        self.assertEqual(p["quitadas"], ["Grabar-una-reunión"])
+        git_en(mira, "pull", "-q")
+        self.assertFalse(os.path.exists(os.path.join(mira, "Grabar-una-reunión.md")))
+        self.assertTrue(os.path.exists(os.path.join(mira, "Notas.md")))
+        # Una dirección escrita por la persona se valida.
+        self.assertFalse(orden("wiki_preparar", {"carpeta": docs, "url": "file:///etc"})["ok"])
 
 
 if __name__ == "__main__":

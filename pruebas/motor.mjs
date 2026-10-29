@@ -204,6 +204,16 @@ console.log("Traducciones del motor");
 console.log("Proyectos: referencias y elementos");
 {
   for (const c of casos.proyecto_esquema) ok(!M.validarEsquema(c.esquema).length === c.valido, "validarEsquema (JS) ≠ caso: " + JSON.stringify(c.esquema).slice(0, 100));
+  for (const c of casos.tipos) ok(!M.validarTipo(c.tipo).length === c.valido, "validarTipo (JS) ≠ caso: " + JSON.stringify(c.tipo).slice(0, 100));
+  // Cada tipo incluido (tipos/*.json) es válido y su sección para un documento sale de sus carpetas y tipos.
+  for (const f of fs.readdirSync(path.join(RAIZ, "tipos"))) { const t = JSON.parse(fs.readFileSync(path.join(RAIZ, "tipos", f), "utf8")); ok(!M.validarTipo(t).length && f === t.id + ".json", "tipos/" + f + " no es válido: " + M.validarTipo(t).join(", ")); }
+  {
+    const sw = JSON.parse(fs.readFileSync(path.join(RAIZ, "tipos", "software.json"), "utf8")), lb = JSON.parse(fs.readFileSync(path.join(RAIZ, "tipos", "libro.json"), "utf8"));
+    const sec = (t, ruta, tipo) => M.seccionDe(t, { ruta, tipo });
+    ok(sec(sw, "README.md", "vision") === "vision" && sec(sw, "flujos/a.md", "flujo") === "flujos" && sec(sw, "historias/hu-1-a.md", "historia") === "historias", "seccionDe (software): visión, flujos, historias");
+    ok(sec(sw, "notas.md", "otro") === "documentos" && sec(sw, "documentos/x.md", "documento") === "documentos" && sec(sw, "fuentes/x.pdf", "fuente") === "fuentes", "seccionDe (software): lo demás va a Documentos; los originales, aparte");
+    ok(sec(lb, "README.md", "libro") === "libro" && sec(lb, "capitulos/01-a.md", "capitulo") === "capitulos" && sec(lb, "incongruencias.md", "revision") === "revision" && sec(lb, "estudio/01-a.md", "estudio") === "estudio", "seccionDe (libro): el libro, capítulos, estudio y revisión");
+  }
   for (const c of casos.proyecto_elemento) ok(!M.validarElemento(c.elemento).length === c.valido, "validarElemento (JS) ≠ caso: " + JSON.stringify(c.elemento).slice(0, 100));
   const f = 'flowchart TD\n    A[Inicio] --> G[Grabar]\n    G --> S[Guardar]\n%% esquema: {"iconos":{"S":"base-de-datos"},"refs":{"G":"boton-grabar","S":"dato-notas"}}\n';
   ok(igual(M.refsDiagrama(f), { G: "boton-grabar", S: "dato-notas" }), "refsDiagrama lee las referencias");

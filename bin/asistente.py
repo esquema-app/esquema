@@ -33,6 +33,28 @@ SOLO_ESTO = ("Usa SOLO lo que va en este mensaje. No uses lo que sepas de otros 
              "inventarlo.")
 
 
+#: Historias de usuario, libros y documentos: la IA ayuda a entender y documenta; nunca programa (lo pidió David: «no quiero que
+#: desarrolle, quiero que me ayude a comprender las HU y las documente»). Va en todos esos prompts (las pruebas lo revisan).
+NO_PROGRAMAR = ("NO escribas código, NO propongas parches, comandos ni cambios concretos al código y NO ejecutes nada: tu trabajo es "
+                "solo comprender, preguntar lo que falte y documentar. Si algo requiere programar, descríbelo en palabras, como parte "
+                "de la documentación.")
+
+_RE_BLOQUES = re.compile(r"^===([A-Z_]+)([^\n]*)===[ \t]*\n([\s\S]*?)\n===FIN===[ \t]*$", re.M)
+
+
+def bloques(texto):
+    """Los bloques «===NOMBRE atributos===\n…\n===FIN===» de una respuesta: {NOMBRE: [(atributos, cuerpo)]}. Lo de afuera se ignora."""
+    r = {}
+    for m in _RE_BLOQUES.finditer((texto or "").replace("\r\n", "\n")):
+        r.setdefault(m.group(1), []).append((dict(re.findall(r'(\w+)="([^"]*)"', m.group(2))), m.group(3)))
+    return r
+
+
+def bloque(texto_o_bloques, nombre, defecto=""):
+    b = bloques(texto_o_bloques) if isinstance(texto_o_bloques, str) else texto_o_bloques
+    return b[nombre][0][1] if b.get(nombre) else defecto
+
+
 def tipo_diagrama(tipo):
     """La frase del prompt para el tipo pedido; «auto» (o algo desconocido) deja que la IA lo deduzca del pedido."""
     return TIPOS_DIAGRAMA.get(tipo, SEGUN_PEDIDO)

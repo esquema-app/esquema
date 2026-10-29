@@ -21,6 +21,60 @@ if modo == "falla":
     print("se cayó", file=sys.stderr)
     sys.exit(1)
 flujo = "stream-json" in sys.argv
+
+
+def responder(texto):
+    if flujo:
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": texto}), flush=True)
+    else:
+        print(texto)
+    sys.exit(0)
+
+
+def entre(texto, a, b):
+    return texto.split(a, 1)[1].split(b, 1)[0] if a in texto else ""
+
+
+# Historias de usuario (bin/historias.py): ronda 1 pregunta 3 cosas, ronda 2 una, ronda 3 nada.
+if "ENTENDER una historia de usuario" in prompt:
+    ronda = int(entre(prompt, "Ronda: ", ".") or 1)
+    if flujo and "--add-dir" in sys.argv:
+        print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": os.path.join(os.getcwd(), "src/grabar.py")}}]}}), flush=True)
+    preguntas = [{"pregunta": "¿Cuántas cuotas como máximo?", "porque": "Cambia los criterios de aceptación.", "opciones": ["3", "6", "12"]},
+                 {"pregunta": "¿Se cobra interés?", "porque": "Afecta el total que ve el cliente."},
+                 {"pregunta": "¿Qué pasa si falla el pago de una cuota?", "porque": "Es un caso borde.", "opciones": ["Se reintenta", "Se avisa"]}][:3 if ronda == 1 else 1 if ronda == 2 else 0]
+    decidido = entre(prompt, "<decisiones>\n", "\n</decisiones>")
+    tipo = "libro" if modo == "tipo-libro" else "historia"
+    responder(f"===TIPO===\n{tipo}\n===FIN===\n===TITULO===\nPagar en cuotas\n===FIN===\n===DOCUMENTO===\n# Algo\n## Resumen\nEl cliente quiere pagar en cuotas. Ronda {ronda}.\n"
+              f"{('Decidido: ' + decidido.replace(chr(10), ' ')) if decidido else ''}\n## Qué partes del proyecto toca\n[Grabar](../elementos.md#el-boton-grabar) y [Fantasma](../elementos.md#el-no-existe).\n"
+              "## Cómo debería funcionar\n```mermaid\nsequenceDiagram\n    participant C as Cliente\n    participant A as API\n    C->>A: Pagar en cuotas\n```\n"
+              "## Preguntas abiertas\nEsto lo quita Esquema.\n===FIN===\n===PREGUNTAS===\n" + json.dumps(preguntas, ensure_ascii=False) + "\n===FIN===")
+if "se terminó de desarrollar" in prompt:
+    responder("===COMO_QUEDO===\nSe agregó el pago en cuotas en `src/grabar.py`.\n\n- ✅ Dado un cliente, cuando paga en cuotas, entonces ve el total.\n===FIN===\n"
+              '===ARCHIVO ruta="arquitectura.md" titulo="Arquitectura" tipo="arquitectura"===\n# Arquitectura\n\nAhora con cuotas.\n===FIN===\n'
+              '===ARCHIVO ruta="historias/hu-42-x.md" titulo="x" tipo="otro"===\n# no\n===FIN===\n'
+              "===NOTA===\nPuse al día la arquitectura.\n===FIN===")
+if "La persona agregó a su proyecto" in prompt:
+    responder("===TIPO===\ndocumento\n===FIN===\n===DOCUMENTO===\n# X\n## Resumen\nUn documento de prueba bastante claro.\n## Diagrama\n```mermaid\nflowchart TD\n    A[Inicio] --> B[Fin]\n```\n===FIN===")
+if "Resume, en" in prompt and "<capitulo>" in prompt:
+    n = entre(prompt, "el capítulo ", " ")
+    responder(f"===DOCUMENTO===\n## Resumen\nEl capítulo {n} cuenta algo sobre [Marta](../elementos.md#el-marta) y el faro.\n## Citas\n«Texto del capítulo»\n===FIN===\n"
+              '===ELEMENTOS===\n[{"id": "marta", "tipo": "personaje", "nombre": "Marta", "descripcion": "La guardiana."}, {"id": "Malo", "tipo": "x", "nombre": ""}]\n===FIN===')
+if "Estos son los resúmenes de todos los capítulos" in prompt:
+    responder("===README===\n## De qué trata\nDe un faro y de Marta.\n## Ideas principales\n- Cuidar la luz.\n===FIN===\n"
+              '===MAPA===\n```mermaid\nflowchart LR\n    M[Marta] --> F[Faro]\n%% esquema: {"refs":{"M":"marta"}}\n```\nMarta cuida el faro.\n===FIN===\n===LINEA===\nNO APLICA\n===FIN===')
+if "Arma, en" in prompt and "material para estudiar" in prompt:
+    responder("===DOCUMENTO===\n## Esquema\n- Idea\n## Preguntas de repaso\n**P:** ¿Quién cuida el faro?\n\n**R:** Marta.\n## Tarjetas\n| Frente | Reverso |\n|---|---|\n| Faro | Luz |\n===FIN===")
+if "hechos verificables" in prompt:
+    cap = entre(prompt, "<capitulo>\n", "\n</capitulo>")
+    cita = " ".join(cap.split()[:5])
+    n = entre(prompt, "el capítulo ", " ")
+    responder("===HECHOS===\n" + json.dumps([{"tipo": "fecha", "hecho": f"Marta tiene {30 + int(n)} años", "cita": cita, "seccion": ""}], ensure_ascii=False) + "\n===FIN===")
+if "Busca, en" in prompt and "incongruencias" in prompt:
+    hechos = [json.loads(l) for l in entre(prompt, "<hechos>\n", "\n</hechos>").split("\n") if l.strip()]
+    citas = [{"capitulo": h["capitulo"], "seccion": "", "cita": h["cita"]} for h in hechos[:2]] + [{"capitulo": 1, "cita": "esto no está en el libro"}, {"capitulo": 99, "cita": "x"}]
+    responder("===HALLAZGOS===\n" + json.dumps([{"tipo": "fecha", "descripcion": "La edad de Marta no calza entre capítulos.", "gravedad": "alta", "citas": citas},
+                                                 {"tipo": "raro", "descripcion": "Sin citas", "citas": []}], ensure_ascii=False) + "\n===FIN===")
 # Documentar por etapas (bin/documentar.py): primero un plan en JSON, después cada documento por separado.
 if "arma un PLAN" in prompt:
     lento = float(os.environ.get("IA_FALSA_LENTO") or 0)
