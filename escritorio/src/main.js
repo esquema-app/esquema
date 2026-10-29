@@ -121,9 +121,11 @@ async function enviarEstado() {
 }
 
 /** Proyectos: lo que bin/proyecto.py sabe hacer (la interfaz no puede pedir otra cosa). */
-const ORDENES_PROYECTO = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar", "codigo", "codigo_leer", "codigo_guardar", "arbol", "documentar", "trabajo", "detener", "quitar"];
+const ORDENES_PROYECTO = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar", "codigo", "codigo_leer", "codigo_guardar", "arbol", "documentar", "trabajo", "detener", "quitar", "detectar", "agregar", "crear", "responder", "continuar", "borrar", "recuperar", "historia_estado", "historia_cierre", "estudiar", "incongruencias", "wiki_preparar", "wiki_publicar"];
 /** Las órdenes largas que cuentan cómo van (bin/trabajos.py): sus eventos llegan a la interfaz como `proyectoProgreso`. */
-const ORDENES_CON_PROGRESO = ["documentar"];
+const ORDENES_CON_PROGRESO = ["documentar", "agregar", "crear", "responder", "continuar", "historia_cierre", "estudiar", "incongruencias"];
+/** Las que no necesitan una carpeta abierta (crear un proyecto Libro desde cero): no reciben `carpeta`. */
+const ORDENES_SIN_CARPETA = ["detectar", "crear"];
 
 /** Deja `c` como la carpeta, la lista, la vigila y responde carpetaElegida (con proyecto: true si viene de un proyecto). */
 async function usarCarpeta(c, proyecto) {
@@ -186,6 +188,15 @@ const ACCIONES = {
   async abrirProyecto(d) {
     await abrirProyecto(d.indice);
   },
+  /** Un .md/.mmd de la carpeta abierta (que no es documentación de Esquema) a la Papelera del sistema, donde se puede recuperar. */
+  async papelera(d) {
+    const ruta = typeof d.ruta === "string" ? d.ruta : "";
+    const base = carpetaActual();
+    const abs = base && absoluta(ruta, base);
+    if (!abs) return llamar("enPapelera", { ok: false, ruta, error: t("Ese archivo no se puede borrar.") });
+    try { await shell.trashItem(abs); vigilante.conocidos.delete(ruta); llamar("enPapelera", { ok: true, ruta }); }
+    catch { llamar("enPapelera", { ok: false, ruta, error: t("No pude mandarlo a la Papelera.") }); }
+  },
   async abrirArchivo(d) {
     const ruta = typeof d.ruta === "string" ? d.ruta : "";
     const base = carpetaActual();
@@ -238,9 +249,11 @@ const ACCIONES = {
     // Solo órdenes conocidas y siempre sobre la carpeta actual; bin/proyecto.py valida el resto (rutas, docs, esquema.json, tamaños).
     const orden = ORDENES_PROYECTO.includes(d.orden) ? d.orden : "";
     const base = carpetaActual();
-    if (!orden || !base) return llamar("proyectoRespuesta", { orden: String(d.orden || "").slice(0, 20), ok: false, error: t("Elige una carpeta primero") });
-    const e = { ...d, carpeta: base };
-    delete e.orden;
+    if (!orden || (!base && !ORDENES_SIN_CARPETA.includes(orden))) return llamar("proyectoRespuesta", { orden: String(d.orden || "").slice(0, 20), ok: false, error: t("Elige una carpeta primero") });
+    // La carpeta siempre la pone la app (nunca la interfaz).
+    const e = { ...d };
+    delete e.orden; delete e.carpeta;
+    if (base) e.carpeta = base;
     const progreso = ORDENES_CON_PROGRESO.includes(orden) ? (eventos) => llamar("proyectoProgreso", { eventos }) : null;
     const r = await Procesador.conEntrada("proyecto.py", orden, e, progreso);
     llamar("proyectoRespuesta", { ...r, orden });

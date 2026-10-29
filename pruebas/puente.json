@@ -46,6 +46,13 @@
       "responde": "archivoGuardado",
       "como": "bin/carpeta.py guardar <entrada {carpeta, ruta, texto, nuevo}> <salida>. De a uno, en orden. La app recuerda el texto guardado (así su propio guardado no se avisa como cambio de afuera)."
     },
+    "papelera": {
+      "datos": {
+        "ruta": "relativa (.md/.mmd de la carpeta abierta que no es documentación de Esquema)"
+      },
+      "responde": "enPapelera",
+      "como": "Mac: FileManager.trashItem; Windows y Linux: shell.trashItem. Solo rutas de la carpeta abierta (Carpeta.absoluta / rutas.absoluta, .md/.mmd): va a la Papelera del sistema, donde se puede recuperar; nunca se borra del todo. La documentación de un proyecto se borra con proyecto {orden: borrar} (queda en el historial) y el código de un proyecto vinculado no se borra desde Esquema."
+    },
     "probarIA": {
       "datos": {
         "ia": "claude|codex|gemini"
@@ -81,12 +88,12 @@
     },
     "proyecto": {
       "datos": {
-        "orden": "abrir|leer|preparar|generar|guardar|version|versiones|ver|restaurar|vincular|mover|destinos|pasar|codigo|codigo_leer|codigo_guardar|arbol|documentar|trabajo|detener|quitar",
+        "orden": "abrir|leer|preparar|generar|guardar|version|versiones|ver|restaurar|vincular|mover|destinos|pasar|codigo|codigo_leer|codigo_guardar|arbol|documentar|trabajo|detener|quitar|detectar|agregar|crear|responder|continuar|borrar|recuperar|historia_estado|historia_cierre|estudiar|incongruencias|wiki_preparar|wiki_publicar",
         "docs?": "carpeta de la documentación, relativa al proyecto (docs/esquema)",
-        "…": "lo de cada orden (tarea, pedido, tipo auto|flujo|secuencia|arquitectura, forma documento|diagrama, archivos, documentos, idioma, esquema, mensaje, id)"
+        "…": "lo de cada orden (tarea, pedido, tipo auto|flujo|secuencia|arquitectura, forma documento|diagrama, archivos, documentos, idioma, esquema, mensaje, id, ruta, token, texto, archivos [{nombre, datos base64}], respuestas, estado, url, paginas)"
       },
       "responde": "proyectoRespuesta",
-      "como": "bin/proyecto.py <orden> <entrada {…datos, carpeta}> <salida>: la app solo acepta órdenes de la lista y agrega la carpeta actual; el script valida todo lo demás (rutas dentro del proyecto, carpeta de docs, esquema.json, tamaños). generar llama a la IA sin herramientas. La respuesta lleva {orden}. Las órdenes largas (ordenesConProgreso: documentar) corren con ESQUEMA_PROGRESO=<archivo temporal>: el script escribe ahí sus eventos (una línea JSON cada uno, bin/trabajos.py) y la app lee las líneas nuevas cada 0,5 s y las pasa a la interfaz con proyectoProgreso."
+      "como": "bin/proyecto.py <orden> <entrada {…datos, carpeta}> <salida>: la app solo acepta órdenes de la lista y pone ella la carpeta actual (borra la que mande la interfaz); las de SIN_CARPETA (detectar, crear: un proyecto Libro desde cero) corren aunque no haya carpeta abierta, sin `carpeta`. El script valida todo lo demás (rutas dentro del proyecto, carpeta de docs, esquema.json, tamaños, archivos agregados). generar llama a la IA sin herramientas. La respuesta lleva {orden}. Las órdenes largas (CON_PROGRESO de bin/proyecto.py: documentar, agregar, crear, responder, continuar, historia_cierre, estudiar, incongruencias) corren con ESQUEMA_PROGRESO=<archivo temporal>: el script escribe ahí sus eventos (una línea JSON cada uno, bin/trabajos.py) y la app lee las líneas nuevas cada 0,5 s y las pasa a la interfaz con proyectoProgreso. wiki_preparar / wiki_publicar usan el git y las credenciales de la persona (bin/wiki.py)."
     },
     "exportar": {
       "datos": {
@@ -136,17 +143,18 @@
     }
   },
   "respuestas": {
-    "estado": "{config, ias: [{id, nombre, instalada}], version, plantillas, proyectos: [{nombre, ruta}], carpeta: {nombre, ruta} | null, archivos: [{ruta, tamano}], actualizacion: {hay, detalle?}}",
+    "estado": "{config, ias: [{id, nombre, instalada}], version, plantillas, tipos: [tipos de proyecto de tipos/*.json], proyectos: [{nombre, ruta, ubicacion, tipo, codigo?}], carpeta: {nombre, ruta} | null, archivos: [{ruta, tamano}], actualizacion: {hay, detalle?}}",
     "carpetaElegida": "{ok, carpeta, archivos, proyecto?} | {ok: false, error?}",
     "archivoAbierto": "{ok, ruta, texto} | {ok: false, ruta, error}",
     "archivoGuardado": "{ok, ruta} | {ok: false, ruta, error}",
+    "enPapelera": "{ok, ruta} | {ok: false, ruta, error}",
     "archivoCambiado": "{ruta, texto}: la app vigila la carpeta (FSEvents en Mac, fs.watch en Windows y Linux) y avisa si un archivo abierto cambió en el disco y su texto no es el último que Esquema leyó o guardó. Sin cambios sin guardar se recarga solo; con cambios, la interfaz pregunta con cuál quedarse.",
     "archivos": "{archivos}: la lista cambió en el disco (archivo nuevo, borrado o renombrado afuera).",
     "iaProbada": "{ia, ok, error?}",
     "estructuraLista": "{ok, archivos, omitidos, manifiestos} | {ok: false, error}",
     "readmeListo": "{ok, texto} | {ok: false, error}",
     "dibujoListo": "{ok, texto} | {ok: false, error}",
-    "proyectoRespuesta": "{orden, ok, …}: abrir {existe, docs, esquema, git, cambios, pendiente, recientes} · leer {encontrado} · preparar {tarea, piezas, rechazados, bytes} · generar {tarea, propuestas, elementos, pide, nota, descartados} · guardar {esquema, recientes} · version {modo, id | sin_cambios} · versiones {modo, lista, pendiente} · ver {id, archivos} · restaurar {escritos, sobran} · arbol {archivos: [[ruta, tamaño, clase]], perfil, lecturas} · documentar / trabajo / detener / quitar {trabajo}",
+    "proyectoRespuesta": "{orden, ok, …}: abrir {existe, docs, esquema, git, cambios, pendiente, recientes} · leer {encontrado} · preparar {tarea, piezas, rechazados, bytes} · generar {tarea, propuestas, elementos, pide, nota, descartados} · guardar {esquema, recientes} · version {modo, id | sin_cambios} · versiones {modo, lista, pendiente} · ver {id, archivos} · restaurar {escritos, sobran} · arbol {archivos: [[ruta, tamaño, clase]], perfil, lecturas} · documentar / trabajo / detener / quitar {trabajo} · detectar {token, tipo, subtipo, razones, titulo, avisos, capitulos, sugerir_libro} · agregar / responder / continuar / historia_cierre / estudiar / incongruencias {trabajo} · crear {indice, trabajo} · borrar {id, ruta, cambiados} · recuperar {ruta} · historia_estado {historia} · wiki_preparar {url, paginas: [{pagina, ruta, estado}]} · wiki_publicar {escritas, quitadas, a_mano}",
     "proyectoProgreso": "{eventos: [{t: \"estado\", trabajo} | {t: \"lee\", id, ruta, n} | {t: \"busca\", id, patron}]}: mientras corre una orden larga (documentar), las líneas nuevas del archivo de ESQUEMA_PROGRESO, cada ~0,5 s. «trabajo» es la vista del trabajo (bin/trabajos.py: id, estado, etapa, etapas, hechas, items, leidos, leyendo…); «ruta», relativa a la carpeta del código.",
     "exportado": "{ok, ruta?} | {ok: false, error?}",
     "copiado": "{ok}",

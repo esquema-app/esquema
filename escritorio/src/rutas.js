@@ -1,5 +1,5 @@
 // Dónde vive cada cosa (equivale a Rutas en app/Sources/Esquema/Servicios.swift y a bin/comun.py).
-// La configuración en la carpeta de Esquema del sistema; el código (bin/, ui/, plantillas/) dentro de la app (sin empaquetar, el del repo).
+// La configuración en la carpeta de Esquema del sistema; el código (bin/, ui/, plantillas/, tipos/) dentro de la app (sin empaquetar, el del repo).
 // Los documentos de la persona, en la carpeta que elige (nunca se copian a otro lado).
 const fs = require("fs");
 const os = require("os");
@@ -26,7 +26,7 @@ function prepararDatos() {
   try { fs.chmodSync(datos(), 0o700); } catch {}
 }
 
-/** Código (bin/, ui/, plantillas/): dentro de la app si está empaquetada; si no, el del repo. */
+/** Código (bin/, ui/, plantillas/, tipos/): dentro de la app si está empaquetada; si no, el del repo. */
 function recursos(empaquetada) {
   return empaquetada ? path.join(process.resourcesPath, "esquema") : REPO;
 }
