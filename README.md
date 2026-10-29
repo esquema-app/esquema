@@ -49,6 +49,8 @@ formato que GitHub ya muestra (Markdown con bloques ```` ```mermaid ```` y archi
 - **Libros.** Un proyecto de tipo Libro se parte en capítulos, con resúmenes, el mapa de ideas y personajes, la línea de tiempo,
   material de estudio (esquema, preguntas y tarjetas) y «Revisar incongruencias», con la cita y dónde está. Los tipos de proyecto son
   archivos abiertos en `tipos/`.
+- **Agregar información.** Pega notas, un correo o lo de una reunión: tu IA crea lo nuevo, completa lo que existe y corrige lo que
+  cambió. Tú revisas cada cambio, con su porqué, antes de guardar.
 - **Borrar con «Deshacer»** y **publicar en la wiki de GitHub** con tu git, sin tocar las páginas que escribiste a mano.
 - **Todo conectado.** Pantallas, botones y servicios son **elementos** (`esquema.json`); los diagramas y los textos los enlazan. Si
   renombras o quitas un botón, Esquema muestra cada documento y diagrama que cambia (antes y después, lo que queda suelto) y lo
@@ -225,6 +227,8 @@ already renders (Markdown with ```` ```mermaid ```` blocks and `.mmd` files), pl
 - **Books.** A Book project is split into chapters, with summaries, the map of ideas and characters, the timeline, study material
   (outline, questions and flashcards) and «Check inconsistencies», with the quote and where it is. Project types are open files in
   `tipos/`.
+- **Add information.** Paste notes, an email or a meeting's takeaways: your AI creates what's new, completes what exists and fixes
+  what changed. You review each change, with its reason, before saving.
 - **Delete with «Undo»** and **publish to the GitHub wiki** with your git, never touching pages you wrote by hand.
 - **Everything connected.** Screens, buttons and services are **elements** (`esquema.json`) that diagrams and text link to. Rename
   or remove a button and Esquema previews every document and diagram that changes, then applies it all as one version you can undo.

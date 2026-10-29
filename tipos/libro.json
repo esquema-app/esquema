@@ -17,7 +17,7 @@
     {"id": "versiones", "nombre": {"es": "Versiones", "en": "Versions"}}
   ],
   "falta": ["capitulos", "resumenes", "libro-readme", "estudio", "incongruencias", "elementos"],
-  "acciones": ["estudiar", "incongruencias", "diagrama", "agregar", "wiki"],
-  "nuevo": ["documento", "diagrama", "agregar"],
-  "agregar": ["documento"]
+  "acciones": ["estudiar", "incongruencias", "incorporar", "diagrama", "agregar", "wiki"],
+  "nuevo": ["incorporar", "documento", "diagrama", "agregar"],
+  "agregar": ["incorporar", "documento"]
 }

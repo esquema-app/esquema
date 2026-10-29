@@ -54,6 +54,29 @@ if "se terminó de desarrollar" in prompt:
               '===ARCHIVO ruta="arquitectura.md" titulo="Arquitectura" tipo="arquitectura"===\n# Arquitectura\n\nAhora con cuotas.\n===FIN===\n'
               '===ARCHIVO ruta="historias/hu-42-x.md" titulo="x" tipo="otro"===\n# no\n===FIN===\n'
               "===NOTA===\nPuse al día la arquitectura.\n===FIN===")
+# «Agregar información» (bin/incorporar.py): crea un flujo, completa el README, cambia la arquitectura y deja algo sin lugar.
+# Con IA_FALSA_MODO=incorporar-pregunta, primero pregunta a qué historia pertenece.
+if "información SIN CLASIFICAR" in prompt:
+    respuestas = entre(prompt, "<respuestas-de-la-persona>\n", "\n</respuestas-de-la-persona>")
+    if modo == "incorporar-pregunta" and not respuestas and "NO mandes PLAN" in prompt:
+        responder('===PREGUNTAS===\n[{"pregunta": "¿A qué historia pertenece la devolución?", "porque": "Para completar la correcta.", "opciones": ["HU-12", "Ninguna"]}]\n===FIN===')
+    readme = entre(prompt, '<documento ruta="README.md">\n', "\n</documento>")
+    arq = entre(prompt, '<documento ruta="arquitectura.md">\n', "\n</documento>")
+    plan = [{"accion": "crear", "ruta": "flujos/devolver-un-pago.md", "titulo": "Devolver un pago", "tipo": "flujo", "porque": "Es un flujo nuevo que no estaba documentado.", "cita": "las devoluciones se hacen en 5 días"},
+            {"accion": "completar", "ruta": "README.md", "titulo": "X", "tipo": "vision", "porque": "Agrega las devoluciones a lo que hace el proyecto.", "cita": "una cita que no está"},
+            {"accion": "completar", "ruta": "arquitectura.md", "titulo": "Arquitectura", "tipo": "arquitectura", "porque": "El correo ahora lo manda otro servicio.", "cita": "el correo lo manda Avisos"},
+            {"accion": "crear", "ruta": "fuentes/no.md", "titulo": "No", "tipo": "otro", "porque": "", "cita": ""}]
+    partes = ["===PLAN===\n" + json.dumps(plan, ensure_ascii=False) + "\n===FIN===",
+              '===ARCHIVO ruta="flujos/devolver-un-pago.md" titulo="Devolver un pago" tipo="flujo"===\n# Devolver un pago\n\n' + (f"Respuesta: {respuestas}\n\n" if respuestas else "")
+              + "La [API de pagos](../elementos.md#el-api-pagos) devuelve el dinero en 5 días.\n\n```mermaid\nflowchart TD\n    A[Pedir devolución] --> B[Devolver]\n```\n===FIN===",
+              '===ARCHIVO ruta="fuentes/no.md" titulo="No" tipo="otro"===\n# No\n===FIN===']
+    if readme:
+        partes.append(f'===ARCHIVO ruta="README.md" titulo="Otro título" tipo="vision"===\n{readme}\n\nTambién devuelve pagos.\n===FIN===')
+    if arq:
+        partes.append('===ARCHIVO ruta="arquitectura.md" titulo="Arquitectura" tipo="arquitectura"===\n' + arq.split("\n")[0] + "\n\nEl servicio Avisos manda el correo.\n===FIN===")
+    partes += ['===ELEMENTOS===\n[{"id": "servicio-avisos", "tipo": "servicio", "nombre": "Avisos", "descripcion": "Manda los correos."}]\n===FIN===',
+               "===SIN_LUGAR===\nEl equipo almuerza junto el viernes.\n===FIN===", "===NOTA===\nRepartí la información en tres documentos.\n===FIN==="]
+    responder("\n".join(partes))
 if "La persona agregó a su proyecto" in prompt:
     responder("===TIPO===\ndocumento\n===FIN===\n===DOCUMENTO===\n# X\n## Resumen\nUn documento de prueba bastante claro.\n## Diagrama\n```mermaid\nflowchart TD\n    A[Inicio] --> B[Fin]\n```\n===FIN===")
 if "Resume, en" in prompt and "<capitulo>" in prompt:

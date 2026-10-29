@@ -294,9 +294,9 @@ button { cursor: pointer; }
 .cambio-ia .meta { color: var(--gris); font-size: 12.5px; }
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--texto); color: var(--fondo); padding: 9px 16px; border-radius: 10px; opacity: 0; pointer-events: none; transition: .18s; z-index: 80; max-width: calc(100% - 32px); }
 #toast.visible { opacity: 1; transform: translate(-50%, 0); }
-/* Con un diálogo abierto (que en el celular sale desde abajo), el aviso va arriba para no tapar sus botones. */
-body:has(.capa) #toast { top: calc(16px + env(safe-area-inset-top, 0px)); bottom: auto; transform: translate(-50%, -20px); }
-body:has(.capa) #toast.visible { transform: translate(-50%, 0); }
+/* Con un diálogo abierto (que en el celular sale desde abajo), una pregunta o una barra de guardar abajo, el aviso va arriba para no tapar sus botones. */
+body:has(.capa) #toast, body:has(.p-pie) #toast, body:has(.pregunta) #toast { top: calc(16px + env(safe-area-inset-top, 0px)); bottom: auto; transform: translate(-50%, -20px); }
+body:has(.capa) #toast.visible, body:has(.p-pie) #toast.visible, body:has(.pregunta) #toast.visible { transform: translate(-50%, 0); }
 
 /* ───── Celular (y ventanas angostas) ───── */
 @media (max-width: 760px) {
@@ -373,6 +373,17 @@ body:has(.capa) #toast.visible { transform: translate(-50%, 0); }
 .p-prop-cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .p-prop-cab .p-txt { min-width: 160px; }
 .p-prop-acc { display: flex; gap: 6px; flex-wrap: wrap; }
+/* «Agregar información»: el plan agrupado (Nuevo / Se completa / Se modifica), con el porqué y la cita de cada cambio. */
+.p-grupo { margin: 18px 0 6px; }
+.p-grupo > h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--gris); margin: 0 0 2px; display: flex; align-items: center; gap: 8px; }
+.p-grupo > .p-ayuda { margin: 0 0 8px; }
+.p-n { font-size: 12px; font-weight: 600; background: var(--suave); color: var(--texto); border-radius: 999px; padding: 0 7px; letter-spacing: 0; }
+.p-porque { margin: 8px 0 0; font-size: 14px; }
+.p-cita { margin: 6px 0 0; padding: 4px 10px; border-left: 3px solid var(--borde); color: var(--gris); font-size: 13px; overflow-wrap: anywhere; }
+.p-cita small { font-style: italic; }
+.p-prop.p-modifica { border-color: var(--acento); }
+.p-prop.p-modifica.quitada { border-color: var(--borde); opacity: .8; }
+.p-prop.p-modifica.quitada .p-txt b { text-decoration: none; }
 .p-previa { border-top: 1px solid var(--borde); margin-top: 10px; padding: 12px 4px 4px; max-height: 60vh; overflow: auto; }
 .p-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .p-chip { border: 1px solid var(--borde); border-radius: 999px; padding: 3px 10px; font-size: 13px; }

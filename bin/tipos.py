@@ -27,9 +27,9 @@ TIPOS_DOCUMENTO = ("vision", "arquitectura", "flujo", "glosario", "otro", "histo
 SECCIONES_ESPECIALES = ("elementos", "versiones")
 FALTA = ("vision", "arquitectura", "segun-codigo", "flujos", "elementos", "elementos-usados", "al-dia",
          "capitulos", "resumenes", "libro-readme", "estudio", "incongruencias")
-ACCIONES = ("documentar", "completar", "flujo", "diagrama", "historia", "agregar", "readme", "wiki", "estudiar", "incongruencias")
-NUEVO = ("diagrama", "documento", "historia", "agregar")
-AGREGAR = ("historia", "documento", "libro")
+ACCIONES = ("documentar", "completar", "flujo", "diagrama", "historia", "agregar", "readme", "wiki", "estudiar", "incongruencias", "incorporar")
+NUEVO = ("diagrama", "documento", "historia", "agregar", "incorporar")
+AGREGAR = ("historia", "documento", "libro", "incorporar")
 DEFECTO = "software"
 
 

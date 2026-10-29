@@ -55,11 +55,12 @@ def demo_proyecto():
 
 
 def demo_agregar():
-    """Para «Agregar» en la vista previa: una HU y un libro ficticios, y lo que «responde» la IA con ellos."""
+    """Para «Agregar» en la vista previa: una HU, un libro y unas notas de reunión ficticios, y lo que «responde» la IA con ellos."""
     r = {}
     for idioma in ("es", "en"):
         r[idioma] = {**json.loads(leer_texto(IA_SIMULADA, idioma, "agregar.json")),
-                     "textos": {"historia": leer_texto(AGREGAR, idioma, "historia.md"), "libro": leer_texto(AGREGAR, idioma, "libro.md")}}
+                     "textos": {"historia": leer_texto(AGREGAR, idioma, "historia.md"), "libro": leer_texto(AGREGAR, idioma, "libro.md"),
+                                "informacion": leer_texto(AGREGAR, idioma, "informacion.md")}}
     return r
 
 

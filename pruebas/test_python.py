@@ -33,6 +33,7 @@ import comun  # noqa: E402
 import ia  # noqa: E402
 import plantilla_formato  # noqa: E402
 import plantillas  # noqa: E402
+import incorporar  # noqa: E402
 import proyecto as proyecto_mod  # noqa: E402
 
 CASOS = json.load(open(os.path.join(RAIZ, "pruebas", "casos.json"), encoding="utf-8"))
@@ -1033,7 +1034,7 @@ class Repo(unittest.TestCase):
 
     def test_solo_biblioteca_estandar(self):
         permitidos = set(sys.stdlib_module_names) | {"comun", "carpeta", "ia", "asistente", "plantillas", "plantilla_formato", "estado", "proyecto",
-                                                     "inventario", "trabajos", "documentar", "tipos", "contenido", "historias", "libros", "agregar", "wiki"}
+                                                     "inventario", "trabajos", "documentar", "tipos", "contenido", "historias", "libros", "agregar", "wiki", "incorporar"}
         for f in os.listdir(BIN):
             if not f.endswith(".py"):
                 continue
@@ -1337,6 +1338,114 @@ class Libros(unittest.TestCase):
         self.assertEqual(sorted(os.listdir(carpeta)), ["01-capitulo.md", "02-capitulo.md", "03-capitulo.md", "LICENSE.md"], "la carpeta de escritos no se toca")
         base = os.path.realpath(os.path.join(os.path.expanduser("~"), c["ubicacion"][2:]))
         self.assertNotIn("CC0", leer(os.path.join(base, "fuentes", "cuaderno-del-faro.md")))
+
+
+class Incorporar(unittest.TestCase):
+    """«Agregar información»: la IA reparte notas sin clasificar en un plan (crear / completar / modificar) que la persona revisa."""
+
+    INFO = ("Notas de la reunión con Banco Ejemplo (ficticias)\n\nAcordamos que las devoluciones se hacen en 5 días desde la API de pagos. "
+            "Desde ahora el correo lo manda Avisos, no la arquitectura de antes. El equipo almuerza junto el viernes.")
+
+    def setUp(self):
+        os.environ.pop("IA_FALSA_MODO", None)
+
+    def tearDown(self):
+        os.environ.pop("IA_FALSA_MODO", None)
+
+    def proyecto(self):
+        codigo = repo_de_prueba()
+        v = proyecto_mod.vincular({"carpeta": codigo})
+        docs = os.path.realpath(os.path.join(os.path.expanduser("~"), v["ubicacion"][2:]))
+        x = json.loads(json.dumps(ESQUEMA_MIN))
+        x["documentos"].append({"ruta": "arquitectura.md", "titulo": "Arquitectura", "tipo": "arquitectura"})
+        with open(os.path.join(docs, "esquema.json"), "w", encoding="utf-8") as f:
+            json.dump(x, f)
+        with open(os.path.join(docs, "README.md"), "w", encoding="utf-8") as f:
+            f.write("# Minutero\n\nCobra pagos con la API de pagos.\n")
+        with open(os.path.join(docs, "arquitectura.md"), "w", encoding="utf-8") as f:
+            f.write("# Arquitectura\n\nEl correo lo manda la API de pagos directamente.\n")
+        return docs
+
+    def test_plan_crear_completar_modificar_y_notas(self):
+        docs = self.proyecto()
+        antes = {n: leer(os.path.join(docs, n)) for n in ("README.md", "arquitectura.md")}
+        d = orden("detectar", {"carpeta": docs, "texto": self.INFO})
+        open(REGISTRO, "w").close()
+        r = orden("agregar", {"carpeta": docs, "token": d["token"], "tipo": "incorporar", "idioma": "es", "titulo": "Reunión de pagos"})
+        self.assertTrue(r["ok"], r)
+        t = r["trabajo"]
+        self.assertEqual((t["tipo"], t["estado"]), ("incorporar", "listo"), t)
+        prompt = json.loads(leer(REGISTRO).strip().split("\n")[-1])["prompt"]
+        self.assertIn(asistente.NO_PROGRAMAR, prompt)
+        self.assertIn('<documento ruta="arquitectura.md">', prompt, "van los documentos que se parecen a la información")
+        self.assertIn("Flujos: flujos/, diagramas/", prompt, "y las secciones del tipo de proyecto")
+        # Nada se escribe todavía: solo el original en fuentes/ (y en esquema.json).
+        for n, texto in antes.items():
+            self.assertEqual(leer(os.path.join(docs, n)), texto)
+        self.assertFalse(os.path.exists(os.path.join(docs, "flujos", "devolver-un-pago.md")))
+        self.assertTrue(os.listdir(os.path.join(docs, "fuentes")))
+        x = json.loads(leer(os.path.join(docs, "esquema.json")))
+        self.assertTrue(any(d_["tipo"] == "fuente" for d_ in x["documentos"]))
+        self.assertEqual(t["plan"], {"crear": 2, "completar": 1, "modificar": 1})
+        p = orden("trabajo", {"carpeta": docs, "id": t["id"], "propuestas": True})["propuestas"]
+        self.assertEqual(p["tarea"], "incorporar")
+        por = {x_["ruta"]: x_ for x_ in p["propuestas"]}
+        self.assertEqual([x_["accion"] for x_ in p["propuestas"]], ["crear", "crear", "completar", "modificar"], "agrupado: nuevo, se completa, se modifica")
+        self.assertNotIn("fuentes/no.md", por, "nunca en fuentes/")
+        flujo = por["flujos/devolver-un-pago.md"]
+        self.assertEqual(flujo["accion"], "crear")
+        self.assertTrue(flujo["cita_exacta"], "la cita está tal cual en la información")
+        self.assertNotIn("el-api-pagos", flujo["texto"], "los enlaces a elementos que no existen quedan como texto")
+        readme = por["README.md"]
+        self.assertEqual(readme["accion"], "completar")
+        self.assertEqual(readme["titulo"], "Visión", "un documento que existe conserva su título")
+        self.assertTrue(readme["texto"].startswith(antes["README.md"].rstrip()))
+        self.assertFalse(readme["cita_exacta"], "una cita que no está en la información se marca")
+        arq = por["arquitectura.md"]
+        self.assertEqual(arq["accion"], "modificar", "la IA dijo «completar» pero quitó una línea: es un cambio")
+        self.assertIn("Avisos", arq["texto"])
+        nota = [x_ for x_ in p["propuestas"] if x_["ruta"].startswith("notas/")]
+        self.assertEqual(len(nota), 1)
+        self.assertIn("almuerza", nota[0]["texto"], "lo que no calza queda en notas/<fecha>.md")
+        self.assertEqual(p["elementos"][0]["id"], "servicio-avisos")
+        self.assertEqual(p["descartados"], 1)
+
+    def test_pregunta_cuando_no_sabe_donde_va(self):
+        docs = self.proyecto()
+        os.environ["IA_FALSA_MODO"] = "incorporar-pregunta"
+        d = orden("detectar", {"carpeta": docs, "texto": self.INFO})
+        r = orden("agregar", {"carpeta": docs, "token": d["token"], "tipo": "incorporar", "idioma": "es"})
+        t = r["trabajo"]
+        self.assertEqual(t["estado"], "esperando", t)
+        self.assertEqual(t["preguntas"][0]["opciones"], ["HU-12", "Ninguna"])
+        self.assertEqual([e["id"] for e in orden("abrir", {"carpeta": docs})["esperan"]], [t["id"]])
+        r = orden("responder", {"carpeta": docs, "id": t["id"], "respuestas": [{"id": t["preguntas"][0]["id"], "respuesta": "Ninguna"}]})
+        self.assertEqual(r["trabajo"]["estado"], "listo", r)
+        p = orden("trabajo", {"carpeta": docs, "id": t["id"], "propuestas": True})["propuestas"]
+        flujo = next(x_ for x_ in p["propuestas"] if x_["ruta"] == "flujos/devolver-un-pago.md")
+        self.assertIn("Ninguna", flujo["texto"], "la IA recibió la respuesta")
+
+    def test_solo_agrega(self):
+        self.assertTrue(incorporar.solo_agrega("# A\n\nuno\ndos\n", "# A\n\nuno\nnuevo\ndos\n\nmás\n"))
+        self.assertFalse(incorporar.solo_agrega("# A\nuno\ndos\n", "# A\nuno\n"))
+        self.assertFalse(incorporar.solo_agrega("# A\nuno\ndos\n", "# A\ndos\nuno\n"))
+
+    def test_historia_conserva_su_encabezado(self):
+        docs = self.proyecto()
+        os.makedirs(os.path.join(docs, "historias"))
+        hu = "---\nestado: en-desarrollo\nid: HU-12\ncreada: 2026-01-01\n---\n\n# HU-12 · Pagar\n\nAntes.\n"
+        with open(os.path.join(docs, "historias", "hu-12-pagar.md"), "w", encoding="utf-8") as f:
+            f.write(hu)
+        texto = ('===PLAN===\n[{"accion": "completar", "ruta": "historias/hu-12-pagar.md", "porque": "x", "cita": "devoluciones"}]\n===FIN===\n'
+                 '===ARCHIVO ruta="historias/hu-12-pagar.md" titulo="x" tipo="historia"===\n---\nestado: terminada\n---\n\n# HU-12 · Pagar\n\nAntes.\n\nY devoluciones.\n===FIN===\n'
+                 '===ARCHIVO ruta="historias/hu-99-nueva.md" titulo="x" tipo="historia"===\n# Nueva\n===FIN===')
+        L = proyecto_mod.lugares({"carpeta": docs})
+        x = incorporar.plan(L, {"texto": self.INFO, "idioma": "es"}, texto)
+        self.assertEqual([p["ruta"] for p in x["propuestas"]], ["historias/hu-12-pagar.md"], "una HU nueva va por «Historia de usuario»")
+        p = x["propuestas"][0]
+        self.assertEqual(p["accion"], "completar")
+        self.assertIn("estado: en-desarrollo", p["texto"], "el estado lo maneja Esquema, no la IA")
+        self.assertIn("Y devoluciones.", p["texto"])
 
 
 class Borrar(unittest.TestCase):

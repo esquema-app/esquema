@@ -73,9 +73,9 @@
   // ───────────── Tipos de proyecto (tipos/<id>.json): la misma regla que bin/tipos.py (casos «tipos» de pruebas/casos.json) ─────────────
   const T_ICONOS = ["codigo", "libro", "proyecto", "doc", "diagrama", "persona", "elemento", "chispa", "carpeta", "historia", "datos", "archivo", "flecha", "listo", "imagen", "tarjetas"];
   const T_FALTA = ["vision", "arquitectura", "segun-codigo", "flujos", "elementos", "elementos-usados", "al-dia", "capitulos", "resumenes", "libro-readme", "estudio", "incongruencias"];
-  const T_ACCIONES = ["documentar", "completar", "flujo", "diagrama", "historia", "agregar", "readme", "wiki", "estudiar", "incongruencias"];
-  const T_NUEVO = ["diagrama", "documento", "historia", "agregar"];
-  const T_AGREGAR = ["historia", "documento", "libro"];
+  const T_ACCIONES = ["documentar", "completar", "flujo", "diagrama", "historia", "agregar", "readme", "wiki", "estudiar", "incongruencias", "incorporar"];
+  const T_NUEVO = ["diagrama", "documento", "historia", "agregar", "incorporar"];
+  const T_AGREGAR = ["historia", "documento", "libro", "incorporar"];
   M.TIPO_DEFECTO = "software";
   const tTexto = (o, max) => !!o && typeof o === "object" && !Array.isArray(o) && typeof o.es === "string" && o.es.trim() !== "" && Object.entries(o).every(([k, v]) => /^[a-z]{2}(-[A-Z]{2})?$/.test(k) && typeof v === "string" && v.length <= max);
   const tLista = (v, ok, min = 0) => Array.isArray(v) && v.length >= min && v.length <= 20 && new Set(v).size === v.length && v.every((x) => ok.includes(x));

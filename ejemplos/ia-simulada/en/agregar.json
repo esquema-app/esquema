@@ -135,5 +135,60 @@
     ]
    }
   ]
- }
+ },
+  "incorporar": {
+    "pregunta": {
+      "pregunta": "Are refunds a separate flow or part of «Pay a bill»?",
+      "porque": "So I know whether to create a new document or complete the existing one.",
+      "opciones": [
+        "A separate flow",
+        "Part of «Pay a bill»"
+      ]
+    },
+    "parte": "Part",
+    "crear": {
+      "ruta": "flujos/devolver-un-pago.md",
+      "titulo": "Refund a payment",
+      "porque": "It's a flow that wasn't documented.",
+      "cita": "refunds take 5 business days",
+      "texto": "# Refund a payment\n\nThe person asks for the refund on the [Payment screen](../elementos.md#el-pantalla-pago) and the [Payments API](../elementos.md#el-api-pagos) asks [Banco Ejemplo](../elementos.md#el-banco-ejemplo) for it. The money is back in 5 business days.\n\n```mermaid\nsequenceDiagram\n    participant P as Payment screen\n    participant A as Payments API\n    participant B as Banco Ejemplo\n    P->>A: Ask for a refund\n    A->>B: Refund the payment\n    B-->>A: Refund on its way (5 business days)\n    A-->>P: We'll let you know when it arrives\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"P\":\"pantalla-pago\"}}\n```\n"
+    },
+    "seccion": {
+      "porque": "Refunds are part of this flow.",
+      "cita": "refunds take 5 business days",
+      "texto": "## Refunds\n\nIf the person asks for a refund, the [Payments API](../elementos.md#el-api-pagos) asks [Banco Ejemplo](../elementos.md#el-banco-ejemplo) and the money is back in 5 business days."
+    },
+    "completar": {
+      "ruta": "README.md",
+      "despues": "Payments database",
+      "linea": "- You can also pay by bank transfer.",
+      "porque": "A way to pay the summary didn't mention.",
+      "cita": "they can also pay by bank transfer"
+    },
+    "modificar": {
+      "ruta": "arquitectura.md",
+      "cambios": [
+        [
+          "C[Email service]",
+          "C[Notifications service]"
+        ],
+        [
+          "\"C\":\"servicio-correo\"",
+          "\"C\":\"servicio-avisos\""
+        ]
+      ],
+      "porque": "The receipt is now sent by the Notifications service, not the Email service.",
+      "cita": "the new Notifications service sends it"
+    },
+    "elementos": [
+      {
+        "id": "servicio-avisos",
+        "tipo": "servicio",
+        "nombre": "Notifications service",
+        "descripcion": "Sends the receipt by email and text message."
+      }
+    ],
+    "sin_lugar": "- Next meeting: Thursday at 10.",
+    "nota": "I spread the notes: a new flow, the summary completed and the architecture updated. The date of the next meeting went to Notes."
+  }
 }

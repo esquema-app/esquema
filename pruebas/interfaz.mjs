@@ -334,7 +334,7 @@ console.log("Dibújame: revisado");
   if (!(await p.$('.lateral [data-p-docs] ~ [role="group"] [data-accion="p-documentar"], .lateral [data-accion="p-documentar"]'))) falla("La carpeta «Documentación» vacía no invita a hacerla");
   await p.click('.lateral [data-arbol="#codigo"]'); await espera(p);
   const tarjetas = await p.$$eval(".tarjeta-inicio", (l) => l.map((x) => x.dataset.accion));
-  if (tarjetas.join() !== "p-historia,p-agregar-algo,crear-diagrama,p-flujo") falla("El inicio no ofrece las cuatro acciones del tipo Software: " + tarjetas.join());
+  if (tarjetas.join() !== "p-historia,p-incorporar,crear-diagrama,p-flujo") falla("El inicio no ofrece las cuatro acciones del tipo Software: " + tarjetas.join());
   // Crear es dentro del proyecto: «Nuevo en <proyecto>» en su carpeta del lateral; arriba solo «Agregar» (proyecto), que es global.
   if (await p.$('.lateral > .nuevo, .lateral .boton.principal.nuevo')) falla("El lateral todavía tiene un «Nuevo» global arriba");
   if (!(await p.$eval('.lateral [data-accion="p-nuevo-en"]', (x) => /proyecto-ejemplo/.test(x.textContent)))) falla("«Nuevo en …» no dice en qué proyecto se crea");
@@ -799,6 +799,68 @@ await recorridoAgregar({ idioma: "en", ancho: 390, oscuro: true });
 await recorridoAgregar({ idioma: "en", ancho: 1280, oscuro: true });
 await recorridoAgregar({ idioma: "es", ancho: 390 });
 console.log("Agregar, historias de usuario, libros, borrar y la wiki: revisado");
+
+// ── 17) «Agregar información»: notas sin clasificar → la IA pregunta lo que no sabe → el plan (Nuevo / Se completa / Se modifica) ──
+async function recorridoIncorporar({ idioma, ancho, oscuro = false }) {
+  const p = await pagina({ ancho, alto: ancho < 500 ? 844 : 800, idioma, oscuro });
+  const etapa = async (nombre) => { await espera(p, 150); if (idioma === "en") await sinTraducir(p, "informacion " + nombre + " " + ancho); if (ancho < 500) await desborde(p, "informacion " + nombre + ` (${idioma})`); await captura(p, `${nombre}-${idioma}-${ancho < 500 ? "390" : "escritorio"}-${oscuro ? "oscuro" : "claro"}`); };
+  const estado = (f) => p.evaluate((src) => { let x; window.Esquema._probar((E) => { x = new Function("E", src)(E); }); return x; }, f);
+  const lateral = async () => { if (ancho < 500 && !(await p.$(".lateral.abierto"))) { await p.click('[data-accion="abrir-lateral"]'); await espera(p, 150); } };
+  const en = idioma === "en";
+  // Un proyecto documentado (README, arquitectura y flujos), rápido.
+  await p.evaluate(() => { window._simVelocidad = 0.05; });
+  await probar(p, "E.sel=null;E.panel=null");
+  await lateral();
+  await p.click('.lateral [data-accion="p-documentar"]');
+  await p.click('[data-accion="p-generar-inicial"]'); await p.waitForSelector('[data-accion="p-enviar"]');
+  await p.click('[data-accion="p-enviar"]');
+  await p.waitForFunction(() => /listo/.test(document.querySelector(".p-trabajo")?.className || ""), null, { timeout: 15000 });
+  await probar(p, "E.pj.trabajo.visto=true;E.panel='proyecto';E.sel=null;E.lateral=false");
+  await p.evaluate(() => { window._simVelocidad = 0.15; });
+  // «Nuevo en …»: «Agregar información» se distingue de «Agregar un documento».
+  await p.click('header.barra [data-accion="p-nuevo-en"]');
+  await p.waitForSelector('[data-accion="p-incorporar"]');
+  if (!(await p.$('.capa [data-accion="p-agregar-algo"]'))) falla("«Nuevo en …» perdió «Agregar un documento»");
+  await etapa("nuevo-en");
+  await p.click('.capa [data-accion="p-incorporar"]');
+  await p.fill("#p-pegar", demo.agregar[idioma].textos.informacion);
+  await etapa("informacion");
+  // Sin segundo paso: se lee y la IA empieza a ordenar. Como el proyecto ya tiene «Pagar una cuenta», pregunta dónde va.
+  await p.click('[data-accion="p-detectar"]');
+  await p.waitForSelector(".pregunta .preg-txt", { timeout: 10000 });
+  if ((await estado("return E.pj.trabajo?.tipo")) !== "incorporar") falla("«Agregar información» no empezó el trabajo «incorporar»");
+  await etapa("informacion-pregunta");
+  await p.keyboard.press("1");
+  // El plan se abre solo: agrupado, cada cambio con su porqué y su cita.
+  await p.waitForSelector(".p-grupo", { timeout: 10000 });
+  const grupos = await p.$$eval(".p-grupo", (x) => x.map((g) => g.getAttribute("aria-labelledby")));
+  if (grupos.join() !== "g-crear,g-completar,g-modificar") falla("El plan no viene agrupado en Nuevo / Se completa / Se modifica: " + grupos.join());
+  if ((await p.$$(".p-porque")).length < 3 || !(await p.$(".p-cita"))) falla("Los cambios del plan no dicen por qué ni de dónde salió");
+  const guardar = () => p.$eval('[data-accion="p-aplicar"]', (x) => Number((x.textContent.match(/\d+/) || [0])[0]));
+  const antes = await guardar();
+  if (!(await p.$(".p-modifica [data-p-confirmar]")) || !(await p.$(".p-modifica .p-dif"))) falla("Lo que se modifica no se ve con antes y después ni pide confirmar");
+  await etapa("informacion-plan");
+  await p.click(".p-modifica [data-p-confirmar]");
+  if ((await guardar()) !== antes + 1) falla("Confirmar un cambio no lo suma a lo que se guarda");
+  await p.$eval(".p-modifica", (x) => x.scrollIntoView({ block: "center" }));
+  await etapa("informacion-modifica");
+  // Quitar lo nuevo de notas y guardar el resto como una versión.
+  await p.click('#g-crear ~ .p-prop:last-of-type [data-p-quitar]').catch(() => {});
+  await p.click('[data-accion="p-aplicar"]');
+  await p.waitForFunction(() => !document.querySelector(".p-grupo"), null, { timeout: 5000 });
+  await espera(p, 400);
+  const r = await estado(`const a = E.archivos.map((x) => x.ruta); return { flujo: a.some((x) => x.endsWith("flujos/devolver-un-pago.md")), arq: Object.entries(E.docs).find(([k]) => k.endsWith("arquitectura.md"))?.[1]?.texto || "", els: (E.proyecto?.esquema?.elementos || []).map((e) => e.id), cambios: (E.cambiosIA || []).length }`);
+  if (!r.flujo) falla("Guardar el plan no creó el flujo nuevo");
+  if (!r.arq.includes(en ? "Notifications service" : "Servicio de avisos")) falla("El cambio confirmado no se aplicó a la arquitectura");
+  if (!r.els.includes("servicio-avisos")) falla("El elemento nuevo del plan no quedó en esquema.json");
+  if (!r.cambios) falla("Lo que cambió no quedó con «Quitar este cambio»");
+  await p.close();
+}
+await recorridoIncorporar({ idioma: "es", ancho: 1280 });
+await recorridoIncorporar({ idioma: "en", ancho: 390, oscuro: true });
+await recorridoIncorporar({ idioma: "en", ancho: 1280, oscuro: true });
+await recorridoIncorporar({ idioma: "es", ancho: 390 });
+console.log("Agregar información (la IA la ordena): revisado");
 
 // ── Capturas para la página y el README (claro y oscuro, escritorio y celular) ──
 if (CAPTURAS) {

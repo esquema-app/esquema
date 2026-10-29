@@ -5,6 +5,16 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Agregar información:** pega notas, un correo o lo que salió de una reunión y tu IA lo ordena en la documentación: crea lo
+  nuevo, completa lo que ya existe y corrige lo que cambió. Antes de guardar ves cada cambio agrupado (Nuevo, Se completa, Se
+  modifica), con el porqué y la frase de donde salió; lo que cambia algo que ya estaba solo se guarda si lo confirmas. Si tu IA no
+  sabe dónde va algo, te pregunta, y lo que no calza en ningún lado queda en Notas en vez de perderse. «Agregar archivo o texto»
+  ahora se llama «Agregar un documento»: es para guardar un texto entero, con su resumen. · *Add information: paste notes, an email
+  or what came out of a meeting and your AI sorts it into the documentation: it creates what's new, completes what exists and fixes
+  what changed. Before saving you see each change grouped (New, Gets completed, Gets changed), with the reason and the sentence it
+  came from; anything that changes what was already there is only saved if you confirm it. If your AI doesn't know where something
+  goes, it asks, and what fits nowhere goes to Notes instead of getting lost. «Add a file or text» is now «Add a document»: it's
+  for keeping a whole text, with its summary.*
 - **Agrega lo que tengas:** «Agregar» recibe una historia de usuario, un acta, una especificación o un libro (pegado, un archivo
   o soltándolo). Esquema adivina qué es, te dice por qué y puedes cambiarlo antes de que entre. El original queda guardado tal cual.
   · *Add what you have: «Add» takes a user story, minutes, a spec or a book (pasted, a file or dropped). Esquema guesses what it is,

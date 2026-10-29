@@ -23,6 +23,7 @@ import comun
 import contenido as C
 import documentar as D
 import historias as H
+import incorporar as INC
 import inventario as inv
 import libros as LB
 import proyecto as P
@@ -138,21 +139,35 @@ def agregar(e):
     if not L["vinculado"] and x is None:
         raise ValueError("Primero prepara la carpeta de documentación de este proyecto.")
     entrada = _entrada(e.get("token"))
-    tipo = e.get("tipo") if e.get("tipo") in ("historia", "documento", "libro") else entrada["detectado"]["tipo"]
+    tipo = e.get("tipo") if e.get("tipo") in ("historia", "documento", "libro", "incorporar") else entrada["detectado"]["tipo"]
     titulo = _titulo(e, entrada)
     if tipo == "historia" and C.solo_enlace(entrada["texto"]):
         raise ValueError("Esquema no abre enlaces (nada sale de tu computador). Pega también el texto del ticket.")
+    if tipo == "incorporar" and C.solo_enlace(entrada["texto"]):
+        raise ValueError("Esquema no abre enlaces (nada sale de tu computador). Pega también el texto.")
     os.makedirs(L["dir_docs"], exist_ok=True)
     fuentes = LB.guardar_fuentes(L["dir_docs"], entrada, f"{C.id_historia(entrada['texto'], _hu_existentes(L))} {titulo}" if tipo == "historia" else titulo)
     shutil.rmtree(entrada["carpeta"], ignore_errors=True)
     if tipo == "historia":
         t = H.nuevo(e, entrada["texto"], titulo, C.enlace_ticket(entrada["texto"]), fuentes)
         H.correr(e, t)
+    elif tipo == "incorporar":
+        # El original queda en fuentes/ (y en esquema.json) desde ya; el plan se revisa antes de escribir nada más.
+        D.registrar(L["dir_docs"], None, [{"ruta": r, "titulo": tt, "tipo": "fuente"} for r, tt in fuentes], nombre=H._nombre(e, L),
+                    idioma="en" if e.get("idioma") == "en" else "es")
+        t = INC.nuevo(e, entrada, titulo, fuentes)
+        INC.correr(e, t)
     else:
         sub = "libro" if tipo == "libro" else entrada["detectado"].get("subtipo", "")
         t = LB.nuevo_documento(e, entrada, titulo, sub, fuentes)
         LB.correr_documento(e, t)
-    return {"ok": True, "trabajo": t.vista()}
+    return {"ok": True, "trabajo": t.vista(), **_plan(t)}
+
+
+def _plan(t):
+    """El plan de «Agregar información» va con la respuesta (para revisarlo al tiro)."""
+    p = t.x.get("datos", {}).get("propuestas") if t.x["tipo"] == "incorporar" else None
+    return {"propuestas": p} if isinstance(p, dict) else {}
 
 
 def _hu_existentes(L):
@@ -212,7 +227,8 @@ def _trabajo_de(e):
 
 
 CORRER = {"historia": H.correr, "historia_cierre": H.correr_cierre, "libro": LB.correr_libro, "estudio": LB.correr_estudio,
-          "incongruencias": LB.correr_incongruencias, "documento": LB.correr_documento}
+          "incongruencias": LB.correr_incongruencias, "documento": LB.correr_documento,
+          "incorporar": INC.correr}
 
 
 def responder(e):
@@ -223,9 +239,11 @@ def responder(e):
         H.seguir(e, t, e.get("respuestas"))
     elif t.x["tipo"] == "libro":
         LB.seguir_libro(e, t, e.get("respuestas"))
+    elif t.x["tipo"] == "incorporar":
+        INC.seguir(e, t, e.get("respuestas"))
     else:
         raise ValueError("Ese trabajo no tiene preguntas.")
-    return {"ok": True, "trabajo": t.vista()}
+    return {"ok": True, "trabajo": t.vista(), **_plan(t)}
 
 
 def continuar(e):

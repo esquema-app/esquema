@@ -119,7 +119,12 @@
         if (antes === texto) continue;
         let error = null;
         M.bloquesMermaid(texto).forEach((b) => { const x = api.resultadoBloque(b.contenido, "pp"); if (!error && x.errores?.length) error = { linea: x.errores[0].linea + b.ini + 1, frase: M.frase(x.errores[0]) }; });
-        lista.push({ ruta, titulo: p.titulo, tipo: p.tipo, texto, antes, existe: antes != null || E.archivos.some((a) => a.ruta === ruta), error, quitada: !!error, ver: false });
+        const existe = antes != null || E.archivos.some((a) => a.ruta === ruta);
+        // «Agregar información»: cada cambio trae qué hace (crear / completar / modificar), por qué y de dónde salió. Lo que modifica
+        // algo no se guarda hasta que la persona lo confirma (y se muestra abierto, con antes y después).
+        const accion = ["crear", "completar", "modificar"].includes(p.accion) ? (p.accion === "crear" && existe ? "modificar" : p.accion) : null;
+        lista.push({ ruta, titulo: p.titulo, tipo: p.tipo, texto, antes, existe, error, quitada: !!error, ver: accion === "modificar" && !error,
+          accion, porque: p.porque || "", cita: p.cita || "", citaExacta: !!p.cita_exacta, confirmar: accion === "modificar", confirmada: false });
       }
       const elementos = [];
       for (const el of r.elementos) {
@@ -139,7 +144,7 @@
       if (pr.tarea === "inicial" && pj.ultimoEnvio?.piezas) x.fuentes = { leido: hoy(), archivos: pj.ultimoEnvio.piezas.filter((p) => p.ruta && !p.ruta.includes("..")).map((p) => p.ruta).slice(0, 100) };
       const escritas = [], antes = {};
       for (const p of pr.lista) {
-        if (p.quitada) continue;
+        if (p.quitada || (p.confirmar && !p.confirmada)) continue;
         const a = escribir(p.ruta, p.texto);
         if (a === undefined) continue;
         escritas.push(p.ruta); antes[p.ruta] = a;
@@ -156,7 +161,7 @@
       conGlosario(x);
       const g = escribir(glosarioRuta(), M.glosario(x, E.idioma));
       if (g !== undefined) escritas.push(glosarioRuta());
-      const mensaje = pr.tarea === "inicial" ? tr("Documentación inicial") : pr.tarea === "flujo" ? Tp("Documenté «{x}»", { x: (pj.ultimoEnvio?.datos?.pedido || "").slice(0, 80) }) : pr.tarea === "revisar" ? tr("Puse al día la documentación con los cambios del código") : Tp("Actualicé la documentación: {x}", { x: (pj.ultimoEnvio?.datos?.pedido || "").slice(0, 80) });
+      const mensaje = pr.tarea === "inicial" ? tr("Documentación inicial") : pr.tarea === "flujo" ? Tp("Documenté «{x}»", { x: (pj.ultimoEnvio?.datos?.pedido || "").slice(0, 80) }) : pr.tarea === "revisar" ? tr("Puse al día la documentación con los cambios del código") : pr.tarea === "incorporar" ? Tp("Información incorporada con {ia}", { ia: nombreIA() }) : Tp("Actualicé la documentación: {x}", { x: (pj.ultimoEnvio?.datos?.pedido || "").slice(0, 80) });
       E.proyecto = { ...(E.proyecto || { docs: docsDir(), git: { hay: !!E.encontrado?.git?.hay }, cambios: null,
         vinculado: !!E.vinculo, ubicacion: E.vinculo?.ubicacion || "", codigo: E.vinculo?.codigo || "" }), esquema: x };
       guardarYVersion(x, mensaje, escritas);
@@ -497,6 +502,12 @@
         return api.pintar();
       }
       pj.irAPreguntas = false;
+      if (t.tipo === "incorporar" && t.estado === "listo" && r.propuestas) {
+        enviar("abrir");
+        if (E.panel === "proyecto" && !E.sel && !hayDialogo()) return abrirPropuestasDe(t.id, r.propuestas);
+        toast(Tp("Tu IA ordenó «{x}»", { x: t.titulo || "" }), true, { texto: tr("Revisar"), f: () => abrirPropuestasDe(t.id, r.propuestas) });
+        return api.pintar();
+      }
       // Terminó (listo, con fallas, detenido o error): se vuelve a leer todo y se avisa.
       const n = (t.items || []).filter((i) => i.estado === "listo").length;
       if (antes?.estado !== t.estado || r.orden !== "documentar") {
@@ -527,7 +538,7 @@
       return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
     }
     const NOMBRE_ETAPA = { inventario: "Inventario", explorar: "Leyendo el código", escribir: "Escribiendo", cerrar: "Guardando", contexto: "Mirando el proyecto",
-      analizar: "Entendiendo", preguntas: "Tus respuestas", guardar: "Guardando", cambios: "Buscando los cambios", comparar: "Comparando", importar: "Partiendo en capítulos",
+      analizar: "Entendiendo", ordenar: "Ordenando la información", plan: "Armando el plan", preguntas: "Tus respuestas", guardar: "Guardando", cambios: "Buscando los cambios", comparar: "Comparando", importar: "Partiendo en capítulos",
       preguntar: "Tus respuestas", resumir: "Resumiendo", preparar: "Preparando", leer: "Leyendo" };
     const NOMBRE_TIPO_PROYECTO = { app: "App o servicio", biblioteca: "Biblioteca", sitio: "Sitio", monorepo: "Proyecto con varias partes", escritos: "Documentos y escritos", mezcla: "Mezcla de código y documentos" };
     /** El título de la tarjeta según el tipo de trabajo y su estado (frases completas, para que se traduzcan bien). */
@@ -540,6 +551,7 @@
         libro: { corriendo: ["{ia} está resumiendo «{x}»"], esperando: ["Antes de resumir «{x}», dos preguntas"], listo: ["«{x}» está listo para leer y estudiar"], "con-fallas": ["Resumí «{x}», pero algunos capítulos fallaron"], interrumpido: ["«{x}» quedó a medias"], detenido: ["Detuviste «{x}»"], error: ["No pude resumir «{x}»"] },
         estudio: { corriendo: ["{ia} está armando el material de estudio"], listo: ["El material de estudio está listo"], "con-fallas": ["Armé el material, pero algunos capítulos fallaron"], interrumpido: ["El material de estudio quedó a medias"], detenido: ["Detuviste el material de estudio"], error: ["No pude armar el material de estudio"] },
         incongruencias: { corriendo: ["{ia} está revisando las incongruencias"], listo: [h === 0 ? "No encontré incongruencias" : h === 1 ? "Encontré 1 incongruencia" : "Encontré {h} incongruencias"], interrumpido: ["La revisión quedó a medias"], detenido: ["Detuviste la revisión"], error: ["No pude terminar la revisión"] },
+        incorporar: { corriendo: ["{ia} está ordenando «{x}»"], esperando: [n === 1 ? "«{x}» espera 1 respuesta" : "«{x}» espera {n} respuestas"], listo: ["{ia} ordenó «{x}»: revisa los cambios antes de guardarlos"], interrumpido: ["«{x}» quedó a medias"], detenido: ["Detuviste «{x}»"], error: ["No pude ordenar «{x}»"] },
         documento: { corriendo: ["{ia} está leyendo «{x}»"], listo: ["«{x}» quedó en la documentación"], interrumpido: ["«{x}» quedó a medias"], detenido: ["Detuviste «{x}»"], error: ["No pude leer «{x}»"] },
       }[t.tipo || "documentar"] || {};
       const k = (f[t.estado] || f.error || ["{x}"])[0];
@@ -978,7 +990,8 @@
       if (a("historia")) l.push(tarjeta("p-historia", "persona", "Historia de usuario", "Pégala y tu IA te ayuda a entenderla: te pregunta lo que falta y la documenta. No programa."));
       if (a("estudiar")) l.push(tarjeta("p-estudiar", "tarjetas", "Material de estudio", "Por capítulo: un esquema, preguntas de repaso con respuesta y tarjetas."));
       if (a("incongruencias")) l.push(tarjeta("p-incongruencias", "chispa", "Revisar incongruencias", "Contradicciones, fechas o nombres que no calzan y cabos sueltos, con la cita y dónde está."));
-      if (a("agregar")) l.push(tarjeta("p-agregar-algo", "archivo", "Agregar archivo o texto", t.fuente === "carpeta" ? "Un acta, una especificación, un artículo o un libro: Esquema detecta qué es y lo ordena." : "Notas, apuntes o textos de referencia: tu IA los resume y los deja en Notas."));
+      if (a("incorporar")) l.push(tarjeta("p-incorporar", "bandeja", "Agregar información", "Pega notas, un correo, lo que salió de una reunión… Tu IA lo ordena: crea lo nuevo, completa lo que existe y corrige lo que cambió."));
+      if (a("agregar") && !a("incorporar")) l.push(tarjeta("p-agregar-algo", "archivo", "Agregar archivo o texto", t.fuente === "carpeta" ? "Un acta, una especificación, un artículo o un libro: Esquema detecta qué es y lo ordena." : "Notas, apuntes o textos de referencia: tu IA los resume y los deja en Notas."));
       if (a("diagrama")) l.push(tarjeta("crear-diagrama", "diagrama", "Crear diagrama", t.fuente === "carpeta" ? "Pídele a tu IA «el flujo de…», «la secuencia de…» o «la arquitectura de…». Puede leer tu código." : "Pídele a tu IA un mapa, una línea de tiempo o un esquema."));
       if (a("flujo")) l.push(tarjeta("p-flujo", "flecha", "Documentar un flujo", "Un flujo explicado paso a paso, con su diagrama. Tú apruebas qué archivos lee."));
       return l.length ? `<div class="acciones-inicio">${l.slice(0, 4).join("")}</div>` : "";
@@ -1002,7 +1015,8 @@
 
     // Propuestas de la IA: una tarjeta por archivo, con «Quitar este cambio».
     function propuestasHTML() {
-      const pr = E.propuestas, n = pr.lista.filter((p) => !p.quitada).length + (pr.elementos.length && !pr.elementosQuitados ? 1 : 0);
+      const pr = E.propuestas, n = pr.lista.filter((p) => !p.quitada && !(p.confirmar && !p.confirmada)).length + (pr.elementos.length && !pr.elementosQuitados ? 1 : 0);
+      if (pr.tarea === "incorporar") return incorporarHTML(pr, n);
       const tarjeta = (p, i) => `<article class="p-prop ${p.quitada ? "quitada" : ""}">
           <div class="p-prop-cab"><span class="p-tipo">${ic(p.existe ? "lapiz" : "doc")}</span><span class="p-txt"><b>${esc(p.titulo)}</b><small>${esc(rel(p.ruta))} · ${T(p.existe ? "Cambia" : "Nuevo")}</small></span>
             <span class="p-prop-acc">${p.error ? "" : `<button class="boton plano" data-p-ver="${i}">${T(p.ver ? "Ocultar" : "Ver")}</button><button class="boton" data-p-quitar="${i}">${p.quitada ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button>`}</span></div>
@@ -1017,6 +1031,41 @@
           <div class="p-chips">${pr.elementos.map((e) => `<span class="p-chip" title="${esc(e.descripcion || "")}">${esc(e.nombre)} <small>${T(NOMBRE_TIPO[e.tipo])}${e.estado === "cambia" ? " · " + T("cambia") : ""}</small></span>`).join("")}</div></article>` : ""}
         ${!pr.lista.length && !pr.elementos.length ? `<p class="p-ayuda">${T("Tu IA no propuso cambios.")}</p>` : ""}
         <div class="p-acciones p-pie"><button class="boton" data-accion="p-descartar">${T("Descartar todo")}</button><button class="boton principal" data-accion="p-aplicar" ${n ? "" : "disabled"}>${T("Guardar {n} cambios", { n })}</button></div>`;
+    }
+
+    /** El plan de «Agregar información», agrupado: Nuevo / Se completa / Se modifica. Cada cambio dice por qué y de dónde salió (la cita);
+     *  lo que se modifica se ve con antes y después y solo se guarda si la persona lo confirma. */
+    function incorporarHTML(pr, n) {
+      const elementos = pr.elementos.length ? `<article class="p-prop ${pr.elementosQuitados ? "quitada" : ""}"><div class="p-prop-cab"><span class="p-tipo">${ic("elemento")}</span><span class="p-txt"><b>${T("Elementos ({n})", { n: pr.elementos.length })}</b><small>${T("Lo que la documentación nombra y conecta")}</small></span><span class="p-prop-acc"><button class="boton" data-p-quitar="el">${pr.elementosQuitados ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button></span></div>
+          <div class="p-chips">${pr.elementos.map((e) => `<span class="p-chip" title="${esc(e.descripcion || "")}">${esc(e.nombre)} <small>${T(NOMBRE_TIPO[e.tipo])}${e.estado === "cambia" ? " · " + T("cambia") : ""}</small></span>`).join("")}</div></article>` : "";
+      const tarjeta = (p, i) => {
+        const fuera = p.quitada || (p.confirmar && !p.confirmada);
+        const boton = p.error ? "" : p.confirmar
+          ? `<button class="boton ${p.confirmada ? "" : "principal"}" data-p-confirmar="${i}" aria-pressed="${p.confirmada}">${p.confirmada ? ic("listo") + " " + T("Lo aplico") : T("Aplicar este cambio")}</button>`
+          : `<button class="boton" data-p-quitar="${i}">${p.quitada ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button>`;
+        return `<article class="p-prop ${fuera ? "quitada" : ""} ${p.confirmar ? "p-modifica" : ""}">
+          <div class="p-prop-cab"><span class="p-tipo">${ic(p.accion === "crear" ? "doc" : p.accion === "completar" ? "mas" : "lapiz")}</span><span class="p-txt"><b>${esc(p.titulo)}</b><small>${esc(rel(p.ruta))}</small></span>
+            <span class="p-prop-acc">${p.error ? "" : `<button class="boton plano" data-p-ver="${i}">${T(p.ver ? "Ocultar" : "Ver")}</button>`}${boton}</span></div>
+          ${p.porque ? `<p class="p-porque">${esc(p.porque)}</p>` : ""}
+          ${p.cita ? `<blockquote class="p-cita">«${esc(p.cita)}»${p.citaExacta ? "" : ` <small>${T("(no aparece tal cual en lo que agregaste)")}</small>`}</blockquote>` : ""}
+          ${p.error ? `<p class="mal-txt">${T("Un diagrama tiene un error (línea {n}: {x}). No lo agrego; pídelo de nuevo.", { n: p.error.linea, x: p.error.frase })}</p>` : ""}
+          ${p.ver ? (p.existe ? difHTML(p.antes || "", p.texto) : `<div class="p-previa md" data-p-md="${i}"></div>`) : ""}
+        </article>`;
+      };
+      const grupo = (accion, titulo, ayuda) => {
+        const l = pr.lista.map((p, i) => [p, i]).filter(([p]) => (p.accion || (p.existe ? "modificar" : "crear")) === accion);
+        return l.length ? `<section class="p-grupo" aria-labelledby="g-${accion}"><h3 id="g-${accion}">${T(titulo)} <span class="p-n">${l.length}</span></h3><p class="p-ayuda">${T(ayuda)}</p>${l.map(([p, i]) => tarjeta(p, i)).join("")}</section>` : "";
+      };
+      const faltan = pr.lista.filter((p) => p.confirmar && !p.confirmada && !p.quitada && !p.error).length;
+      return `<div class="p-cab"><span class="p-icono">${ic("bandeja")}</span><div><h2>${T("Revisa cómo ordenó tu IA la información")}</h2><p>${T("Nada está guardado todavía. Quita lo que no te sirva; lo que cambia algo que ya estaba solo se guarda si lo confirmas.")}</p></div></div>
+        ${pr.nota ? `<div class="p-aviso p-nota"><b>${esc(nombreIA())}:</b> ${esc(pr.nota)}</div>` : ""}
+        ${pr.descartados ? `<p class="p-ayuda">${T("Descarté {n} partes de la respuesta que no venían en el formato correcto.", { n: pr.descartados })}</p>` : ""}
+        ${grupo("crear", "Nuevo", "Documentos que no existían.")}
+        ${grupo("completar", "Se completa", "Se agrega a lo que ya estaba, sin quitar nada.")}
+        ${grupo("modificar", "Se modifica", "Cambia algo que quedó viejo o contradice lo nuevo. Revisa el antes y el después.")}
+        ${elementos}
+        ${!pr.lista.length && !pr.elementos.length ? `<p class="p-ayuda">${T("Tu IA no propuso cambios.")}</p>` : ""}
+        <div class="p-acciones p-pie">${faltan ? `<span class="p-ayuda">${faltan === 1 ? T("1 cambio sin confirmar no se guarda") : T("{n} cambios sin confirmar no se guardan", { n: faltan })}</span>` : ""}<button class="boton" data-accion="p-descartar">${T("Descartar todo")}</button><button class="boton principal" data-accion="p-aplicar" ${n ? "" : "disabled"}>${T("Guardar {n} cambios", { n })}</button></div>`;
     }
 
     /** Diferencias de texto (solo lo que cambió, con 2 líneas alrededor) y, si hay diagramas que cambiaron, antes y después. */
@@ -1221,11 +1270,12 @@
     // ───────────── Agregar al proyecto (y crear un proyecto Libro): texto pegado o archivos; Esquema detecta qué es ─────────────
     const ACEPTA = ".md,.markdown,.txt,.pdf,.docx,.odt,.epub,.html,.htm";
     const MAX_ARCHIVO = 25 * 1024 * 1024;
-    const NOMBRE_CONTENIDO = { historia: "Historia de usuario", libro: "Libro", documento: "Documento" };
+    const NOMBRE_CONTENIDO = { historia: "Historia de usuario", libro: "Libro", documento: "Documento", incorporar: "Información para ordenar" };
     const AYUDA_CONTENIDO = {
       historia: "Va a Historias de usuario. Tu IA la entiende, te pregunta lo que falta y la documenta. No programa.",
       libro: "Queda en Documentos como referencia: un resumen con sus ideas principales. Para estudiarlo entero, mejor como proyecto Libro.",
       documento: "Va a Documentos: tu IA lo resume, saca los puntos clave, lo diagrama y anota las preguntas abiertas.",
+      incorporar: "Tu IA lo reparte en la documentación: crea lo nuevo, completa lo que existe y corrige lo que cambió. Antes de guardar ves cada cambio y por qué.",
     };
     /** «Agregar archivo o texto» (o «Historia de usuario», con el tipo elegido de antemano). */
     function abrirAgregar(preset = null, archivos = null) {
@@ -1276,6 +1326,12 @@
       if (!d || d.paso !== "leyendo") return;
       if (!r.ok) { d.paso = "entrada"; d.error = r.error || tr("No pude leerlo."); d.avisos = r.avisos || []; return api.pintar(); }
       const permitidos = tiposContenido();
+      // «Agregar información»: la persona ya dijo qué es; sin segundo paso (un enlace solo no sirve: Esquema no lo abre).
+      if (d.preset === "incorporar" && permitidos.includes("incorporar")) {
+        if (r.solo_enlace) { d.paso = "entrada"; d.error = tr("Esquema no abre enlaces (nada sale de tu computador). Pega también el texto."); return api.pintar(); }
+        Object.assign(d, { det: r, elegido: "incorporar", titulo: r.titulo || "" });
+        return enviarAgregar();
+      }
       Object.assign(d, { paso: "detectado", det: r, titulo: r.titulo || "", avisos: r.avisos || [] });
       d.elegido = d.preset && permitidos.includes(d.preset) ? d.preset : permitidos.includes(r.tipo) ? r.tipo : permitidos.includes("documento") ? "documento" : permitidos[0];
       api.pintar();
@@ -1312,12 +1368,12 @@
         ${d.error ? `<p class="mal-txt" data-sin-traducir>${esc(tr(d.error))}</p>` : ""}`;
     }
     function agregarHTML(d) {
-      const n = nombreProyecto(), historia = d.preset === "historia";
-      const titulo = historia ? frase("Historia de usuario en {x}", { x: n }) : frase("Agregar a {x}", { x: n });
+      const n = nombreProyecto(), historia = d.preset === "historia", info = d.preset === "incorporar";
+      const titulo = historia ? frase("Historia de usuario en {x}", { x: n }) : info ? frase("Agregar información a {x}", { x: n }) : frase("Agregar a {x}", { x: n });
       if (d.paso === "leyendo") return `<h2 id="t-pj">${titulo}</h2><div class="esperando"><span class="giro"></span> Leyendo lo que agregaste…</div>`;
       if (d.paso === "entrada") return `<h2 id="t-pj">${titulo}</h2>
-        <p>${historia ? "Pega la historia (o el texto del ticket) o elige el archivo. Tu IA te ayuda a entenderla y te pregunta lo que falta; no programa." : "Pega un texto o elige archivos. Esquema detecta si es una historia de usuario, un libro o un documento, y lo ordena en su sección."}</p>
-        ${entradaHTML(d, historia ? "Como cliente quiero… para… (y sus criterios de aceptación)" : "Pega aquí el texto")}
+        <p>${historia ? "Pega la historia (o el texto del ticket) o elige el archivo. Tu IA te ayuda a entenderla y te pregunta lo que falta; no programa." : info ? "Notas, un correo, lo que salió de una reunión… Tu IA lo ordena en la documentación: crea lo nuevo, completa lo que existe y corrige lo que cambió. Nada se guarda hasta que revises cada cambio." : "Pega un texto o elige archivos. Esquema detecta si es una historia de usuario, un libro o un documento, y lo ordena en su sección."}</p>
+        ${entradaHTML(d, historia ? "Como cliente quiero… para… (y sus criterios de aceptación)" : info ? "Pega aquí tus notas" : "Pega aquí el texto")}
         <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-detectar" ${d.leyendo ? "disabled" : ""} data-sin-traducir>${d.leyendo ? `<span class="giro chico"></span> ${esc(tr("Leyendo archivos…"))}` : esc(tr("Seguir"))}</button></div>`;
       const r = d.det, permitidos = tiposContenido();
       const datos = r.capitulos > 1 ? frase("{p} palabras · {c} capítulos", { p: r.palabras.toLocaleString(), c: r.capitulos }) : frase("{p} palabras", { p: r.palabras.toLocaleString() });
@@ -1387,7 +1443,7 @@
           <button class="boton plano" data-accion="p-preg-saltar">${T("Saltar")}</button>
           <button class="boton principal" data-accion="p-preg-siguiente">${ultima ? T("Enviar respuestas") : T("Siguiente")}</button>
         </div>
-        <p class="p-ayuda">${T("Lo que respondas queda en «Decisiones», con la fecha. Si cierras Esquema, las preguntas te esperan.")}</p>
+        <p class="p-ayuda">${T(t.tipo === "historia" ? "Lo que respondas queda en «Decisiones», con la fecha. Si cierras Esquema, las preguntas te esperan." : t.tipo === "incorporar" ? "Con lo que respondas, tu IA termina de ordenar la información. Si cierras Esquema, las preguntas te esperan." : "Si cierras Esquema, las preguntas te esperan.")}</p>
       </section>`;
     }
     /** Guarda lo escrito y avanza (o envía todo al final). `como`: "opcion" | "nose" | "saltar" | "siguiente". */
@@ -1443,7 +1499,7 @@
     function abrirPropuestasDe(id, x) {
       if (!x) { pj.pidePropuestas = id; return enviar("trabajo", { id, propuestas: true }); }
       pj.propuestasVistas = { ...(pj.propuestasVistas || {}), [id]: true };
-      E.propuestas = armarPropuestas({ tarea: "revisar", propuestas: x.propuestas || [], elementos: x.elementos || [], nota: x.nota || "", descartados: 0 });
+      E.propuestas = armarPropuestas({ tarea: x.tarea || "revisar", propuestas: x.propuestas || [], elementos: x.elementos || [], nota: x.nota || "", descartados: x.descartados || 0 });
       E.panel = "propuestas"; E.sel = null;
       api.pintar();
     }
@@ -1588,6 +1644,7 @@
       if (d.pElemento !== undefined && !d.accion) { E.lateral = false; E.menu = null; pj.elemento = d.pElemento; pj.editar = null; E.panel = "elementos"; api.pintar(); return true; }
       if (d.abrir && d.pBloque !== undefined) { api.abrir(d.abrir); const k = Number(d.pBloque); if (k >= 0) { E.bloque = k; E.lz.ajustar = true; if (movil()) E.vista = "dibujo"; api.pintar(); } return true; }
       if (d.pVer !== undefined) { const p = E.propuestas.lista[Number(d.pVer)]; p.ver = !p.ver; api.pintar(); return true; }
+      if (d.pConfirmar !== undefined) { const p = E.propuestas.lista[Number(d.pConfirmar)]; if (!p.error) { p.confirmada = !p.confirmada; p.quitada = false; } api.pintar(); return true; }
       if (d.pQuitar !== undefined) {
         if (d.pQuitar === "el") E.propuestas.elementosQuitados = !E.propuestas.elementosQuitados;
         else { const p = E.propuestas.lista[Number(d.pQuitar)]; if (!p.error) p.quitada = !p.quitada; }
@@ -1613,6 +1670,7 @@
         case "p-nuevo-en": E.lateral = false; E.nuevo = { fuente: "app", categoria: "todas", busqueda: "", elegida: null, nombre: "" }; api.pintar(); return true;
         case "p-historia": abrirAgregar("historia"); return true;
         case "p-agregar-algo": abrirAgregar(); return true;
+        case "p-incorporar": abrirAgregar("incorporar"); return true;
         case "p-elegir-archivos": $("#p-archivos")?.click(); return true;
         case "p-detectar": detectar(); return true;
         case "p-volver-entrada": { const x = pj.dialogo; x.paso = "entrada"; x.det = null; api.pintar(); return true; }
@@ -1821,7 +1879,8 @@
       const t = tipoActual(), n = nombreProyecto(), l = [];
       const tarjeta = (accion, icono, titulo, texto) => `<button class="tarjeta-inicio compacta" data-accion="${accion}"><span class="ti-icono">${ic(icono)}</span><span class="ti-txt"><b>${titulo}</b><small>${texto}</small></span></button>`;
       if (t.nuevo.includes("historia")) l.push(tarjeta("p-historia", "persona", "Historia de usuario", "Pégala: tu IA te ayuda a entenderla y la documenta."));
-      if (t.nuevo.includes("agregar")) l.push(tarjeta("p-agregar-algo", "archivo", "Agregar archivo o texto", "PDF, Word, EPUB, un acta o un libro: Esquema detecta qué es."));
+      if (t.nuevo.includes("incorporar")) l.push(tarjeta("p-incorporar", "bandeja", "Agregar información", "Notas, un correo, lo de una reunión… Tu IA lo ordena: crea lo nuevo, completa lo que existe y corrige lo que cambió."));
+      if (t.nuevo.includes("agregar")) l.push(tarjeta("p-agregar-algo", "archivo", "Agregar un documento", t.nuevo.includes("incorporar") ? "Un acta, una especificación o un libro, entero y con su resumen. Esquema detecta qué es." : "PDF, Word, EPUB, un acta o un libro: Esquema detecta qué es."));
       if (t.nuevo.includes("diagrama")) l.push(tarjeta("crear-diagrama", "chispa", "Crear diagrama con tu IA", "Dile qué quieres ver y lo dibuja."));
       if (t.acciones.includes("flujo") && E.proyecto) l.push(tarjeta("p-flujo", "flecha", "Documentar un flujo", "Paso a paso, con su diagrama y los elementos conectados."));
       return { titulo: E.carpeta ? frase("Nuevo en {x}", { x: n }) : "Nuevo", tarjetas: l.join(""), readme: t.acciones.includes("readme") };
@@ -2129,6 +2188,26 @@
         return M.limpiarRefs(conEncabezado(meta, r.join("\n").trimEnd() + "\n"), (leerEsq()?.elementos || []).map((e) => e.id));
       };
       const preguntasDe = (lista, prefijo) => lista.map((p, i) => ({ id: `${prefijo}-${i + 1}`, pregunta: p.pregunta, porque: p.porque || "", opciones: p.opciones || [] }));
+      /** «Agregar información» en la vista previa: el mismo plan que arma bin/incorporar.py (crear / completar / modificar, con por qué y
+       *  la cita), sobre lo que tenga el proyecto ficticio. `resp`: lo que respondió la persona a la pregunta (si hubo). */
+      const planSim = (t, resp) => {
+        etapaT(t, "plan");
+        const x = g.incorporar, leer = (r) => memoria[pref + r], lista = [];
+        const tituloDe = (r) => (leerEsq()?.documentos || []).find((y) => y.ruta === r)?.titulo || (/^# (.+)$/m.exec(leer(r) || "") || [, r])[1];
+        const flujo = "flujos/pagar-una-cuenta.md";
+        if (resp && resp.startsWith(x.parte) && leer(flujo) != null) lista.push({ ruta: flujo, titulo: tituloDe(flujo), tipo: "flujo", texto: leer(flujo).trimEnd() + "\n\n" + x.seccion.texto + "\n", accion: "completar", porque: x.seccion.porque, cita: x.seccion.cita, cita_exacta: true });
+        else lista.push({ ruta: x.crear.ruta, titulo: x.crear.titulo, tipo: "flujo", texto: x.crear.texto, accion: "crear", porque: x.crear.porque, cita: x.crear.cita, cita_exacta: true });
+        lista.push({ ruta: `notas/${hoy()}.md`, titulo: `${en ? "Notes from" : "Notas del"} ${hoy()}`, tipo: "otro", texto: `# ${en ? "Notes from" : "Notas del"} ${hoy()}\n\n${x.sin_lugar}\n`, accion: "crear",
+          porque: en ? "What didn't fit any document, so it isn't lost." : "Lo que no calzó en ningún documento, para que no se pierda.", cita: "", cita_exacta: false });
+        const c = x.completar, readme = leer(c.ruta);
+        if (readme != null) { const L = readme.split("\n"), k = L.findIndex((l) => l.includes(c.despues)); L.splice(k >= 0 ? k + 1 : L.length, 0, c.linea); lista.push({ ruta: c.ruta, titulo: tituloDe(c.ruta), tipo: "vision", texto: L.join("\n"), accion: "completar", porque: c.porque, cita: c.cita, cita_exacta: true }); }
+        const m = x.modificar, arq = leer(m.ruta);
+        if (arq != null) { let nuevo = arq; for (const [a, b] of m.cambios) nuevo = nuevo.split(a).join(b); if (nuevo !== arq) lista.push({ ruta: m.ruta, titulo: tituloDe(m.ruta), tipo: "arquitectura", texto: nuevo, accion: "modificar", porque: m.porque, cita: m.cita, cita_exacta: true }); }
+        t._propuestas = { tarea: "incorporar", propuestas: lista, elementos: x.elementos, nota: x.nota, descartados: 0 };
+        t.plan = Object.fromEntries(["crear", "completar", "modificar"].map((a) => [a, lista.filter((p) => p.accion === a).length]));
+        t.propuestas = lista.length + 1;
+        finT(t, "listo", { propuestas: t._propuestas });
+      };
       switch (d.orden) {
         case "detectar": {
           const avisos = [], textos = [];
@@ -2147,6 +2226,18 @@
         case "agregar": {
           const e = sim.entradas[d.token];
           if (!e) return responder({ ok: false, error: "Vuelve a agregarlo: no encontré lo que elegiste." });
+          if (d.tipo === "incorporar") {
+            const titulo = (d.titulo || e.titulo || (en ? "Information" : "Información")).slice(0, 100), fuente = `fuentes/${slugSim(titulo) || "informacion"}.md`;
+            const t = nuevoT("incorporar", ["leer", "ordenar", "preguntas", "plan"], { titulo });
+            responder({ ok: true, trabajo: clon(t) }, 1);
+            memoria[pref + fuente] = e.texto; registrar([{ ruta: fuente, titulo, tipo: "fuente" }]); listos();
+            // Si el proyecto ya tiene «Pagar una cuenta», la IA pregunta si las devoluciones van ahí o en un flujo aparte.
+            return pasos([[200, () => etapaT(t, "leer")], [300, () => etapaT(t, "ordenar")], [900, () => {}]], () => {
+              if (memoria[pref + "flujos/pagar-una-cuenta.md"] == null) return planSim(t, "");
+              etapaT(t, "preguntas"); t._pend = preguntasDe([g.incorporar.pregunta], "r1"); t.preguntas = t._pend;
+              finT(t, "esperando");
+            });
+          }
           if (d.tipo === "historia") {
             const m = /\b(?:HU|US|HDU)[-_ ]?(\d{1,6})\b/.exec(e.texto.slice(0, 3000)), id = m ? "HU-" + Number(m[1]) : "HU-" + String(historiasSim(memoria, pref).length + 1).padStart(3, "0");
             const titulo = (d.titulo || e.titulo || id).replace(new RegExp("^\\W*" + id.replace("-", "[-_ ]?") + "\\W*", "i"), "").replace(/^\W*(US|HU)[-_ ]?\d+\W*/i, "").trim() || g.historia.titulo;
@@ -2199,6 +2290,11 @@
           if (!t || t.estado !== "esperando") return responder({ ok: false, error: "Esas preguntas ya se respondieron." });
           const resp = Object.fromEntries((d.respuestas || []).map((x) => [x.id, x]));
           Object.assign(t, { estado: "corriendo", preguntas: [] }); delete t.fin;
+          if (t.tipo === "incorporar") {
+            const r0 = resp[t._pend?.[0]?.id]; t._pend = [];
+            responder({ ok: true, trabajo: clon(t) }, 1);
+            return pasos([[200, () => etapaT(t, "ordenar")], [700, () => {}]], () => planSim(t, r0?.respuesta || ""));
+          }
           if (t.tipo === "libro") {
             const caps = act.capitulos || [];
             responder({ ok: true, trabajo: clon(t) }, 1);

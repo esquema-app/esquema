@@ -135,5 +135,60 @@
     ]
    }
   ]
- }
+ },
+  "incorporar": {
+    "pregunta": {
+      "pregunta": "¿Las devoluciones son un flujo aparte o parte de «Pagar una cuenta»?",
+      "porque": "Para saber si creo un documento nuevo o completo el que existe.",
+      "opciones": [
+        "Un flujo aparte",
+        "Parte de «Pagar una cuenta»"
+      ]
+    },
+    "parte": "Parte",
+    "crear": {
+      "ruta": "flujos/devolver-un-pago.md",
+      "titulo": "Devolver un pago",
+      "porque": "Es un flujo que no estaba documentado.",
+      "cita": "las devoluciones se hacen en 5 días hábiles",
+      "texto": "# Devolver un pago\n\nLa persona pide la devolución en la [Pantalla de pago](../elementos.md#el-pantalla-pago) y la [API de pagos](../elementos.md#el-api-pagos) se la pide a [Banco Ejemplo](../elementos.md#el-banco-ejemplo). El dinero vuelve en 5 días hábiles.\n\n```mermaid\nsequenceDiagram\n    participant P as Pantalla de pago\n    participant A as API de pagos\n    participant B as Banco Ejemplo\n    P->>A: Pedir devolución\n    A->>B: Devolver el pago\n    B-->>A: Devolución en curso (5 días hábiles)\n    A-->>P: Te avisamos cuando llegue\n%% esquema: {\"refs\":{\"A\":\"api-pagos\",\"B\":\"banco-ejemplo\",\"P\":\"pantalla-pago\"}}\n```\n"
+    },
+    "seccion": {
+      "porque": "Las devoluciones son parte de este flujo.",
+      "cita": "las devoluciones se hacen en 5 días hábiles",
+      "texto": "## Devoluciones\n\nSi la persona pide devolver el pago, la [API de pagos](../elementos.md#el-api-pagos) se lo pide a [Banco Ejemplo](../elementos.md#el-banco-ejemplo) y el dinero vuelve en 5 días hábiles."
+    },
+    "completar": {
+      "ruta": "README.md",
+      "despues": "Base de pagos",
+      "linea": "- También se puede pagar con transferencia.",
+      "porque": "Es una forma de pago que el resumen no nombraba.",
+      "cita": "también se puede pagar con transferencia"
+    },
+    "modificar": {
+      "ruta": "arquitectura.md",
+      "cambios": [
+        [
+          "C[Servicio de correo]",
+          "C[Servicio de avisos]"
+        ],
+        [
+          "\"C\":\"servicio-correo\"",
+          "\"C\":\"servicio-avisos\""
+        ]
+      ],
+      "porque": "El comprobante ahora lo manda el Servicio de avisos, no el de correo.",
+      "cita": "lo manda el nuevo Servicio de avisos"
+    },
+    "elementos": [
+      {
+        "id": "servicio-avisos",
+        "tipo": "servicio",
+        "nombre": "Servicio de avisos",
+        "descripcion": "Manda el comprobante por correo y por SMS."
+      }
+    ],
+    "sin_lugar": "- Próxima reunión: jueves a las 10.",
+    "nota": "Repartí las notas: un flujo nuevo, el resumen completado y la arquitectura al día. La fecha de la próxima reunión quedó en Notas."
+  }
 }

@@ -17,7 +17,7 @@
     {"id": "versiones", "nombre": {"es": "Versiones", "en": "Versions"}}
   ],
   "falta": ["vision", "arquitectura", "segun-codigo", "flujos", "elementos", "elementos-usados", "al-dia"],
-  "acciones": ["documentar", "completar", "flujo", "diagrama", "historia", "agregar", "readme", "wiki"],
-  "nuevo": ["diagrama", "documento", "historia", "agregar"],
-  "agregar": ["historia", "documento", "libro"]
+  "acciones": ["documentar", "completar", "flujo", "diagrama", "historia", "incorporar", "agregar", "readme", "wiki"],
+  "nuevo": ["diagrama", "documento", "historia", "incorporar", "agregar"],
+  "agregar": ["incorporar", "historia", "documento", "libro"]
 }
