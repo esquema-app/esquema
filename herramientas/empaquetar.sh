@@ -41,6 +41,8 @@ for d in lib/python3.13/test lib/python3.13/idlelib lib/python3.13/tkinter lib/p
   rm -rf "$APP/Contents/Resources/python/$d"
 done
 for d in bin ui plantillas; do ditto "$RAIZ/$d" "$APP/Contents/Resources/esquema/$d"; done
+# app.json: la descripción de la app que leen las piezas (bin/nucleo.py la busca junto a bin/).
+cp "$RAIZ/app.json" "$APP/Contents/Resources/esquema/app.json"
 # La app usa la carpeta de la persona, nunca la demo.
 rm -f "$APP/Contents/Resources/esquema/ui/demo.json"
 find "$APP/Contents/Resources/esquema" -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true

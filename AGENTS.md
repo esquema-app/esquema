@@ -29,7 +29,8 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
    las tareas de `proyecto.A_FONDO`: `inicial`, `flujo`, `completar`; se puede desmarcar): además, la IA puede **leer** la carpeta del
    código por su cuenta para revisarla entera. Solo leer: Claude con `--add-dir <código> --allowedTools Read,Glob,Grep` y
    `--disallowedTools` de todo lo que escribe, ejecuta o sale a internet, más `Read(**/<patrón>)` de `proyecto.NO_LEER` (`.env*`,
-   llaves, credenciales, `.git/`); Codex `-s read-only -C <código>`; Gemini solo con Antigravity (`ia.puede_leer`). El diálogo dice
+   llaves, credenciales, `.git/`); Codex `-s read-only`; Gemini solo con Antigravity (`ia.puede_leer`). La IA siempre corre en una carpeta temporal
+   (nunca dentro del código: su CLI cargaría la configuración y los hooks de ese repo) y el pedido le dice dónde leer. El diálogo dice
    qué carpeta y qué no abre. Nunca escribe en la carpeta del código.
 4. **Plantillas = solo datos.** Todo lo que viene de afuera (plantillas, traducciones, respuestas de la IA, el texto de un diagrama)
    se valida antes de usarse y se escapa antes de mostrarse.
@@ -42,8 +43,9 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
 | Ruta | Qué es |
 |---|---|
 | `ui/motor/` | El motor, JS sin dependencias; cada archivo se suma a `globalThis.EsquemaMotor` (igual en el navegador y en Node). `texto.js` (medir con caché, partir etiquetas, escapar, errores con marcadores, línea `%% esquema:`), `flujo.js` (leer/escribir/editar flowchart conservando el texto), `secuencia.js` (leer/acomodar/dibujar/editar sequenceDiagram), `capas.js` (acomodo por capas), `formas.js` (formas e íconos propios), `dibujo.js` (elige el tipo, acomoda con caché, SVG por partes con clave, SVG independiente para exportar), `markdown.js` (bloques de un `.md` y Markdown → HTML seguro). |
-| `ui/` | Interfaz única (`index.html` con CSP, `app.js`, `proyectos.js` (proyectos: paneles, diálogos y su simulación), `app.css`, `favicon.svg`), `demo.json` (ficticio, sale de `herramientas/generar_demo.py`) e `idiomas/en.json`. `motor/proyecto.js`: lógica pura de proyectos (validar `esquema.json`, refs, usos, cambiar en todas partes, glosario, comparar, documentos afectados). |
-| `bin/` | Python **solo biblioteca estándar**, lo que corren las apps: `comun.py` (versión, carpeta de Esquema, config, escritura atómica, `ruta_en`, `.gitignore`, secretos, `recorrer`), `carpeta.py` (listar, leer, guardar, estructura para el README), `ia.py` (la IA del usuario, sin herramientas; `probar`), `asistente.py` (README y Dibújame: prompts y limpieza de la respuesta), `plantilla_formato.py` (formato de una plantilla y del índice del catálogo: `validar`, `indice`, `validar_indice`; el MISMO archivo que `herramientas/plantilla_formato.py` del catálogo), `plantillas.py` (incluidas + descargadas, validar, índice, `catalogo` e `instalar` para lo que baja la app), `estado.py` (lo que pide la interfaz al abrir; guardar config), `proyecto.py` (proyectos: abrir, leer el repo sin IA, lo que va a la IA, generar, `esquema.json`, versiones con git o copias, ver y restaurar; recientes en la carpeta de Esquema). El último argumento siempre es el JSON de salida; lo de la persona llega en un JSON de entrada. |
+| `ui/` | Interfaz única (`index.html` con CSP, `app.js`, `i18n.js` (pieza «i18n»: `T`, `Tp`, `tr`, `traducirDOM`, paquetes de idioma validados), `proyectos.js` (proyectos: paneles, diálogos y su simulación), `app.css`, `favicon.svg`), `demo.json` (ficticio, sale de `herramientas/generar_demo.py`) e `idiomas/en.json`. `motor/proyecto.js`: lógica pura de proyectos (validar `esquema.json`, refs, usos, cambiar en todas partes, glosario, comparar, documentos afectados). |
+| `bin/` | Python **solo biblioteca estándar**, lo que corren las apps: `nucleo.py` (pieza «nucleo»: `app.json`, carpeta de datos, config validada, escritura atómica, contrato de scripts), `comun.py` (lo propio de Esquema sobre `nucleo`: versión, `ruta_en` de documentos con sus mensajes, `.gitignore`, secretos, `recorrer`), `carpeta.py` (listar, leer, guardar, estructura para el README), `ia.py` (pieza «ia»: la IA del usuario, sin herramientas, siempre en una carpeta temporal, revisión a fondo de solo lectura; `probar`; errores como `{codigo, valores}` que `ia.frase()` pasa a texto), `asistente.py` (README y Dibújame: prompts y limpieza de la respuesta), `plantilla_formato.py` (formato de una plantilla y del índice del catálogo: `validar`, `indice`, `validar_indice`; el MISMO archivo que `herramientas/plantilla_formato.py` del catálogo), `plantillas.py` (incluidas + descargadas, validar, índice, `catalogo` e `instalar` para lo que baja la app), `estado.py` (lo que pide la interfaz al abrir; guardar config), `proyecto.py` (proyectos: abrir, leer el repo sin IA, lo que va a la IA, generar, `esquema.json`, versiones con git o copias, ver y restaurar; recientes en la carpeta de Esquema). El último argumento siempre es el JSON de salida; lo de la persona llega en un JSON de entrada. |
+| `app.json`, `piezas.json` | **Pieza** (ver «Piezas» abajo): `app.json` describe la app para las piezas (id, nombre, datos, plataformas, claves de config); `piezas.json` lo escribe `pieza.py` (versión y huella de cada archivo copiado). |
 | `plantillas/` | Plantillas incluidas (`<categoria>/<id>.json`) y `README.md` con el formato. |
 | `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo, con un poco de «código» para «Documentar un proyecto»), `ia-simulada/` (lo que responde la IA en la vista previa del navegador), `catalogo-ejemplo/` (copia de las plantillas del catálogo de la comunidad: «Comunidad» en la demo y las pruebas) y scripts para construir encima del formato (`listar_diagramas.py`). |
 | `pruebas/` | `correr.sh` (todo), `motor.mjs` (motor en Node), `interfaz.mjs` (Playwright), `test_python.py`, `contrato.py` + `puente.json` (contrato del puente), `casos.json` (casos compartidos), `compat/` (ejemplos Mermaid que se leen y se escriben igual; `variantes/`: formas no canónicas), `ia_falsa.py`. |
@@ -53,6 +55,26 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
 | `build.sh`, `instalar.sh`, `instalar.ps1` | Compilar e instalar en el Mac de desarrollo; instaladores de un comando (Mac/Linux y Windows) que verifican la huella. |
 | `docs/` | La página pública (GitHub Pages, `pagina.yml` la publica con `ui/` en `/demo/`): `index.html` bilingüe (es/en), `pagina.css`, `pagina.js`, `sitemap.xml`, `apple-touch-icon.png`, `favicon.svg` e `img/` (capturas y `compartir.png`). Ver «Página pública». |
 | `CHANGELOG.md` | Lo que cambia para quien usa la app, en palabras simples (ver «Lo que rodea a un cambio»). |
+
+## Piezas (de [Pieza](https://github.com/pieza-app/pieza))
+Esquema usa piezas de Pieza, la base de la familia de apps: código probado que se copia a la app (modelo «copiar y adueñarse»).
+
+| Pieza | Archivos | Qué usa Esquema |
+|---|---|---|
+| `nucleo` | `bin/nucleo.py` | `app.json`, carpeta de datos (`ESQUEMA_DATOS`), config validada por `app.json`, `escribir_atomico`, `ruta_en`, `responder`. `comun.py` lo envuelve con lo propio de Esquema. |
+| `ia` | `bin/ia.py` | La IA de la persona (`preguntar`, `probar`, `lista`, `puede_leer`, `frase`). Lo propio de Esquema (prompts, `SOLO_ESTO`, `NO_LEER`) sigue en `asistente.py` y `proyecto.py`. `ia.py probar <entrada {ia}> <salida>`. |
+| `i18n` | `ui/i18n.js` | `T`, `Tp`, `tr`, `frase`, `traducirDOM` (`app.js` crea la instancia con `noTraducir: ".md"`). `ui/idiomas/en.json` lleva `codigo`. |
+
+- **No edites a mano los archivos de una pieza.** Se actualizan con «Pieza al día» (`.github/workflows/pieza-al-dia.yml`, una vez por
+  semana abre un PR o un issue) o con `python3 <pieza>/herramientas/pieza.py actualizar .`. Si hay que cambiar algo, el cambio va
+  primero a Pieza (`pieza.py diferencias . <pieza>` lo muestra) y vuelve desde allá; `pieza.py estado .` dice si algo quedó distinto.
+- `app.json` va dentro de las apps (`herramientas/empaquetar.sh` y `extraResources` de `escritorio/package.json`): `bin/nucleo.py`
+  lo busca junto a `bin/`. Las claves de config que aceptan las apps (Swift y Electron) son las de `app.json`; `carpeta` solo la
+  escribe el selector de carpetas, nunca `config` (`comun.guardar_config` la descarta).
+- `.gitignore` es una lista blanca: `app.json` y `piezas.json` están en ella.
+- No adoptadas todavía: `bienvenida` (Esquema tiene su propia bienvenida con `data-idioma`, que usan las pruebas de Electron, y su
+  `--suave` es un fondo, no un texto) y `actualizaciones` (en Mac pide un target propio de SwiftPM; hoy no se puede adoptar solo la
+  mitad de Electron).
 
 ## Formato de los archivos
 - **Documento** `.md`: Markdown de GitHub. Cada diagrama es un bloque ```` ```mermaid ````. GitHub lo muestra igual que Esquema.
@@ -394,6 +416,7 @@ explorador; varias carpetas recientes; firma y notarización si algún día hay 
 - No cambies el formato de los archivos sin compatibilidad: lo que Esquema escribe tiene que seguir siendo Mermaid que GitHub muestra.
 - Si cambias cómo se lee o escribe Mermaid: un caso en `pruebas/casos.json` y, si es sintaxis nueva, un ejemplo en `pruebas/compat/`
   revisado con `node herramientas/comparar_mermaid.mjs`.
+- Archivos de piezas (`bin/nucleo.py`, `bin/ia.py`, `ui/i18n.js`): no se editan aquí; ver «Piezas».
 - Antes de cerrar un cambio: `bash pruebas/correr.sh` y mirar la interfaz (`cd ui && python3 -m http.server 8765`, `?idioma=en`,
   `?bienvenida`, `?vacio`, `window.Esquema._probar(E => …)`), también a 390 px y en claro y oscuro.
 - Seguridad (detalle en `SECURITY.md`): CSP de `ui/index.html` sin scripts ni manejadores en línea; todo dato externo validado y
@@ -418,6 +441,7 @@ revisa cada fila ("no aplica" se decide, no se supone):
 | quita algo | bórralo de la página, el README y las guías: nada que prometa lo que ya no hace |
 | cambia el formato de datos o el puente | la documentación del formato, `ejemplos/` si existe y esta guía |
 | cambia carpetas, reglas o pruebas | esta guía (`AGENTS.md`) y `CONTRIBUTING.md` |
+| actualiza o agrega una pieza | `piezas.json` (lo escribe `pieza.py`), la tabla «Piezas» de esta guía y `app.json` si pide config |
 | resuelve un issue | ciérralo con «Resuelto en …» dando crédito y abre issues para lo que quedó pendiente |
 | lo nota quien usa Esquema | `CHANGELOG.md`: una línea en «Sin publicar», en lenguaje de persona («Ahora puedes…»), en español e inglés |
 

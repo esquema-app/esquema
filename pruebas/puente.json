@@ -51,7 +51,7 @@
         "ia": "claude|codex|gemini"
       },
       "responde": "iaProbada",
-      "como": "bin/ia.py probar <ia> <salida>"
+      "como": "bin/ia.py probar <entrada {ia}> <salida> (pieza «ia»)"
     },
     "estructura": {
       "datos": {},

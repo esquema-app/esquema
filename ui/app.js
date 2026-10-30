@@ -8,7 +8,7 @@
   const HOST = window.ESQUEMA_HOST || "web";
   document.documentElement.dataset.host = HOST;
   const E = {
-    idioma: "es", textos: {}, config: {}, ias: [], version: "", plantillas: [], cargado: false,
+    idioma: "es", config: {}, ias: [], version: "", plantillas: [], cargado: false,
     carpeta: null,          // {nombre, ruta}
     archivos: [],           // [{ruta}]
     docs: {},               // ruta → {texto, guardado, estado: "guardado" | "cambiado" | "guardando" | "error", pila: [], futuro: [], t}
@@ -55,51 +55,19 @@
     },
   };
 
-  // ───────────── Idiomas (las claves son el texto en español) ─────────────
-  function tr(t) {
-    if (E.idioma === "es" || !t) return t;
-    const limpio = String(t).replace(/\s+/g, " ").trim();
-    if (!limpio) return t;
-    if (E.textos[limpio]) return t.replace(limpio, E.textos[limpio]);
-    if (window._faltantes && /\p{L}{2}/u.test(limpio)) window._faltantes.add(limpio);
-    return t;
-  }
-  function Tp(plantilla, valores = {}) {
-    let t = plantilla;
-    if (E.idioma !== "es") { if (E.textos[plantilla]) t = E.textos[plantilla]; else if (window._faltantes) window._faltantes.add(plantilla); }
-    for (const [k, v] of Object.entries(valores)) t = t.split(`{${k}}`).join(String(v));
-    return t;
-  }
-  /** Frase completa con marcadores, escapada (valores incluidos), lista para HTML. */
-  function T(plantilla, valores = {}) {
-    let t = plantilla;
-    if (E.idioma !== "es") { if (E.textos[plantilla]) t = E.textos[plantilla]; else if (window._faltantes) window._faltantes.add(plantilla); }
-    t = esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
-    for (const [k, v] of Object.entries(valores)) t = t.split(`{${k}}`).join(esc(String(v)));
-    return t;
-  }
-  const frase = (plantilla, valores, etiqueta = "span") => `<${etiqueta} data-sin-traducir>${T(plantilla, valores)}</${etiqueta}>`;
-  function traducirDOM(raiz) {
-    if (E.idioma === "es" || !raiz) return;
-    const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
-    const nodos = []; let n; while ((n = w.nextNode())) nodos.push(n);
-    for (const t of nodos) {
-      const el = t.parentElement;
-      if (!el || el.closest("[data-sin-traducir], script, style, svg, textarea, .md") || !/\p{L}/u.test(t.nodeValue)) continue;
-      const v = tr(t.nodeValue); if (v !== t.nodeValue) t.nodeValue = v;
-    }
-    for (const el of raiz.querySelectorAll("[title],[aria-label],[placeholder]")) {
-      if (el.closest("[data-sin-traducir]")) continue;
-      for (const a of ["title", "aria-label", "placeholder"]) { const v = el.getAttribute(a); if (v) el.setAttribute(a, tr(v)); }
-    }
-  }
+  // ───────────── Idiomas: pieza «i18n» (ui/i18n.js; las claves son el texto en español) ─────────────
+  // T escapa la frase y los valores; Tp es texto plano; tr y traducirDOM traducen lo ya pintado (nunca [data-sin-traducir],
+  // código, textarea ni lo que se lee de un documento: .md). E.idioma es solo un espejo de i18n.idioma para el resto de la app.
+  const i18n = PiezaI18n.crear({ noTraducir: ".md" });
+  const { tr, Tp, T, frase, traducirDOM } = i18n;
+  /** Lo recién puesto dentro de un contenedor que sigue en pantalla: el contenedor (y sus atributos) ya está traducido. */
+  const traducirDentro = (el) => { for (const h of el?.children || []) traducirDOM(h); };
   async function cargarIdioma(elegido) {
+    // Lo recién elegido > ?idioma= (vista previa y pruebas) > lo guardado > el del sistema.
     const pedido = new URLSearchParams(location.search).get("idioma");
-    const codigo = elegido || pedido || E.config.idioma_ui || ((navigator.language || "es").startsWith("es") ? "es" : "en");
-    if (codigo === E.idioma && (codigo === "es" || Object.keys(E.textos).length)) return;
-    E.idioma = codigo; E.textos = {};
-    if (codigo !== "es") { try { E.textos = (await (await fetch(`idiomas/${codigo}.json`)).json()).textos || {}; } catch { E.idioma = "es"; } }
-    document.documentElement.lang = E.idioma;
+    const codigo = [elegido, pedido, E.config.idioma_ui].find((c) => c === "es" || c === "en") || i18n.idiomaDelSistema();
+    await i18n.cargar(codigo);
+    E.idioma = i18n.idioma;
   }
   /** Un problema del motor (o de la IA) como frase en el idioma elegido. */
   const fraseProblema = (p) => T(p.plantilla, p.valores);
@@ -320,7 +288,7 @@
     </header>`;
   }
   const botonesHistorial = () => { const d = doc(); return `<button class="boton plano icono" data-accion="deshacer" aria-label="Deshacer" title="Deshacer (⌘Z)" ${d?.pila.length ? "" : "disabled"}>${ic("deshacer")}</button><button class="boton plano icono" data-accion="rehacer" aria-label="Rehacer" title="Rehacer (⇧⌘Z)" ${d?.futuro.length ? "" : "disabled"}>${ic("rehacer")}</button>`; };
-  function pintarBarraHistorial() { const h = $("#historial"); if (h) { h.innerHTML = botonesHistorial(); traducirDOM(h); } }
+  function pintarBarraHistorial() { const h = $("#historial"); if (h) { h.innerHTML = botonesHistorial(); traducirDentro(h); } }
   function estadoGuardado() {
     const d = doc();
     if (!d) return "";
@@ -482,7 +450,7 @@
     const el = $("#sugerencias");
     if (!el) return;
     el.innerHTML = lista.length ? lista.map((s, i) => `<button data-sugerencia="${i}" data-sin-traducir>${esc(s.mostrar)}</button>`).join("") + `<span class="tecla">Tab ↹</span>` : "";
-    traducirDOM(el);
+    traducirDentro(el);
   }
   function usarSugerencia(i) {
     const s = E.sugerencias[i], t = $("#texto");
@@ -630,7 +598,7 @@
     if (s.tipo === "nodo" || s.tipo === "participante") botones += P.botonElemento(s.id);
     barraSel.className = botones ? "lz-sel" : "";
     barraSel.innerHTML = botones;
-    traducirDOM(barraSel);
+    traducirDentro(barraSel);
     // La barra va justo arriba de lo elegido (o abajo si no cabe), sin taparlo.
     if (botones) {
       const lz = $("#lienzo").getBoundingClientRect(), b = el.getBoundingClientRect(), w = barraSel.offsetWidth, h = barraSel.offsetHeight;
@@ -1147,7 +1115,7 @@
     const c = E.cambiosIA.find((x) => x.id === E.tarjetaIA && x.ruta === E.sel && x.estado === "aplicado");
     el.className = c ? "tarjeta-ia" : "";
     el.innerHTML = c ? `<p>${ic("chispa")} <b data-sin-traducir>${esc(c.pedido)}</b></p><p class="meta" data-sin-traducir>${esc(resumenCambio(c))}</p><div class="acciones"><button class="boton" data-quitar-ia="${c.id}">${ic("deshacer")} Quitar este cambio</button><button class="boton plano" data-accion="cerrar-tarjeta">Se queda</button></div>` : "";
-    traducirDOM(el);
+    traducirDentro(el);
   }
   /** Quita justo lo que hizo la IA. Si la persona lo editó después, pregunta antes (y se puede deshacer). */
   function quitarCambioIA(id, forzar = false) {

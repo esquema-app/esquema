@@ -53,6 +53,10 @@
         ]
       },
       {
+        "from": "../app.json",
+        "to": "esquema/app.json"
+      },
+      {
         "from": "../plantillas",
         "to": "esquema/plantillas",
         "filter": [

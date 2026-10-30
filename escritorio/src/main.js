@@ -211,7 +211,7 @@ const ACCIONES = {
   async probarIA(d) {
     const ia = Config.ias.includes(d.ia) ? d.ia : "";
     if (!ia) return llamar("iaProbada", { ia: String(d.ia || ""), ok: false, error: t("No conozco esa IA.") });
-    const r = await Procesador.correrJSON("ia.py", ["probar", ia]);
+    const r = await Procesador.conEntrada("ia.py", "probar", { ia });
     llamar("iaProbada", { ...r, ia });
   },
   async estructura() {

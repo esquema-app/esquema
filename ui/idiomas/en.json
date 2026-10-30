@@ -1,5 +1,5 @@
 {
- "idioma": "en",
+ "codigo": "en",
  "nombre": "English",
  "textos": {
   "# Título\n\nEscribe aquí.\n": "# Title\n\nWrite here.\n",
@@ -620,7 +620,7 @@
   "Al día con el código": "Up to date with the code",
   "la visión general (README.md): qué es el proyecto y para quién": "the overview (README.md): what the project is and who it's for",
   "la arquitectura (arquitectura.md): sus componentes y cómo se conectan, con un diagrama": "the architecture (arquitectura.md): its components and how they connect, with a diagram",
-  "los flujos principales (flujos/<nombre>.md), cada uno con su diagrama": "the main flows (flujos/<name>.md), each with its diagram",
+  "los flujos principales (un archivo por flujo en flujos/), cada uno con su diagrama": "the main flows (one file per flow in flujos/), each with its diagram",
   "los elementos del proyecto (pantallas, botones, servicios, módulos…)": "the project's elements (screens, buttons, services, modules…)",
   "documentar los elementos que ningún documento nombra": "document the elements that no document mentions",
   "poner al día lo que cambió en el código desde la última versión": "bring up to date what changed in the code since the last version",
@@ -632,6 +632,9 @@
   "Completa la documentación. Falta:": "Complete the documentation. Missing:",
   "Completar la documentación": "Complete the documentation",
   "Hacer la documentación completa": "Write the full documentation",
-  "Este proyecto todavía no tiene documentación. Tu IA puede leerlo entero y escribir la visión general, la arquitectura y los flujos principales, aparte de tu código.": "This project has no documentation yet. Your AI can read all of it and write the overview, the architecture and the main flows, kept apart from your code."
+  "Este proyecto todavía no tiene documentación. Tu IA puede leerlo entero y escribir la visión general, la arquitectura y los flujos principales, aparte de tu código.": "This project has no documentation yet. Your AI can read all of it and write the overview, the architecture and the main flows, kept apart from your code.",
+  "No encontré {ia} en este computador. Revisa en Ajustes → Tu IA.": "I couldn't find {ia} on this computer. Check Settings → Your AI.",
+  "{ia} se demoró demasiado en responder. Inténtalo de nuevo.": "{ia} took too long to answer. Please try again.",
+  "{ia} no respondió. {detalle}": "{ia} didn't answer. {detalle}"
  }
 }

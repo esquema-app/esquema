@@ -1,0 +1,29 @@
+{
+ "nombre": "Esquema",
+ "id": "esquema",
+ "datos": "sistema",
+ "plataformas": [
+  "mac",
+  "windows",
+  "linux"
+ ],
+ "icono": "docs/favicon.svg",
+ "config": {
+  "idioma_ui": [
+   "es",
+   "en"
+  ],
+  "tema": [
+   "sistema",
+   "claro",
+   "oscuro"
+  ],
+  "bienvenida": "bool",
+  "ia": [
+   "claude",
+   "codex",
+   "gemini"
+  ],
+  "carpeta": "texto"
+ }
+}
