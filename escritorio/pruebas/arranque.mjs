@@ -216,7 +216,8 @@ if (!copiado?.ok || !portapapeles.includes("flowchart LR")) falla("copiar no dej
 }
 
 // Un proyecto con git, de punta a punta desde la interfaz (Python, git y la vigilancia de verdad): documentar con la IA falsa,
-// renombrar un elemento en todas partes (un commit solo de docs/esquema), comparar y restaurar.
+// renombrar un elemento en todas partes, comparar y restaurar. La documentación vive aparte, en ~/Esquema/<proyecto>/ con su
+// propio git: el repo del código no cambia nunca (para llevar algo al repo está «Pasar al proyecto»).
 const { execFileSync } = requerir("child_process");
 const REPO = path.join(CASA, "repo-git");
 fs.mkdirSync(path.join(REPO, "src"), { recursive: true });
@@ -237,26 +238,27 @@ gitR("init", "-q", "-b", "main"); gitR("add", "-A"); gitR("commit", "-qm", "Cód
   await v.click('[data-accion="p-generar-inicial"]'); await v.waitForSelector(".p-envio details", { timeout: 15000 });
   await v.click('[data-accion="p-enviar"]'); await v.waitForSelector(".p-prop", { timeout: 30000 });
   await v.click('[data-accion="p-aplicar"]');
-  const log = () => gitR("log", "--format=%s");
+  const docs = path.join(CASA, "Esquema", "repo-git");
+  const gitD = (...a) => { try { return execFileSync("git", ["-C", docs, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch { return ""; } };  // antes del primer commit, git log falla
+  const log = () => gitD("log", "--format=%s");
   for (let i = 0; i < 100 && !log().includes("Documentación inicial"); i++) await espera(150);
-  const docs = path.join(REPO, "docs", "esquema");
   if (!log().includes("Documentación inicial") || !fs.existsSync(path.join(docs, "elementos.md")) || !fs.existsSync(path.join(docs, "flujos", "grabar.md"))) falla("documentar el proyecto no dejó los archivos y la versión: " + log());
   await v.click('.lateral [data-p="elementos"]'); await v.click('[data-p-elemento="boton-grabar"]');
   await v.click('[data-accion="p-renombrar"]'); await v.fill("#p-valor", "Empezar a grabar"); await v.click('[data-accion="p-ver-cambio"]');
   await v.waitForSelector(".p-cambio-lista .p-prop"); await v.screenshot({ path: path.join(salida, "5-proyecto-renombrar.png") });
   await v.click('[data-accion="p-aplicar-cambio"]');
   for (let i = 0; i < 100 && !log().includes("Renombré"); i++) await espera(150);
-  const archivosCommit = gitR("show", "--name-only", "--format=", "HEAD").trim().split("\n").sort();
   if (!fs.readFileSync(path.join(docs, "README.md"), "utf8").includes("[Empezar a grabar](elementos.md#el-boton-grabar)") || !fs.readFileSync(path.join(docs, "flujos", "grabar.md"), "utf8").includes("G[Empezar a grabar]")) falla("renombrar no cambió los archivos en el disco");
-  if (archivosCommit.some((r) => !r.startsWith("docs/esquema/"))) falla("la versión tocó archivos fuera de docs/esquema: " + archivosCommit.join(", "));
+  if (gitR("log", "--format=%s").trim() !== "Código" || gitR("status", "--porcelain").trim()) falla("documentar tocó el repo del código: " + gitR("log", "--format=%s") + gitR("status", "--porcelain"));
   await v.click('.lateral [data-p="versiones"]'); await v.waitForSelector("[data-p-version]");
   await v.click("[data-p-version] >> nth=-1"); await v.waitForSelector("[data-p-dif]", { timeout: 15000 });
   await v.screenshot({ path: path.join(salida, "6-proyecto-versiones.png") });
   await v.click('[data-accion="p-restaurar"]'); await v.click('[data-accion="p-restaurar-si"]');
   for (let i = 0; i < 100 && !log().includes("Restauré"); i++) await espera(150);
   if (!fs.readFileSync(path.join(docs, "README.md"), "utf8").includes("[Grabar](elementos.md#el-boton-grabar)") || !log().includes("Restauré")) falla("restaurar no volvió los archivos o no guardó la versión: " + log());
-  else bien("proyecto con git: documentar, renombrar en todas partes, versiones y restaurar (solo commits de docs/esquema)");
-  if (gitR("status", "--porcelain").trim()) falla("quedaron cambios sin versión después de restaurar: " + gitR("status", "--porcelain"));
+  else bien("proyecto con git: documentar aparte (~/Esquema, su propio git), renombrar en todas partes, versiones y restaurar; el repo del código no cambia");
+  if (gitD("status", "--porcelain").trim()) falla("quedaron cambios sin versión después de restaurar: " + gitD("status", "--porcelain"));
+  if (gitR("status", "--porcelain").trim() || gitR("log", "--format=%s").trim() !== "Código") falla("el repo del código cambió: " + gitR("status", "--porcelain"));
   await v.evaluate(() => window.Esquema._probar((E) => { E.panel = null; }));
   await app.evaluate((_e, p) => global.esquemaPruebas.Config.guardarCarpeta(p), fs.realpathSync(PROYECTO));
   await app.evaluate(() => global.esquemaPruebas.enviarEstado());
