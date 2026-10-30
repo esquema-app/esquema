@@ -227,3 +227,7 @@ downloaded the zip by hand, right-click Esquema.app → **Open**. On Windows, �
 Updates are offered inside the app (Settings → Updates), only from this repo's Releases and verified by hash.
 
 Run the web preview with `cd ui && python3 -m http.server 8765`, test with `bash pruebas/correr.sh`. Licensed under [AGPL-3.0](LICENSE).
+
+---
+
+[![Hecho con Pieza](https://pieza-app.github.io/pieza/sello.svg)](https://pieza-app.github.io/pieza/) · Las piezas comunes (tu IA, idiomas, actualizaciones…) viven en [Pieza](https://github.com/pieza-app/pieza).
