@@ -1,47 +1,83 @@
 #!/usr/bin/env python3
-"""La IA del usuario (Claude Code, Codex o Gemini), con su propia cuenta. Solo biblioteca estándar.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+"""Pieza «ia»: la IA de la persona (Claude Code, Codex o Gemini) con SU propia cuenta. Solo biblioteca estándar.
 
-Esquema nunca llama a una IA con una cuenta propia: arma el comando del CLI que la persona ya tiene instalado y le pasa el texto.
-La IA corre en una carpeta temporal vacía, sin herramientas ni servidores MCP: solo ve lo que le mandamos y solo responde texto.
+La app nunca llama a una IA con una cuenta propia: arma el comando del CLI que la persona ya tiene y le pasa el texto. Reúne lo mejor
+de las seis apps:
+- Corre en una carpeta temporal vacía, sin herramientas ni servidores MCP, sin la memoria de la persona (Esquema).
+- El pedido NUNCA va como argumento del proceso (cualquier programa del computador puede ver los argumentos): va por la entrada
+  estándar o en un archivo de la carpeta temporal (Alcancía).
+- Material opcional (fotos, PDF): se copian a la carpeta temporal y la IA solo puede leer esas copias (Repasa).
+- Revisión a fondo opcional: leer una carpeta, solo lectura y nunca los secretos (Esquema).
+- Nunca se quitan protecciones para que un CLI viejo funcione: se pregunta antes qué opciones conoce (`_soporta`). Si no las conoce,
+  se usa la forma segura que sí conoce o se falla con un mensaje claro.
+- No recibe las variables de entorno de la app (<ID>_*).
+- Los errores salen como código + valores, para que la interfaz los traduzca (`ERRORES` trae el texto en español).
 
-Uso: ia.py probar <ia> <salida.json>   → {ia, ok, error?}
+Uso: ia.py probar <entrada.json {"ia": "claude"}> <salida.json>   → {ia, ok, error?, codigo?}
+     ia.py lista <salida.json>                                     → {ias: [{id, nombre, instalada}], elegida}
 """
 import os
+import re
 import shutil
 import subprocess
-import sys
 import tempfile
 
-import comun
+import nucleo
 
-HOME = os.path.expanduser("~")
+CASA = os.path.expanduser("~")
+
+#: id → (comandos posibles, nombre visible). Gemini: Antigravity CLI (`agy`) o el Gemini CLI.
+IAS = {"claude": (("claude",), "Claude"), "codex": (("codex",), "ChatGPT (Codex)"), "gemini": (("agy", "gemini"), "Gemini")}
+IMAGENES = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".heic")
+#: Claude Code carga la memoria de la persona (CLAUDE.md, memoria automática) aunque corra sin herramientas, y con eso rellenaba las
+#: respuestas con otros proyectos suyos. Esto lo apaga sin exigir una llave de API.
+SIN_MEMORIA_CLAUDE = {"CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
+#: Lo que nunca puede hacer la IA, ni siquiera en revisión a fondo.
+PROHIBIDO = ["Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch", "WebSearch", "Task"]
+#: Texto de cada error (la clave de traducción es el texto en español; {ia} y {detalle} se reemplazan en la interfaz).
+ERRORES = {
+    "no_instalada": "No encontré {ia} en este computador. Revisa en Ajustes → Tu IA.",
+    "demora": "{ia} se demoró demasiado en responder. Inténtalo de nuevo.",
+    "sin_respuesta": "{ia} no respondió. {detalle}",
+    "desconocida": "No conozco esa IA.",
+}
+INSTRUCCION_ARCHIVO = ("Lee el archivo instrucciones.md de esta carpeta (y el material que menciona) y haz exactamente lo que pide. "
+                       "Entrega solo el resultado pedido, sin comentarios. No modifiques ni crees archivos.")
+_ayuda = {}
 
 
 def _preparar_path():
-    """La app no hereda el PATH de la terminal: agrega donde suelen quedar los CLI de IA (Mac, Linux y Windows)."""
-    extra = [os.path.join(HOME, ".local", "bin"), os.path.join(HOME, ".claude", "local"), os.path.join(HOME, ".npm-global", "bin"),
-             os.path.join(HOME, ".volta", "bin"), os.path.join(HOME, ".bun", "bin"), os.path.join(HOME, ".codex", "bin"),
+    """Las apps no heredan el PATH de la terminal: agrega donde suelen quedar los CLI de IA (Mac, Linux y Windows)."""
+    extra = [os.path.join(CASA, ".local", "bin"), os.path.join(CASA, ".claude", "local"), os.path.join(CASA, ".npm-global", "bin"),
+             os.path.join(CASA, ".volta", "bin"), os.path.join(CASA, ".bun", "bin"), os.path.join(CASA, ".codex", "bin"),
              "/opt/homebrew/bin", "/usr/local/bin"]
-    nvm = os.path.join(HOME, ".nvm", "versions", "node")
+    nvm = os.path.join(CASA, ".nvm", "versions", "node")
     if os.path.isdir(nvm):
         extra += [os.path.join(nvm, v, "bin") for v in sorted(os.listdir(nvm), reverse=True)]
     if os.name == "nt":
         extra += [os.path.join(os.environ.get("APPDATA", ""), "npm"), os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "claude")]
-    os.environ["PATH"] = os.pathsep.join([os.environ.get("PATH", "")] + [d for d in extra if os.path.isdir(d)])
+    actual = os.environ.get("PATH", "").split(os.pathsep)
+    os.environ["PATH"] = os.pathsep.join(actual + [d for d in extra if os.path.isdir(d) and d not in actual])
 
 
 _preparar_path()
 
-#: id → (comandos posibles, nombre visible). Gemini: Antigravity CLI (`agy`) o el Gemini CLI.
-IAS = {"claude": (("claude",), "Claude"), "codex": (("codex",), "ChatGPT (Codex)"), "gemini": (("agy", "gemini"), "Gemini")}
+
+# ── Qué IA ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def comando(ia):
+    return next((r for r in map(shutil.which, IAS[ia][0]) if r), None)
 
 
 def lista():
-    return [{"id": k, "nombre": v[1], "instalada": any(shutil.which(c) for c in v[0])} for k, v in IAS.items()]
+    return [{"id": k, "nombre": v[1], "instalada": comando(k) is not None} for k, v in IAS.items()]
 
 
 def elegida():
-    ia = comun.config().get("ia")
+    ia = nucleo.config().get("ia")
     return ia if ia in IAS else "claude"
 
 
@@ -49,39 +85,37 @@ def nombre(ia=None):
     return IAS[ia or elegida()][1]
 
 
-def _entorno():
-    """La IA no recibe las variables de Esquema (rutas, recursos): solo lo necesario para correr."""
-    return {k: v for k, v in os.environ.items() if not k.startswith("ESQUEMA_")}
-
-
-#: Claude Code carga la memoria de la persona (CLAUDE.md, memoria automática, plugins) aunque corra sin herramientas, y con eso
-#: rellenaba los diagramas con otros proyectos suyos. Esto lo apaga y mantiene su sesión (no exige una llave de API como --bare).
-SIN_MEMORIA_CLAUDE = {"CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
-_ayuda = {}
-
-
-def _soporta(comando, opcion):
-    """Si el CLI conoce una opción (las versiones viejas fallan con opciones desconocidas). Se pregunta una vez por comando."""
-    if comando not in _ayuda:
-        try:
-            r = subprocess.run([comando, "--help"], stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8", timeout=20)
-            _ayuda[comando] = (r.stdout or "") + (r.stderr or "")
-        except (OSError, subprocess.SubprocessError):
-            _ayuda[comando] = ""
-    return opcion in _ayuda[comando]
+def _es_agy(cmd):
+    return os.path.basename(cmd).lower().split(".")[0] in ("agy", "antigravity")
 
 
 def puede_leer(ia=None):
-    """Si la IA elegida sabe leer una carpeta con permisos de solo lectura (revisión a fondo)."""
+    """Si la IA sabe leer una carpeta con permisos de solo lectura (material o revisión a fondo)."""
     ia = ia or elegida()
     if ia != "gemini":
         return True
-    comando = next((r for r in map(shutil.which, IAS[ia][0]) if r), "")
-    return os.path.basename(comando).lower().split(".")[0] in ("agy", "antigravity")
+    c = comando(ia)
+    return bool(c and _es_agy(c))
+
+
+def _soporta(cmd, opcion):
+    """Si el CLI conoce una opción. Se pregunta una vez por comando; nunca se reintenta quitando protecciones."""
+    if cmd not in _ayuda:
+        try:
+            r = subprocess.run([cmd, "--help"], stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8", timeout=20)
+            _ayuda[cmd] = (r.stdout or "") + (r.stderr or "")
+        except (OSError, subprocess.SubprocessError):
+            _ayuda[cmd] = ""
+    return re.search(r"(?<![\w-])" + re.escape(opcion) + r"(?![\w-])", _ayuda[cmd]) is not None
+
+
+def _entorno():
+    """La IA no recibe las variables de la app (rutas, credenciales, modos de prueba): solo lo necesario para correr."""
+    p = nucleo.prefijo()
+    return {k: v for k, v in os.environ.items() if not k.startswith(p)}
 
 
 def _sin_secretos(no_leer):
-    """Reglas de Claude Code para no abrir secretos en una revisión a fondo."""
     reglas = []
     for patron in no_leer:
         p = patron.rstrip("/") + ("/**" if patron.endswith("/") else "")
@@ -89,76 +123,119 @@ def _sin_secretos(no_leer):
     return reglas
 
 
-def ejecutar_ia(prompt, timeout=600, ia=None, leer=None, no_leer=()):
-    """Corre la IA con el prompt. Con `leer` (una carpeta), la IA puede LEER esa carpeta (revisión a fondo): solo leer, nunca
-    escribir ni ejecutar, y nunca lo de `no_leer`. Sin `leer`, corre en una carpeta temporal vacía y sin herramientas."""
+# ── Correr ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def ejecutar(prompt, *, ia=None, timeout=600, archivos=(), leer=None, no_leer=(), modelo=None):
+    """Corre la IA y devuelve un CompletedProcess (stdout = respuesta).
+
+    archivos: material que la IA puede leer (se copian a la carpeta temporal como material-N.ext).
+    leer: una carpeta que la IA puede LEER entera (revisión a fondo), nunca lo de `no_leer`. Se ignora si la IA no sabe leer.
+    modelo: nombre de modelo para el CLI, si la app deja elegirlo.
+    """
     ia = ia or elegida()
-    comando = next((r for r in map(shutil.which, IAS[ia][0]) if r), IAS[ia][0][0])
+    cmd0 = comando(ia)
+    if not cmd0:
+        raise FileNotFoundError(IAS[ia][0][0])
     if leer and not (os.path.isdir(leer) and puede_leer(ia)):
         leer = None
-    with tempfile.TemporaryDirectory(prefix="esquema-ia-") as tmp:
+    entorno = _entorno()
+    with tempfile.TemporaryDirectory(prefix=f"{nucleo.app()['id']}-ia-") as tmp:
+        copias = []
+        for k, a in enumerate(archivos):
+            destino = os.path.join(tmp, f"material-{k + 1}{os.path.splitext(a)[1].lower()}")
+            try:
+                shutil.copy2(a, destino)
+                copias.append(destino)
+            except OSError:
+                pass
+        if copias and not puede_leer(ia):
+            copias = []
+        # La IA SIEMPRE corre en la carpeta temporal: si corriera dentro de la carpeta que revisa, su CLI cargaría la configuración
+        # de ese repo (AGENTS.md, GEMINI.md, .claude/settings.json con hooks que ejecutan comandos). La carpeta solo se agrega
+        # para leer, y se le dice dónde está en el pedido (por la entrada estándar, nunca como argumento).
+        carpeta = tmp
+        if leer:
+            prompt = f"La carpeta que puedes leer (solo leer) está en: {leer}\n\n" + prompt
+
         if ia == "codex":
             salida = os.path.join(tmp, "respuesta.txt")
-            cmd = [comando, "exec", "--skip-git-repo-check", "-s", "read-only", "-C", leer or tmp, "-o", salida, "-"]
-            r = subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=leer or tmp, env=_entorno())
+            cmd = [cmd0, "exec", "--skip-git-repo-check", "-s", "read-only", "-C", carpeta, "-o", salida]
+            cmd += [x for c in copias if c.endswith(IMAGENES) for x in ("-i", c)]
+            cmd += (["-m", modelo] if modelo else []) + ["-"]
+            r = subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=carpeta, env=entorno)
             texto = open(salida, encoding="utf-8").read() if os.path.exists(salida) else ""
             return subprocess.CompletedProcess(cmd, r.returncode, texto, r.stderr)
-        es_agy = os.path.basename(comando).lower().split(".")[0] in ("agy", "antigravity")
-        if ia == "gemini" and es_agy:
-            if len(prompt) < 20000:
-                pedido = prompt
-            else:
-                with open(os.path.join(tmp, "instrucciones.md"), "w", encoding="utf-8") as f:
-                    f.write(prompt)
-                pedido = ("Lee el archivo instrucciones.md de esta carpeta y haz exactamente lo que pide. "
-                          "Entrega solo el resultado pedido, sin comentarios. No modifiques ni crees archivos.")
-            cmd = [comando, "--output-format", "text", "--sandbox", "--add-dir", tmp, *(["--add-dir", leer] if leer else []), "-p", pedido]
-            return subprocess.run(cmd, stdin=subprocess.DEVNULL, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=leer or tmp, env=_entorno())
+
+        if ia == "gemini" and _es_agy(cmd0):
+            # Antigravity no lee la entrada estándar: el pedido va SIEMPRE en un archivo; en -p solo va una frase fija.
+            with open(os.path.join(tmp, "instrucciones.md"), "w", encoding="utf-8") as f:
+                f.write(prompt)
+            cmd = [cmd0, "--output-format", "text", "--sandbox", "--add-dir", tmp, *(["--add-dir", leer] if leer else []),
+                   *(["--model", modelo] if modelo else []), "-p", INSTRUCCION_ARCHIVO]
+            return subprocess.run(cmd, stdin=subprocess.DEVNULL, text=True, encoding="utf-8", capture_output=True, timeout=timeout,
+                                  cwd=carpeta, env=entorno)
+
         if ia == "gemini":
-            cmd = [comando, "-p", "Responde a las instrucciones de arriba. Entrega solo el resultado pedido.", "-o", "text"]
+            cmd = [cmd0, "-p", "Responde a las instrucciones de arriba. Entrega solo el resultado pedido.", "-o", "text",
+                   *(["-m", modelo] if modelo else [])]
+            return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env=entorno)
+
+        # Claude Code: sin servidores MCP de la persona y sin su memoria. Sin material ni carpeta: ninguna herramienta. Con material o
+        # carpeta: solo leer, y nunca lo que escribe, ejecuta o sale a internet, ni los secretos.
+        cmd = [cmd0, "-p", "--output-format", "text", "--strict-mcp-config"]
+        if leer or copias:
+            for d in [leer] if leer else []:
+                cmd += ["--add-dir", d]
+            cmd += ["--allowedTools", "Read,Glob,Grep", "--disallowedTools", ",".join(PROHIBIDO + _sin_secretos(no_leer))]
         else:
-            # Sin herramientas ni servidores MCP: la IA solo responde texto, no puede leer ni cambiar nada. Y sin la memoria de la
-            # persona: solo ve lo que Esquema le manda (lo que muestra «Ver lo que se envía»).
-            cmd = [comando, "-p", "--output-format", "text", "--strict-mcp-config"]
-            if leer:
-                # Revisión a fondo: solo leer (Read, Glob, Grep) dentro de la carpeta del código; nada que escriba, ejecute o salga a
-                # internet, y nunca los secretos.
-                cmd += ["--add-dir", leer, "--allowedTools", "Read,Glob,Grep",
-                        "--disallowedTools", ",".join(["Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch", "WebSearch", "Task"] + _sin_secretos(no_leer))]
-            else:
-                cmd += ["--disallowedTools", "*"]
-            if _soporta(comando, "--safe-mode"):
-                cmd.append("--safe-mode")
-            return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=leer or tmp, env={**_entorno(), **SIN_MEMORIA_CLAUDE})
-        return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env=_entorno())
+            cmd += ["--disallowedTools", "*"]
+        if modelo:
+            cmd += ["--model", modelo]
+        if _soporta(cmd0, "--safe-mode"):
+            cmd.append("--safe-mode")
+        if _soporta(cmd0, "--setting-sources"):
+            cmd += ["--setting-sources", "user"]  # nunca la configuración (ni los hooks) de un proyecto
+        return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=carpeta,
+                              env={**entorno, **SIN_MEMORIA_CLAUDE})
 
 
-def preguntar(prompt, timeout=600, ia=None, leer=None, no_leer=()):
-    """Devuelve (texto, error). El error es un mensaje para la persona, con el nombre de su IA."""
+def preguntar(prompt, **opciones):
+    """Devuelve (texto, error). error es None o {"codigo", "valores"} para que la interfaz lo traduzca (ver ERRORES y frase())."""
+    ia = opciones.get("ia") or elegida()
+    valores = {"ia": nombre(ia), "detalle": ""}
     try:
-        r = ejecutar_ia(prompt, timeout, ia, leer=leer, no_leer=no_leer)
+        r = ejecutar(prompt, **opciones)
     except FileNotFoundError:
-        return "", f"No encontré {nombre(ia)} en este computador. Revisa en Ajustes → Tu IA."
+        return "", {"codigo": "no_instalada", "valores": valores}
     except subprocess.TimeoutExpired:
-        return "", f"{nombre(ia)} se demoró demasiado en responder. Inténtalo de nuevo."
+        return "", {"codigo": "demora", "valores": valores}
     if r.returncode != 0 or not (r.stdout or "").strip():
-        detalle = (r.stderr or "").strip().splitlines()[-1:] or [""]
-        return "", f"{nombre(ia)} no respondió. {detalle[0]}".strip()
-    return r.stdout, ""
+        valores["detalle"] = ((r.stderr or "").strip().splitlines()[-1:] or [""])[0][:300]
+        return "", {"codigo": "sin_respuesta", "valores": valores}
+    return r.stdout, None
+
+
+def frase(error):
+    """El error en español, para scripts y registros (la interfaz traduce con el código)."""
+    if not error:
+        return ""
+    texto = ERRORES[error["codigo"]]
+    for k, v in error.get("valores", {}).items():
+        texto = texto.replace("{" + k + "}", str(v))
+    return texto.strip()
 
 
 def probar(ia):
     if ia not in IAS:
-        return {"ia": ia, "ok": False, "error": "No conozco esa IA."}
-    texto, error = preguntar("Responde solo con la palabra: listo", timeout=120, ia=ia)
+        return {"ia": ia, "ok": False, "codigo": "desconocida", "error": ERRORES["desconocida"]}
+    _, error = preguntar("Responde solo con la palabra: listo", ia=ia, timeout=120)
     if error:
-        return {"ia": ia, "ok": False, "error": error}
+        return {"ia": ia, "ok": False, "codigo": error["codigo"], "valores": error["valores"], "error": frase(error)}
     return {"ia": ia, "ok": True}
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 4 and sys.argv[1] == "probar":
-        comun.responder(sys.argv[3], probar(sys.argv[2]))
-        sys.exit(0)
-    print(__doc__)
-    sys.exit(2)
+    nucleo.script({
+        "probar": lambda d: probar(d.get("ia") if isinstance(d.get("ia"), str) else elegida()),
+        "lista": lambda d: {"ias": lista(), "elegida": elegida()},
+    }, __doc__)

@@ -265,7 +265,7 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
         case "probarIA":
             let ia = d["ia"] as? String ?? ""
             guard Config.ias.contains(ia) else { return llamar("iaProbada", ["ia": ia, "ok": false, "error": Idioma.t("No conozco esa IA.")]) }
-            Procesador.correrJSON("ia.py", ["probar", ia]) { r in
+            Procesador.conEntrada("ia.py", "probar", ["ia": ia]) { r in
                 var x = r
                 x["ia"] = ia
                 Ventana.shared.llamar("iaProbada", x)

@@ -771,7 +771,7 @@ def generar(e):
     leer = lugares(e)["codigo"] if e.get("a_fondo") and tarea in A_FONDO else None
     texto, error = ia.preguntar(prompt(e, tarea, docs, ps), timeout=2400 if leer else 900, leer=leer, no_leer=NO_LEER)
     if error:
-        return {"ok": False, "tarea": tarea, "error": error}
+        return {"ok": False, "tarea": tarea, "error": ia.frase(error), "codigo": error["codigo"]}
     r = leer_respuesta(texto)
     if not r["propuestas"] and not r["elementos"] and not r["pide"] and not r["nota"]:
         return {"ok": False, "tarea": tarea, "error": f"{ia.nombre()} no respondió en el formato que Esquema entiende. No apliqué nada."}

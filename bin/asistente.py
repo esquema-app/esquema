@@ -132,7 +132,7 @@ def readme(e):
         return {"ok": False, "error": "Cuéntame de qué se trata tu proyecto."}
     texto, error = ia.preguntar(prompt_readme(e))
     if error:
-        return {"ok": False, "error": error}
+        return {"ok": False, "error": ia.frase(error), "codigo": error["codigo"]}
     limpio = limpiar_readme(texto)
     if not limpio:
         return {"ok": False, "error": f"{ia.nombre()} no respondió un README. Inténtalo de nuevo."}
@@ -144,7 +144,7 @@ def dibujar(e):
         return {"ok": False, "error": "Escribe qué quieres que dibuje."}
     texto, error = ia.preguntar(prompt_dibujar(e))
     if error:
-        return {"ok": False, "error": error}
+        return {"ok": False, "error": ia.frase(error), "codigo": error["codigo"]}
     limpio = limpiar_diagrama(texto)
     if not limpio:
         return {"ok": False, "error": f"{ia.nombre()} no respondió un diagrama que Esquema sepa dibujar. No apliqué nada."}

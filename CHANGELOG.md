@@ -5,6 +5,11 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Por dentro, piezas de Pieza:** tu IA, la configuración y los idiomas ahora usan las piezas compartidas de la familia
+  (`nucleo`, `ia`, `i18n`). Tu IA siempre trabaja en una carpeta temporal, también al revisar tu código a fondo (solo lo lee),
+  así nunca carga la configuración de ese repo. · *Under the hood, Pieza pieces: your AI, settings and languages now use the
+  family's shared pieces (`nucleo`, `ia`, `i18n`). Your AI always works in a temporary folder, also when reviewing your code in
+  depth (it only reads it), so it never loads that repo's configuration.*
 - **Revisión a fondo:** al documentar tu proyecto, tu IA puede leer (solo leer) toda la carpeta del código para que no se le escape
   nada; nunca abre tus `.env`, llaves ni la carpeta `.git`, y puedes desmarcarla. · *Thorough review: when documenting your
   project, your AI can read (only read) the whole code folder so nothing slips through; it never opens your `.env`, keys or the

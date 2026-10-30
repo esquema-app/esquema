@@ -403,7 +403,7 @@
       return [
         { ok: tipos.includes("vision"), titulo: "Visión general", falta: "la visión general (README.md): qué es el proyecto y para quién" },
         { ok: tipos.includes("arquitectura"), titulo: "Arquitectura", falta: "la arquitectura (arquitectura.md): sus componentes y cómo se conectan, con un diagrama" },
-        { ok: flujos > 0, titulo: "Flujos principales", n: flujos, falta: "los flujos principales (flujos/<nombre>.md), cada uno con su diagrama" },
+        { ok: flujos > 0, titulo: "Flujos principales", n: flujos, falta: "los flujos principales (un archivo por flujo en flujos/), cada uno con su diagrama" },
         { ok: x.elementos.length > 0, titulo: "Elementos", n: x.elementos.length, falta: "los elementos del proyecto (pantallas, botones, servicios, módulos…)" },
         { ok: !sinUso.length, titulo: "Cada elemento aparece en un documento", n: sinUso.length, nombres: sinUso.map((e) => e.nombre), falta: "documentar los elementos que ningún documento nombra" },
         { ok: !c?.n, titulo: "Al día con el código", n: c?.n || 0, falta: "poner al día lo que cambió en el código desde la última versión" },
