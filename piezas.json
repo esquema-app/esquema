@@ -35,6 +35,37 @@
     "permisos": {},
     "red": []
    }
+  },
+  "bienvenida": {
+   "version": "0.2.0",
+   "archivos": {
+    "ui/bienvenida.js": "4a38f4e5a30400d298004dc185cab982d25ebdb8fafe1fe96ff35c9eb6aac23d",
+    "ui/bienvenida.css": "55240fa5fbe4f62849f2a93d25f4409f3a710bd95fb3b9d09bf3028b918f260e"
+   },
+   "ficha": {
+    "requiere": [
+     "i18n"
+    ],
+    "permisos": {},
+    "red": []
+   }
+  },
+  "actualizaciones": {
+   "version": "0.2.0",
+   "archivos": {
+    "app/Sources/PiezaActualizaciones/Actualizaciones.swift": "99130798812ee9640d0252d3bf6f5d45d681d5fcf33ae490d115f74cbb7fff3c",
+    "escritorio/src/actualizaciones.js": "48ac04b4e6f7fbd7c8ba3ad5604ac7de33ba71f41d2b8065cae01c59fd9bfdc1"
+   },
+   "ficha": {
+    "requiere": [],
+    "permisos": {},
+    "red": [
+     "api.github.com",
+     "github.com",
+     "objects.githubusercontent.com",
+     "release-assets.githubusercontent.com"
+    ]
+   }
   }
  }
 }

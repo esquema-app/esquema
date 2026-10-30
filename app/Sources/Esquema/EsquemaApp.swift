@@ -1,4 +1,5 @@
 import AppKit
+import PiezaActualizaciones
 
 /// Esquema para Mac: una ventana con la interfaz web de ui/ y un puente a los scripts de bin/ (el Python portátil viene dentro de la
 /// app). Los documentos y diagramas viven en la carpeta que elige la persona; la configuración, en ~/Library/Application Support/Esquema.
@@ -17,6 +18,10 @@ final class EsquemaApp: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ aviso: Notification) {
         Rutas.prepararDatos()
+        // Pieza «actualizaciones»: solo los Releases de este repo, con su .sha256. Instalación de desarrollo: build.sh deja la
+        // ruta del checkout en la carpeta de Esquema y empaquetar.sh escribe su avance donde diga ESQUEMA_PROGRESO.
+        Actualizaciones.configurar(.init(repo: "esquema-app/esquema", nombre: "Esquema",
+            archivoDesarrollo: Rutas.datos.appendingPathComponent("desarrollo"), variableProgreso: "ESQUEMA_PROGRESO"))
         Menu.instalar()
         Ventana.shared.mostrar()
         // En el primer uso lo primero es elegir el idioma: lo que corre solo y puede mostrar algo (actualizaciones) espera a que
@@ -28,7 +33,7 @@ final class EsquemaApp: NSObject, NSApplicationDelegate {
     static func iniciarTareas() {
         guard !tareasIniciadas else { return }
         tareasIniciadas = true
-        Actualizaciones.revisarCadaRato()
+        Actualizaciones.revisarCadaRato { Ventana.shared.llamar("actualizacionRevisada", $0) }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {

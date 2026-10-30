@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import PiezaActualizaciones
 
 /// Plantillas de la comunidad (repo esquema-app/esquema-catalogo). Solo se descarga desde un dominio fijo, sin seguir redirecciones,
 /// con tamaño máximo; el índice lo valida bin/plantillas.py (plantilla_formato.py, el mismo archivo que usa el catálogo) y cada

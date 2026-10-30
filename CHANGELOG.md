@@ -5,6 +5,11 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Primer uso con teclado:** en la pantalla del idioma ahora eliges con 1 o 2 (o con las flechas), y los dos idiomas se ven lado a
+  lado. Las actualizaciones usan la pieza compartida de la familia: siguen bajando solo de nuestros Releases, con su huella, y sus
+  avisos se ven en tu idioma. · *First run with the keyboard: on the language screen you can now pick with 1 or 2 (or the arrow
+  keys), with both languages side by side. Updates use the family's shared piece: they still download only from our Releases,
+  with their checksum, and their messages show in your language.*
 - **Por dentro, piezas de Pieza:** tu IA, la configuración y los idiomas ahora usan las piezas compartidas de la familia
   (`nucleo`, `ia`, `i18n`). Tu IA siempre trabaja en una carpeta temporal, también al revisar tu código a fondo (solo lo lee),
   así nunca carga la configuración de ese repo. · *Under the hood, Pieza pieces: your AI, settings and languages now use the
