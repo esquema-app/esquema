@@ -21,7 +21,7 @@ import re
 import sys
 import tempfile
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 MAXIMO_ENTRADA = 5 * 1024 * 1024
 _app = None
 _privadas = set()
@@ -109,9 +109,14 @@ def leer_json(ruta, defecto=None, maximo=None):
         return defecto
 
 
+#: Permisos para escribir_atomico: lo interno de la app es privado (0600, lo de siempre); un DOCUMENTO de la persona (un .md
+#: que ella abre con otros programas) se crea como cualquier archivo suyo.
+PRIVADO, DOCUMENTO = 0o600, 0o644
+
+
 def escribir_atomico(ruta, texto, modo=None):
     """Escribe sin dejar nunca un archivo a medias: temporal en la misma carpeta + reemplazo. Conserva los permisos de antes y no
-    deja temporales huérfanos si algo falla."""
+    deja temporales huérfanos si algo falla. Un archivo nuevo queda PRIVADO salvo que se pida modo=DOCUMENTO."""
     carpeta = os.path.dirname(os.path.abspath(ruta))
     os.makedirs(carpeta, exist_ok=True)
     if modo is None:
@@ -150,6 +155,8 @@ def ruta_en(base, relativa):
 # ── Configuración ────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def _valida(regla, valor):
+    if isinstance(regla, dict):  # {"tipo": "texto" | [valores], "interfaz": false}
+        return _valida(regla.get("tipo"), valor)
     if isinstance(regla, list):
         return valor in regla
     return {"bool": isinstance(valor, bool), "texto": isinstance(valor, str) and len(valor) <= 2000,
@@ -166,9 +173,15 @@ def config():
     return limpiar_config(leer_json(os.path.join(carpeta_datos(), "config.json"), {}))
 
 
-def guardar_config(cambios):
-    """Mezcla los cambios válidos con la config actual y la guarda. Devuelve la config resultante."""
-    nueva = {**config(), **limpiar_config(cambios)}
+def guardar_config(cambios, desde_interfaz=True):
+    """Mezcla los cambios válidos con la config actual y la guarda. Devuelve la config resultante.
+
+    Lo que llega de la interfaz nunca cambia una clave marcada `"interfaz": false` en app.json (p. ej. una carpeta que solo
+    elige el selector del sistema): para esas, el host llama con desde_interfaz=False."""
+    reglas = app()["config"]
+    cambios = {k: v for k, v in limpiar_config(cambios).items()
+               if not (desde_interfaz and isinstance(reglas.get(k), dict) and reglas[k].get("interfaz") is False)}
+    nueva = {**config(), **cambios}
     escribir_json(os.path.join(carpeta_datos(), "config.json"), nueva)
     return nueva
 

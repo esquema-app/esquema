@@ -2,9 +2,9 @@
  "formato": 1,
  "piezas": {
   "nucleo": {
-   "version": "0.2.0",
+   "version": "0.3.0",
    "archivos": {
-    "bin/nucleo.py": "a243e56d73089bd3a87bec9c09ad40972db713fab5bb79034837699d481e4609"
+    "bin/nucleo.py": "a64f7adb150adc94e117abf47ac3613df0a27c120a4916985a94ce87fe36e0d7"
    },
    "ficha": {
     "requiere": [],
