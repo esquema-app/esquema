@@ -7,7 +7,7 @@ import os
 import sys
 
 if sys.argv[1:] == ["--help"]:
-    print("Usage: claude [options]\n  --safe-mode   Start with all customizations disabled")
+    print("Usage: claude [options]\n  --safe-mode   Start with all customizations disabled\n  --strict-mcp-config\n  --disallowedTools <tools...>")
     sys.exit(0)
 prompt = sys.stdin.read()
 registro = os.environ.get("IA_FALSA_REGISTRO")

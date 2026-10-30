@@ -21,7 +21,7 @@ import re
 import sys
 import tempfile
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 MAXIMO_ENTRADA = 5 * 1024 * 1024
 _app = None
 _privadas = set()
@@ -155,7 +155,9 @@ def ruta_en(base, relativa):
 # ── Configuración ────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def _valida(regla, valor):
-    if isinstance(regla, dict):  # {"tipo": "texto" | [valores], "interfaz": false}
+    if isinstance(regla, dict):  # {"tipo": "texto" | [valores], "max"?: caracteres, "interfaz"?: false}
+        if regla.get("tipo") == "texto" and isinstance(regla.get("max"), int) and 0 < regla["max"] <= MAXIMO_ENTRADA:
+            return isinstance(valor, str) and len(valor) <= regla["max"]
         return _valida(regla.get("tipo"), valor)
     if isinstance(regla, list):
         return valor in regla
@@ -181,9 +183,13 @@ def guardar_config(cambios, desde_interfaz=True):
     reglas = app()["config"]
     cambios = {k: v for k, v in limpiar_config(cambios).items()
                if not (desde_interfaz and isinstance(reglas.get(k), dict) and reglas[k].get("interfaz") is False)}
-    nueva = {**config(), **cambios}
-    escribir_json(os.path.join(carpeta_datos(), "config.json"), nueva)
-    return nueva
+    # Se escribe sobre lo que hay en el archivo: las claves que este script no conoce (las escribe el host u otra versión) se
+    # conservan tal cual; config() igual las filtra al leer.
+    ruta = os.path.join(carpeta_datos(), "config.json")
+    crudo = leer_json(ruta, {})
+    crudo = crudo if isinstance(crudo, dict) else {}
+    escribir_json(ruta, {**crudo, **cambios})
+    return {**config(), **cambios}
 
 
 # ── Contrato de los scripts ──────────────────────────────────────────────────────────────────────────────────────────────────
