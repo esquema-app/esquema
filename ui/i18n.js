@@ -22,7 +22,8 @@
   const LIMITE = { frases: 20000, clave: 2000, valor: 4000, nombre: 40, bandera: 16, palabras: 2000 };
   // Caracteres de control y de dirección (bidi): en una traducción de afuera solo sirven para engañar a quien lee.
   const RAROS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f‪-‮⁦-⁩]/;
-  const ETIQUETA_HTML = /<\/?[a-z!?]/i;
+  // Solo etiquetas de verdad (<b>, </a>, <img …>, <!--): un texto como «<nombre>.md» no es HTML.
+  const ETIQUETA_HTML = /<\/?(?:a|abbr|b|br|button|code|div|em|form|i|iframe|img|input|link|meta|object|p|script|span|strong|style|svg|table|td|tr|u|ul|li|ol|video|audio|embed|base|math)\b[^>]*>|<!--|<!\[|<\?/i;
   const PROHIBIDAS = new Set(["__proto__", "constructor", "prototype"]);
   /** Lo que nunca se traduce: contenido de la persona y lo que no es texto de la app. */
   const SALTAR = "[data-sin-traducir], script, style, svg, textarea, code, pre";
@@ -162,11 +163,12 @@
         }
       },
 
-      /** El idioma a usar: lo recién elegido > lo guardado en la config > ?idioma= (vista previa) > el del sistema. */
+      /** El idioma a usar: lo recién elegido > ?idioma= (vista previa y pruebas: si la URL lo fuerza, gana) > lo guardado en la
+       *  config > el del sistema. */
       elegir({ elegido, config, url, sistema, disponibles = ["es", "en"] } = {}) {
         if (url === undefined && typeof location !== "undefined") url = new URLSearchParams(location.search).get("idioma");
         if (sistema === undefined) sistema = i18n.idiomaDelSistema(undefined, disponibles);
-        for (const c of [elegido, config, url, sistema]) if (typeof c === "string" && disponibles.includes(c)) return c;
+        for (const c of [elegido, url, config, sistema]) if (typeof c === "string" && disponibles.includes(c)) return c;
         return disponibles.includes("es") ? "es" : disponibles[0];
       },
 
@@ -234,8 +236,9 @@
       },
 
       /** Traduce lo ya pintado: textos y los atributos title, aria-label, placeholder y alt. Nunca entra a
-       *  [data-sin-traducir], script, style, svg, textarea, code ni pre (ni a lo que diga `noTraducir`). */
-      traducirDOM(raiz) {
+       *  [data-sin-traducir], script, style, svg, textarea, code ni pre (ni a lo que diga `noTraducir`).
+       *  { soloDentro: true } no toca los atributos de la raíz (al volver a pintar dentro de un contenedor ya traducido). */
+      traducirDOM(raiz, { soloDentro = false } = {}) {
         if (!raiz || actual.codigo === "es") return;
         const atributos = (el) => {
           for (const a of ATRIBUTOS) {
@@ -255,7 +258,7 @@
         };
         if (raiz.nodeType === 1) {
           if (raiz.closest?.(noTraducir)) return;
-          atributos(raiz);
+          if (!soloDentro) atributos(raiz);
         }
         recorrer(raiz);
       },

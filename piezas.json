@@ -26,9 +26,9 @@
    }
   },
   "i18n": {
-   "version": "0.1.0",
+   "version": "0.1.1",
    "archivos": {
-    "ui/i18n.js": "afe7e2df1a2f2d4ce4b6d6f3539c64633380e8bbcd7665ce5afa8a9e670ec9f5"
+    "ui/i18n.js": "be15cee259394d061241ae880c58fe8eb070ff53a0eb87543ae1dd9c5b00e910"
    },
    "ficha": {
     "requiere": [],
