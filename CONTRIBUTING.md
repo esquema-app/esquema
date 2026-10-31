@@ -42,7 +42,7 @@ Todo entra por pull request y lo junta alguien que mantiene el proyecto: nadie p
 - **Motor:** que la compatibilidad con Mermaid siga (los ejemplos de `pruebas/compat/` se leen y se escriben igual), que no baje el
   rendimiento (`node pruebas/motor.mjs` y, si toca el acomodo, `herramientas/comparar_mermaid.mjs`) y que todo texto se escape.
 - **Interfaz:** que funcione con teclado, a 390 px y en claro y oscuro, y que los textos tengan traducción.
-- **Plantillas:** que pasen `python3 bin/plantillas.py validar`, que el nombre y la descripción digan lo que son y que no traigan datos
+- **Plantillas:** que pasen `python3 bin/catalogo.py validar plantillas plantillas/*/*.json`, que el nombre y la descripción digan lo que son y que no traigan datos
   de nadie.
 - **Traducciones:** que una persona que hable el idioma revise el texto.
 

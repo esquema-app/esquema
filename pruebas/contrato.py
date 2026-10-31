@@ -45,6 +45,10 @@ for a, d in puente["acciones"].items():
     for s in re.findall(r"bin/(\w+\.py)", d["como"]):
         if not os.path.exists(os.path.join(RAIZ, "bin", s)):
             problemas.append(f'"{a}" usa bin/{s}, que no existe')
+# Plantillas de la comunidad (pieza «catálogo»): de qué repo y con qué validador lo dice app.json; los dos hosts lo leen de ahí.
+cat_app = json.loads(leer("app.json")).get("catalogo") or {}
+if cat_app.get("repo") != "esquema-app/esquema-catalogo" or (cat_app.get("tipos") or {}).get("plantillas", {}).get("validador") != "plantilla_formato":
+    problemas.append("app.json: «catalogo» con repo esquema-app/esquema-catalogo y el tipo plantillas validado por plantilla_formato")
 # Las respuestas que cada app tiene que mandar: lo que responde cada acción + los avisos de la carpeta vigilada + el menú.
 respuestas_app = {d["responde"] for d in puente["acciones"].values() if d["responde"]} | {"archivoCambiado", "archivos", "menu", "proyectoProgreso"}
 
@@ -72,12 +76,17 @@ if mac is not None:
     paquete = leer("app/Package.swift") or ""
     if not tiene(act, r"/releases/download/", r"esDescargaNuestra\(zip, repo: c\.repo\)", r"shasum -a 256", r"comillas\(", r"--proto-redir '=https'") \
             or not tiene(swift, r'Actualizaciones\.configurar\(\.init\(repo: "esquema-app/esquema", nombre: "Esquema"') \
-            or not tiene(paquete, r'\.target\(name: "PiezaActualizaciones"', r'dependencies: \["PiezaActualizaciones"\]'):
+            or not tiene(paquete, r'\.target\(name: "PiezaActualizaciones"', r'dependencies: \["PiezaActualizaciones"'):
         problemas.append("Mac: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella y comillas() (pieza «actualizaciones», configurada en EsquemaApp.swift)")
-    cat = leer("app/Sources/Esquema/Catalogo.swift") or ""
-    if not tiene(cat, r'base = "https://raw\.githubusercontent\.com/esquema-app/esquema-catalogo/main/"', r"SinRedirecciones", r"willPerformHTTPRedirection",
-                 r"SHA256\.hash", r"calculada == huella", r"datos\.count == tamano", r'"plantillas\.py", \["catalogo"', r'"plantillas\.py", "instalar"'):
-        problemas.append("Mac: el catálogo solo desde raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones, con tamaño y huella del índice validado (Catalogo.swift)")
+    # Plantillas de la comunidad: la pieza «catálogo» (su propio target), configurada con app.json → catalogo.
+    cat = leer("app/Sources/PiezaCatalogo/Catalogo.swift") or ""
+    if not tiene(cat, r'host = "raw\.githubusercontent\.com"', r"SinRedirecciones", r"willPerformHTTPRedirection",
+                 r"SHA256\.hash", r"calculada == huella", r"datos\.count == tamano", r'"catalogo\.py", "indice"', r'"catalogo\.py", "instalar"') \
+            or not tiene(swift, r'Catalogo\.configurar\(appJSON: Rutas\.recursos\.appendingPathComponent\("app\.json"\)', r'Catalogo\.listar\("plantillas"\)',
+                         r'Catalogo\.descargar\("plantillas", id\)') \
+            or not tiene(paquete, r'\.target\(name: "PiezaCatalogo"', r'"PiezaCatalogo"\]|"PiezaCatalogo",') \
+            or os.path.exists(os.path.join(RAIZ, "app/Sources/Esquema/Catalogo.swift")):
+        problemas.append("Mac: el catálogo solo desde raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones, con tamaño y huella del índice validado (pieza «catálogo», configurada en EsquemaApp.swift)")
     if re.search(r'"(claude|codex)"\s*,\s*\[', swift) and "--disallowedTools" not in swift:
         problemas.append("Mac: si la app llama a la IA, tiene que ser sin herramientas")
     if "carpeta" in re.search(r"static func guardar\(_ cambios.*?\n    \}", swift, re.S).group(0).split("default:")[0].split("switch k")[1]:
@@ -103,8 +112,10 @@ if escritorio:
             or not tiene(escritorio, r'crearActualizaciones\(\{ app, net, repo: "esquema-app/esquema", nombre: "Esquema" \}\)'):
         problemas.append("Windows/Linux: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella (pieza «actualizaciones», configurada en main.js)")
     cat = leer("escritorio/src/catalogo.js") or ""
-    if not tiene(cat, r'BASE = "https://raw\.githubusercontent\.com/esquema-app/esquema-catalogo/main/"', r'redirect: "error"', r"huella !== e\.sha256",
-                 r"datos\.length !== e\.tamano", r'"plantillas\.py", \["catalogo"', r'"plantillas\.py", "instalar"') or "crearCatalogo" not in escritorio:
+    if not tiene(cat, r'HOST = "raw\.githubusercontent\.com"', r'redirect: "error"', r"huella !== e\.sha256",
+                 r"datos\.length !== e\.tamano", r'"catalogo\.py", "indice"', r'"catalogo\.py", "instalar"') \
+            or not tiene(escritorio, r'appJson: leerJSON\(path\.join\(recursos\(app\.isPackaged\), "app\.json"\)', r'Catalogo\.listar\("plantillas"\)',
+                         r'Catalogo\.descargar\("plantillas", '):
         problemas.append("Windows/Linux: el catálogo solo desde raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones, con tamaño y huella (catalogo.js)")
     paquete = json.loads(leer("escritorio/package.json"))
     version = paquete.get("devDependencies", {}).get("electron", "")
@@ -136,7 +147,8 @@ if mac is not None:
 # Trabajos largos: las dos apps pasan ESQUEMA_PROGRESO al script, leen sus líneas nuevas y avisan con proyectoProgreso.
 if mac is not None:
     servicios = leer("app/Sources/Esquema/Servicios.swift") or ""
-    if not tiene(servicios, r'env\["ESQUEMA_PROGRESO"\]', r"class LectorProgreso", r"withTimeInterval: 0\.5") or lista_de(mac, r"ordenesConProgreso: Set<String> = \[([^\]]+)\]") != progreso_py or not tiene(mac, r'llamar\("proyectoProgreso"'):
+    lector = leer("app/Sources/PiezaTrabajos/LectorProgreso.swift") or ""
+    if not tiene(servicios, r'env\["ESQUEMA_PROGRESO"\]', r"import PiezaTrabajos", r'LectorProgreso\(prefijo: "esquema"') or not tiene(lector, r"withTimeInterval: 0\.5") or lista_de(mac, r"ordenesConProgreso: Set<String> = \[([^\]]+)\]") != progreso_py or not tiene(mac, r'llamar\("proyectoProgreso"'):
         problemas.append("Mac: las órdenes largas (CON_PROGRESO de bin/proyecto.py) pasan ESQUEMA_PROGRESO y avisan con proyectoProgreso cada 0,5 s (Servicios.swift, Ventana.swift)")
     if lista_de(mac, r"ordenesSinCarpeta: Set<String> = \[([^\]]+)\]") != sin_carpeta_py or not tiene(mac, r'e\.removeValue\(forKey: "carpeta"\)\s*\n\s*if let base \{ e\["carpeta"\] = base\.path \}'):
         problemas.append("Mac: solo SIN_CARPETA de bin/proyecto.py corre sin carpeta, y la carpeta la pone siempre la app (Ventana.swift)")
@@ -144,7 +156,8 @@ if mac is not None:
         problemas.append("Mac: «papelera» solo con rutas de la carpeta (a la Papelera, nunca borrar) y el panel de archivos solo para la interfaz local (Ventana.swift)")
 if escritorio:
     servicios = leer("escritorio/src/servicios.js") or ""
-    if not tiene(servicios, r"env\.ESQUEMA_PROGRESO = ", r"function lectorProgreso", r"setInterval\(leer, 500\)") or lista_de(escritorio, r"ORDENES_CON_PROGRESO = \[([^\]]+)\]") != progreso_py or not tiene(escritorio, r'llamar\("proyectoProgreso"'):
+    if not tiene(servicios, r"env\.ESQUEMA_PROGRESO = ", r'require\("\./progreso"\)', r'lectorProgreso\(progreso, \{ prefijo: "esquema" \}\)') \
+            or not tiene(leer("escritorio/src/progreso.js") or "", r"function lectorProgreso", r"cada = 500") or lista_de(escritorio, r"ORDENES_CON_PROGRESO = \[([^\]]+)\]") != progreso_py or not tiene(escritorio, r'llamar\("proyectoProgreso"'):
         problemas.append("Windows/Linux: las órdenes largas (CON_PROGRESO de bin/proyecto.py) pasan ESQUEMA_PROGRESO y avisan con proyectoProgreso cada 0,5 s (servicios.js, main.js)")
     if lista_de(escritorio, r"ORDENES_SIN_CARPETA = \[([^\]]+)\]") != sin_carpeta_py or not tiene(escritorio, r"delete e\.orden; delete e\.carpeta;\s*\n\s*if \(base\) e\.carpeta = base;"):
         problemas.append("Windows/Linux: solo SIN_CARPETA de bin/proyecto.py corre sin carpeta, y la carpeta la pone siempre la app (main.js)")

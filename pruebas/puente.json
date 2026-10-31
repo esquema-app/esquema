@@ -132,14 +132,14 @@
     "catalogoPlantillas": {
       "datos": {},
       "responde": "catalogoListo",
-      "como": "La app baja index.json solo de https://raw.githubusercontent.com/esquema-app/esquema-catalogo/main/ (sin seguir redirecciones, hasta 1 MB; Catalogo.swift / escritorio/src/catalogo.js) y lo valida con bin/plantillas.py catalogo <archivo> <salida> (plantilla_formato.validar_indice). Recuerda ese índice validado: de ahí salen la ruta, el tamaño y la huella de cada descarga, nunca de lo que manda la interfaz."
+      "como": "Pieza «catálogo» (app.json → catalogo): la app baja index.json solo de https://raw.githubusercontent.com/esquema-app/esquema-catalogo/main/ (sin seguir redirecciones, hasta 1 MB; app/Sources/PiezaCatalogo/Catalogo.swift / escritorio/src/catalogo.js) y lo valida con bin/catalogo.py indice <entrada {tipo: \"plantillas\", archivo}> <salida> (validador: plantilla_formato.validar). Responde {ok, tipo, plantillas} o {ok: false, codigo, plantilla, error}. Recuerda ese índice validado: de ahí salen la ruta, el tamaño y la huella de cada descarga, nunca de lo que manda la interfaz."
     },
     "descargarPlantilla": {
       "datos": {
         "id": "id de una plantilla del índice"
       },
       "responde": "plantillaDescargada",
-      "como": "Busca el id en el último índice validado, baja su ruta (plantillas/<categoria>/<id>.json) del mismo dominio sin redirecciones y hasta 100 KB, compara tamaño y SHA-256 con el índice y bin/plantillas.py instalar <entrada {archivo, id, sha256}> <salida> la vuelve a validar y la guarda en <carpeta de Esquema>/plantillas/<id>.json (nunca en la carpeta de la persona)."
+      "como": "Pieza «catálogo»: busca el id en el último índice validado, baja su ruta (plantillas/<categoria>/<id>.json) del mismo dominio sin redirecciones y hasta 100 KB, compara tamaño y SHA-256 con el índice y bin/catalogo.py instalar <entrada {tipo, archivo, id, sha256}> <salida> la busca otra vez en el índice que validó, la vuelve a validar y la guarda en <carpeta de Esquema>/plantillas/<id>.json (nunca en la carpeta de la persona). Responde {ok, tipo, id, plantilla} o {ok: false, id, codigo, plantilla, error} (ahí `plantilla` es la frase del error, para traducir)."
     }
   },
   "respuestas": {

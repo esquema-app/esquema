@@ -9,7 +9,7 @@ const { ES_WIN, datos, prepararDatos, recursos, absoluta } = require("./rutas");
 const { configurar, leerJSON, Config, Idioma, Procesador, EnOrden } = require("./servicios");
 const { Vigilante } = require("./vigilante");
 const { crear: crearActualizaciones } = require("./actualizaciones");
-const { crearCatalogo } = require("./catalogo");
+const { crear: crearCatalogo } = require("./catalogo");
 
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 if (ES_WIN) app.setAppUserModelId("app.esquema.escritorio");
@@ -24,8 +24,10 @@ const ORIGEN = "esquema://ui/";
 const ICONOS = path.join(__dirname, "..", "iconos");
 const t = (s) => Idioma.t(s);
 const MAXIMO_EXPORTAR = 50 * 1024 * 1024;
-// Plantillas de la comunidad: solo de raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones (src/catalogo.js).
-const Catalogo = crearCatalogo({ fetch: (u, o) => net.fetch(u, o), procesador: Procesador, t, version: app.getVersion() });
+// Plantillas de la comunidad: pieza «catálogo» (src/catalogo.js). Repo y tipos salen de app.json (solo de
+// raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones, con SHA-256); los errores traen `plantilla` para traducir.
+const Catalogo = crearCatalogo({ fetch: (u, o) => net.fetch(u, o), procesador: Procesador,
+  appJson: leerJSON(path.join(recursos(app.isPackaged), "app.json"), {}), agente: `Esquema/${app.getVersion()}` });
 // Versiones nuevas: pieza «actualizaciones» (src/actualizaciones.js). Solo de los Releases de este repo, con su .sha256. Lo que
 // manda a la interfaz trae `texto` en español y `valores`: la interfaz lo traduce (nada se traduce aquí).
 const Actualizaciones = crearActualizaciones({ app, net, repo: "esquema-app/esquema", nombre: "Esquema" });
@@ -291,10 +293,10 @@ const ACCIONES = {
     abrirEnlace(d.url);
   },
   async catalogoPlantillas() {
-    llamar("catalogoListo", await Catalogo.listar());
+    llamar("catalogoListo", await Catalogo.listar("plantillas"));
   },
   async descargarPlantilla(d) {
-    llamar("plantillaDescargada", await Catalogo.descargar(texto(d, "id", 60)));
+    llamar("plantillaDescargada", await Catalogo.descargar("plantillas", texto(d, "id", 60)));
   },
   async buscarActualizacion() {
     llamar("actualizacionRevisada", await Actualizaciones.revisar().catch(() => ({ hay: false, sinConexion: true })));

@@ -1,4 +1,5 @@
 import AppKit
+import PiezaTrabajos
 
 // MARK: - Rutas (las mismas que bin/comun.py)
 
@@ -116,7 +117,7 @@ enum Procesador {
     private(set) static var enCurso = 0
 
     /// `progreso`: para los trabajos largos (documentar un proyecto). El script escribe sus eventos (una línea JSON cada uno) en el
-    /// archivo de ESQUEMA_PROGRESO; cada 0,5 s se leen las líneas nuevas y se pasan juntas a `progreso`.
+    /// archivo de ESQUEMA_PROGRESO; cada 0,5 s se leen las líneas nuevas y se pasan juntas a `progreso` (pieza «trabajos»).
     static func correrJSON(_ script: String, _ args: [String], progreso: (@MainActor ([[String: Any]]) -> Void)? = nil,
                            fin: @escaping @MainActor ([String: Any]) -> Void) {
         let salida = FileManager.default.temporaryDirectory.appendingPathComponent("esquema-\(UUID().uuidString).json")
@@ -132,7 +133,7 @@ enum Procesador {
         env["PYTHONDONTWRITEBYTECODE"] = "1"  // no escribir __pycache__ dentro de la app (rompería su firma)
         var lector: LectorProgreso? = nil
         if let progreso {
-            let l = LectorProgreso(aviso: progreso)
+            let l = LectorProgreso(prefijo: "esquema", aviso: progreso)
             env["ESQUEMA_PROGRESO"] = l.url.path
             lector = l
         }
@@ -166,52 +167,6 @@ enum Procesador {
             try? FileManager.default.removeItem(at: entrada)
             fin(r)
         }
-    }
-}
-
-/// Lee el archivo de progreso de un script (JSONL) cada 0,5 s y pasa las líneas nuevas, ya leídas como JSON, a `aviso`.
-@MainActor
-final class LectorProgreso {
-    let url: URL
-    private let aviso: @MainActor ([[String: Any]]) -> Void
-    private var desde: UInt64 = 0
-    private var resto = Data()
-    private var reloj: Timer?
-
-    init(aviso: @escaping @MainActor ([[String: Any]]) -> Void) {
-        url = FileManager.default.temporaryDirectory.appendingPathComponent("esquema-progreso-\(UUID().uuidString).jsonl")
-        self.aviso = aviso
-        FileManager.default.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o600])
-    }
-
-    func empezar() {
-        // El reloj corre en el hilo principal (el de la interfaz): ahí se lee el archivo.
-        reloj = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-            MainActor.assumeIsolated { self.leer() }
-        }
-    }
-
-    func leer() {
-        guard let h = try? FileHandle(forReadingFrom: url) else { return }
-        defer { try? h.close() }
-        guard (try? h.seek(toOffset: desde)) != nil, let d = try? h.readToEnd(), !d.isEmpty else { return }
-        desde += UInt64(d.count)
-        resto.append(d)
-        var eventos: [[String: Any]] = []
-        while let i = resto.firstIndex(of: 0x0A) {
-            let linea = resto.subdata(in: resto.startIndex..<i)
-            resto = resto.subdata(in: resto.index(after: i)..<resto.endIndex)
-            if let j = try? JSONSerialization.jsonObject(with: linea) as? [String: Any] { eventos.append(j) }
-        }
-        if !eventos.isEmpty { aviso(eventos) }
-    }
-
-    /// Al terminar el script: lo último que haya quedado y se borra el archivo.
-    func terminar() {
-        reloj?.invalidate()
-        reloj = nil
-        leer()
-        try? FileManager.default.removeItem(at: url)
     }
 }
 

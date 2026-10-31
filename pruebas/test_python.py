@@ -31,9 +31,8 @@ import asistente  # noqa: E402
 import carpeta  # noqa: E402
 import comun  # noqa: E402
 import ia  # noqa: E402
-import ia_vivo  # noqa: E402
+import catalogo  # noqa: E402
 import plantilla_formato  # noqa: E402
-import plantillas  # noqa: E402
 import incorporar  # noqa: E402
 import proyecto as proyecto_mod  # noqa: E402
 
@@ -156,7 +155,7 @@ class Config(unittest.TestCase):
         e = correr("estado.py")
         self.assertEqual(e["config"]["idioma_ui"], "en")
         self.assertEqual(e["version"], comun.VERSION)
-        self.assertEqual(len(e["plantillas"]), len(plantillas.incluidas()))
+        self.assertEqual(len(e["plantillas"]), len(catalogo.incluidos(catalogo.tipo("plantillas"))))
         self.assertTrue(any(x["id"] == "claude" and x["instalada"] for x in e["ias"]))
         correr("estado.py", "config", entrada({"ia": "claude"}))
 
@@ -735,23 +734,6 @@ class Documentar(unittest.TestCase):
             f.write("def grabar():\n    return 1\n")
         self.assertTrue(orden("arbol", {"carpeta": docs})["lecturas"]["src/grabar.py"].get("c"))
 
-    def test_stream_json_de_claude(self):
-        vistos = []
-        lineas = ['{"type":"system","subtype":"init"}', "no es json",
-                  json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "x"}, {"type": "tool_use", "name": "Read", "input": {"file_path": "/a/b.py"}}]}}),
-                  json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Grep", "input": {"pattern": "def ", "path": "/a"}}]}}),
-                  json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "rm"}}]}})]
-        for l in lineas:
-            self.assertIsNone(ia_vivo._evento_claude(l, vistos.append))
-        self.assertEqual(vistos, [{"t": "lee", "ruta": "/a/b.py"}, {"t": "busca", "patron": "def ", "ruta": "/a"}])
-        self.assertEqual(ia_vivo._evento_claude('{"type":"result","is_error":false,"result":"hola"}', vistos.append), ("hola", False))
-        self.assertEqual(ia_vivo._evento_claude('{"type":"result","is_error":true,"result":"sin saldo"}', vistos.append), ("sin saldo", True))
-        # Codex --json: se deduce el archivo de un comando de lectura.
-        c = []
-        ia_vivo._evento_codex(json.dumps({"type": "item.started", "item": {"type": "command_execution", "command": "bash -lc 'sed -n 1,200p src/app.py'"}}), c.append)
-        ia_vivo._evento_codex(json.dumps({"type": "item.started", "item": {"type": "command_execution", "command": ["rg", "-n", "pagar"]}}), c.append)
-        self.assertEqual(c, [{"t": "lee", "ruta": "src/app.py"}, {"t": "busca", "patron": "-n pagar"}])
-
     def test_plan_valido_ordenado_y_plan_invalido(self):
         import documentar
         perfil = {"tipo": "app", "componentes": [], "archivos": 10}
@@ -917,6 +899,9 @@ class Documentar(unittest.TestCase):
 
 
 class Plantillas(unittest.TestCase):
+    """Plantillas: el formato es de Esquema (bin/plantilla_formato.py); listar, el índice del catálogo e instalar son de la pieza
+    «catálogo» (bin/catalogo.py, app.json → catalogo), que usa plantilla_formato como validador."""
+
     def test_casos_compartidos(self):
         for c in CASOS["plantillas"]:
             self.assertEqual(not plantilla_formato.validar(c["plantilla"]), c["valida"], c["plantilla"])
@@ -924,30 +909,44 @@ class Plantillas(unittest.TestCase):
     def test_incluidas_validas(self):
         todas = [os.path.join(dp, f) for dp, _, fs in os.walk(os.path.join(RAIZ, "plantillas")) for f in fs if f.endswith(".json")]
         self.assertGreaterEqual(len(todas), 10)
-        r = subprocess.run([sys.executable, os.path.join(BIN, "plantillas.py"), "validar", *todas], capture_output=True, text=True)
-        self.assertEqual(r.returncode, 0, r.stdout)
-        self.assertEqual(len(plantillas.incluidas()), len(todas))
-        cats = {p["categoria"] for p in plantillas.incluidas()}
-        self.assertEqual(cats, set(plantilla_formato.CATEGORIAS))
+        r = subprocess.run([sys.executable, os.path.join(BIN, "catalogo.py"), "validar", "plantillas", *todas], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        incluidas = catalogo.incluidos(catalogo.tipo("plantillas"))
+        self.assertEqual(len(incluidas), len(todas))
+        self.assertEqual({p["categoria"] for p in incluidas.values()}, set(plantilla_formato.CATEGORIAS))
+
+    def test_app_json_y_lista_sin_origen(self):
+        t = catalogo.tipo("plantillas")
+        self.assertEqual((catalogo.config()["repo"], t["indice"], t["validador"]), ("esquema-app/esquema-catalogo", "index.json", "plantilla_formato"))
+        # La interfaz valida cada plantilla con los campos de siempre (validarPlantilla): sin «origen».
+        self.assertTrue(all("origen" not in p and not plantilla_formato.validar(p) for p in catalogo.listar("plantillas")))
 
     def test_descargadas_ganan_y_se_validan(self):
         d = os.path.join(os.environ["ESQUEMA_DATOS"], "plantillas")
         os.makedirs(d, exist_ok=True)
         buena = dict(CASOS["plantillas"][0]["plantilla"], id="registro", nombre={"es": "Mía"})
         json.dump(buena, open(os.path.join(d, "registro.json"), "w"))
-        json.dump(dict(buena, id="mala", script="x"), open(os.path.join(d, "mala.json"), "w"))
-        l = {p["id"]: p for p in plantillas.listar()}
+        json.dump(dict(buena, id="mala", tipo="programa"), open(os.path.join(d, "mala.json"), "w"))
+        json.dump(dict(buena, id="con-extra", script="x"), open(os.path.join(d, "con-extra.json"), "w"))
+        l = {p["id"]: p for p in catalogo.listar("plantillas")}
         self.assertEqual(l["registro"]["nombre"]["es"], "Mía")
         self.assertNotIn("mala", l)
+        self.assertNotIn("script", l["con-extra"], "lo que no es del formato no llega a la interfaz")
+        self.assertEqual({p["id"] for p in correr("estado.py")["plantillas"]}, set(l))
         shutil.rmtree(d)
 
-    def test_indice(self):
-        r = correr("plantillas.py", "indice", RAIZ)
-        self.assertEqual(r["formato"], 1)
-        self.assertEqual(len(r["plantillas"]), len(plantillas.incluidas()))
-        self.assertTrue(all(len(p["sha256"]) == 64 and plantilla_formato.RUTA.fullmatch(p["ruta"]) for p in r["plantillas"]))
-        # Lo que arma indice() es exactamente lo que acepta validar_indice() (la app no descarta nada bueno).
-        self.assertEqual(plantilla_formato.validar_indice(r), r["plantillas"])
+    def test_indice_del_catalogo(self):
+        """El índice que arma `catalogo.py generar` (el workflow del catálogo) es exactamente lo que la app acepta al leerlo."""
+        salida = os.path.join(TMP, "index.json")
+        r = subprocess.run([sys.executable, os.path.join(BIN, "catalogo.py"), "generar", "plantillas", os.path.join(RAIZ, "ejemplos", "catalogo-ejemplo"), salida],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        datos = json.load(open(salida, encoding="utf-8"))
+        self.assertEqual(datos["formato"], 1)
+        self.assertGreaterEqual(len(datos["plantillas"]), 6)
+        leido = correr("catalogo.py", "indice", entrada({"tipo": "plantillas", "archivo": salida}))
+        self.assertTrue(leido["ok"], leido)
+        self.assertEqual(leido["plantillas"], datos["plantillas"])
 
     def test_indice_rechaza(self):
         raiz = tempfile.mkdtemp(dir=TMP)
@@ -958,23 +957,10 @@ class Plantillas(unittest.TestCase):
         escribir(f"{buena['categoria']}/{buena['id']}.json", buena)
         escribir(f"{buena['categoria']}/otro-nombre.json", buena)                       # no se llama como su id
         escribir(f"{buena['categoria']}/con-script.json", dict(buena, id="con-script", script="x"))
-        open(os.path.join(raiz, "plantillas", buena["categoria"], "nota.txt"), "w").write("x")
-        datos, problemas = plantilla_formato.indice(raiz)
+        escribir(f"inventada/{buena['id']}-2.json", dict(buena, id=buena["id"] + "-2"))  # la carpeta no es su categoría
+        datos, problemas = catalogo.generar(raiz, catalogo.tipo("plantillas"))
         self.assertEqual([p["id"] for p in datos["plantillas"]], [buena["id"]])
-        self.assertEqual(len(problemas), 4, problemas)
-
-    def test_validar_indice_descarta(self):
-        datos, _ = plantilla_formato.indice(RAIZ)
-        bien = datos["plantillas"][0]
-        malos = [dict(bien, ruta="https://otro.com/x.json"), dict(bien, ruta="plantillas/../../x.json"), dict(bien, sha256="abc"),
-                 dict(bien, tamano=10 ** 9), dict(bien, tamano=True), dict(bien, categoria="secuencia" if bien["categoria"] != "secuencia" else "proceso"),
-                 dict(bien, contenido={"es": "<script>" * 5000}), "texto", dict(bien, ruta=bien["ruta"].replace(".json", "-x.json"))]
-        self.assertEqual(plantilla_formato.validar_indice({"formato": 1, "plantillas": malos}), [])
-        self.assertEqual(plantilla_formato.validar_indice({"formato": 2, "plantillas": [bien]}), [])
-        self.assertEqual(len(plantilla_formato.validar_indice({"formato": 1, "plantillas": [bien, bien]})), 1)  # id repetido
-        r = correr("plantillas.py", "catalogo", entrada({"formato": 1, "plantillas": [bien] + malos}))
-        self.assertEqual([p["id"] for p in r["plantillas"]], [bien["id"]])
-        self.assertFalse(correr("plantillas.py", "catalogo", entrada([1, 2]))["ok"])
+        self.assertEqual(len(problemas), 3, problemas)
 
     def test_instalar(self):
         import hashlib
@@ -983,16 +969,21 @@ class Plantillas(unittest.TestCase):
         archivo = os.path.join(TMP, "bajada.json")
         open(archivo, "wb").write(crudo)
         huella = hashlib.sha256(crudo).hexdigest()
-        r = correr("plantillas.py", "instalar", entrada({"archivo": archivo, "id": "desde-catalogo", "sha256": huella}))
+        indice = os.path.join(TMP, "indice-bajado.json")
+        json.dump({"formato": 1, "plantillas": [dict(pl, ruta=f"plantillas/{pl['categoria']}/desde-catalogo.json", sha256=huella, tamano=len(crudo))]},
+                  open(indice, "w"))
+        self.assertEqual(len(correr("catalogo.py", "indice", entrada({"tipo": "plantillas", "archivo": indice}))["plantillas"]), 1)
+        r = correr("catalogo.py", "instalar", entrada({"tipo": "plantillas", "archivo": archivo, "id": "desde-catalogo", "sha256": huella}))
         self.assertTrue(r["ok"], r)
+        self.assertEqual(r["plantilla"]["id"], "desde-catalogo")
         guardada = os.path.join(os.environ["ESQUEMA_DATOS"], "plantillas", "desde-catalogo.json")
         self.assertEqual(stat.S_IMODE(os.stat(guardada).st_mode), 0o600)
-        self.assertIn("desde-catalogo", {p["id"] for p in plantillas.listar()})
-        self.assertIn("dañada", correr("plantillas.py", "instalar", entrada({"archivo": archivo, "id": "desde-catalogo", "sha256": "0" * 64}))["error"])
-        self.assertFalse(correr("plantillas.py", "instalar", entrada({"archivo": archivo, "id": "otro-id", "sha256": huella}))["ok"])
-        malo = json.dumps(dict(pl, html="<b>")).encode()
-        open(archivo, "wb").write(malo)
-        self.assertFalse(correr("plantillas.py", "instalar", entrada({"archivo": archivo, "id": "desde-catalogo", "sha256": hashlib.sha256(malo).hexdigest()}))["ok"])
+        self.assertIn("desde-catalogo", {p["id"] for p in catalogo.listar("plantillas")})
+        mal = correr("catalogo.py", "instalar", entrada({"tipo": "plantillas", "archivo": archivo, "id": "desde-catalogo", "sha256": "0" * 64}))
+        self.assertEqual((mal["ok"], mal["codigo"]), (False, "no_esta"))   # una huella que no es la del índice validado
+        self.assertFalse(correr("catalogo.py", "instalar", entrada({"tipo": "plantillas", "archivo": archivo, "id": "otro-id", "sha256": huella}))["ok"])
+        open(archivo, "wb").write(crudo + b" ")
+        self.assertEqual(correr("catalogo.py", "instalar", entrada({"tipo": "plantillas", "archivo": archivo, "id": "desde-catalogo", "sha256": huella}))["codigo"], "danado")
         os.remove(guardada)
 
     def test_mismo_formato_que_el_catalogo(self):
@@ -1056,8 +1047,8 @@ class Repo(unittest.TestCase):
                 self.assertTrue(os.path.exists(os.path.join(RAIZ, ruta)), f"{pid}: falta {ruta}")
 
     def test_solo_biblioteca_estandar(self):
-        permitidos = set(sys.stdlib_module_names) | {"comun", "carpeta", "ia", "asistente", "plantillas", "plantilla_formato", "estado", "proyecto", "nucleo",
-                                                     "ia_vivo", "inventario", "trabajos", "documentar", "tipos", "contenido", "historias", "libros", "agregar", "wiki", "incorporar"}
+        permitidos = set(sys.stdlib_module_names) | {"comun", "carpeta", "ia", "asistente", "plantilla_formato", "estado", "proyecto", "nucleo",
+                                                     "detectar", "catalogo", "inventario", "trabajos", "documentar", "tipos", "contenido", "historias", "libros", "agregar", "wiki", "incorporar"}
         for f in os.listdir(BIN):
             if not f.endswith(".py"):
                 continue
@@ -1095,19 +1086,19 @@ class Contenido(unittest.TestCase):
     """bin/contenido.py: leer formatos sin dependencias, adivinar el tipo y partir capítulos (sin IA)."""
 
     def test_detecta_el_tipo(self):
-        import contenido as C
-        self.assertEqual(C.detectar(HU)["tipo"], "historia")
-        self.assertIn("Trae criterios de aceptación", C.detectar(HU)["razones"])
-        self.assertEqual(C.detectar("As a user I want to export my notes so that I can share them.\n\nAcceptance criteria\n- Given x\n  When y")["tipo"], "historia")
-        self.assertEqual(C.detectar(LIBRO + "ISBN 978-0-00-000000-0\n")["tipo"], "libro")
-        acta = C.detectar("Acta de reunión del equipo\n\nAsistentes: Ana Pérez, Matías Soto\n\nAcuerdos: publicar el lunes.")
+        import detectar as DT
+        self.assertEqual(DT.detectar(HU)["tipo"], "historia")
+        self.assertIn("Trae criterios de aceptación", DT.detectar(HU)["razones"])
+        self.assertEqual(DT.detectar("As a user I want to export my notes so that I can share them.\n\nAcceptance criteria\n- Given x\n  When y")["tipo"], "historia")
+        self.assertEqual(DT.detectar(LIBRO + "ISBN 978-0-00-000000-0\n")["tipo"], "libro")
+        acta = DT.detectar("Acta de reunión del equipo\n\nAsistentes: Ana Pérez, Matías Soto\n\nAcuerdos: publicar el lunes.")
         self.assertEqual((acta["tipo"], acta["subtipo"]), ("documento", "acta"))
-        self.assertEqual(C.detectar("Una nota corta sin nada especial.")["tipo"], "documento")
-        self.assertEqual(C.id_historia(HU), "HU-42")
-        self.assertEqual(C.id_historia("Ver https://github.com/ana/app/issues/45 por favor"), "#45")
-        self.assertEqual(C.id_historia("https://ejemplo.atlassian.net/browse/PAGO-7\nAlgo"), "PAGO-7")
-        self.assertEqual(C.id_historia("Usa UTF-8 en todo", ["hu-001-a.md", "hu-004-b.md"]), "HU-005")
-        self.assertTrue(C.solo_enlace("  https://github.com/ana/app/issues/45 "))
+        self.assertEqual(DT.detectar("Una nota corta sin nada especial.")["tipo"], "documento")
+        self.assertEqual(DT.id_historia(HU), "HU-42")
+        self.assertEqual(DT.id_historia("Ver https://github.com/ana/app/issues/45 por favor"), "#45")
+        self.assertEqual(DT.id_historia("https://ejemplo.atlassian.net/browse/PAGO-7\nAlgo"), "PAGO-7")
+        self.assertEqual(DT.id_historia("Usa UTF-8 en todo", ["hu-001-a.md", "hu-004-b.md"]), "HU-005")
+        self.assertTrue(DT.solo_enlace("  https://github.com/ana/app/issues/45 "))
 
     def test_parte_capitulos_sin_indice(self):
         import contenido as C

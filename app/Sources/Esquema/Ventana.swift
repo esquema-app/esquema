@@ -1,5 +1,6 @@
 import AppKit
 import PiezaActualizaciones
+import PiezaCatalogo
 import UniformTypeIdentifiers
 import WebKit
 
@@ -335,11 +336,11 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
         case "abrirEnlace":
             if let u = URL(string: d["url"] as? String ?? ""), u.scheme == "https", u.host != nil { NSWorkspace.shared.open(u) }
         case "catalogoPlantillas":
-            // Plantillas de la comunidad: el índice se baja de un dominio fijo y lo valida bin/plantillas.py (Catalogo.swift).
-            Catalogo.listar { Ventana.shared.llamar("catalogoListo", $0) }
+            // Plantillas de la comunidad (pieza «catálogo»): el índice se baja de un dominio fijo y lo valida bin/catalogo.py.
+            Catalogo.listar("plantillas") { Ventana.shared.llamar("catalogoListo", $0) }
         case "descargarPlantilla":
             let id = texto("id", 60)
-            Catalogo.descargar(id) { Ventana.shared.llamar("plantillaDescargada", $0) }
+            Catalogo.descargar("plantillas", id) { Ventana.shared.llamar("plantillaDescargada", $0) }
         case "buscarActualizacion":
             Actualizaciones.revisar { Ventana.shared.llamar("actualizacionRevisada", $0) }
         case "actualizar":

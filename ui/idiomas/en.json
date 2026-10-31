@@ -535,8 +535,6 @@
   "Buscando plantillas de la comunidad…": "Looking for community templates…",
   "Descargando…": "Downloading…",
   "En tus plantillas": "In your templates",
-  "Esa plantilla no es válida.": "That template isn't valid.",
-  "La plantilla llegó dañada. Intenta de nuevo.": "The template arrived damaged. Try again.",
   "No pude conectarme. Revisa tu conexión.": "I couldn't connect. Check your connection.",
   "No pude descargarla. Intenta de nuevo.": "I couldn't download it. Try again.",
   "No pude leer el catálogo.": "I couldn't read the catalog.",
@@ -966,8 +964,6 @@
   "Ese archivo trae algo raro adentro y no lo abro.": "That file has something odd inside and I won't open it.",
   "Ese archivo está dañado o no es lo que dice su nombre.": "That file is damaged or isn't what its name says.",
   "Ese archivo es demasiado grande por dentro.": "That file is too big inside.",
-  "Ese .docx no tiene texto que pueda leer.": "That .docx has no text I can read.",
-  "Ese .odt no tiene texto que pueda leer.": "That .odt has no text I can read.",
   "Ese EPUB está dañado: no encuentro su índice.": "That EPUB is damaged: I can't find its table of contents.",
   "Ese archivo no es un PDF.": "That file isn't a PDF.",
   "Ese PDF tiene clave. Ábrelo, copia el texto y pégalo aquí.": "That PDF has a password. Open it, copy the text and paste it here.",
@@ -1065,6 +1061,10 @@
   "Se abrió GitHub: revisa y publica": "GitHub is open: review and post",
   "Revisar de nuevo": "Check again",
   "Hay cambios nuevos en el código de {app}": "There are new changes in {app}'s code",
-  "Catálogo de plantillas": "Template catalog"
+  "Catálogo de plantillas": "Template catalog",
+  "{app} no lee ese formato sin programas extra. Guárdalo como .docx, PDF o texto, o copia el texto y pégalo aquí.": "{app} can't read that format without extra programs. Save it as .docx, PDF or text, or copy the text and paste it here.",
+  "Eso no es válido.": "That isn't valid.",
+  "Llegó dañado. Intenta de nuevo.": "It arrived damaged. Please try again.",
+  "Ya no está en el catálogo. Vuelve a abrirlo.": "It's no longer in the catalog. Open it again."
  }
 }

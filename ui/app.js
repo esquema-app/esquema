@@ -930,7 +930,7 @@
       <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="crear" ${n.elegida ? "" : "disabled"}>Crear</button></div>`;
     void el; void blancos;
   }
-  /** «Comunidad» en «Nuevo»: el catálogo esquema-app/esquema-catalogo (la app lo baja y bin/plantillas.py lo valida). Tocar una
+  /** «Comunidad» en «Nuevo»: el catálogo esquema-app/esquema-catalogo (la app lo baja con la pieza «catálogo» y bin/catalogo.py lo valida). Tocar una
    *  plantilla la descarga (huella revisada por la app) y la deja elegida; las descargadas quedan también en «Plantillas». */
   const enMisPlantillas = (p) => E.plantillas.some((x) => x.id === p.id && textoDe(x.contenido) === textoDe(p.contenido));
   function catalogoFiltrado() {
@@ -1400,17 +1400,19 @@
       if (d.alAbrir) { const f = d.alAbrir; d.alAbrir = null; f(); }
       P.alAbrirArchivo(r.ruta);
     },
-    /** Respuesta a `catalogoPlantillas`: {ok, plantillas} (el índice ya validado por bin/plantillas.py) o {ok: false, error}. */
+    /** Respuesta a `catalogoPlantillas` (pieza «catálogo»): {ok, tipo, plantillas} (el índice ya validado por bin/catalogo.py) o
+     *  {ok: false, codigo, plantilla, error} (`plantilla`: la frase en español, que aquí se traduce). */
     catalogoListo(r) {
       const lista = r.ok && Array.isArray(r.plantillas) ? r.plantillas.filter((p) => p && typeof p === "object" && !validarPlantilla(sinIndice(p)).length) : [];
-      E.catalogo = r.ok ? { estado: "listo", plantillas: lista, bajando: {} } : { estado: "error", error: typeof r.error === "string" ? r.error : "", plantillas: [], bajando: {} };
+      E.catalogo = r.ok ? { estado: "listo", plantillas: lista, bajando: {} } : { estado: "error", error: errorCatalogo(r), plantillas: [], bajando: {} };
       if (E.nuevo?.fuente === "comunidad") pintar();
     },
-    /** Respuesta a `descargarPlantilla`: {ok, plantilla} (revisada y guardada en la carpeta de Esquema) o {ok: false, id, error}. */
+    /** Respuesta a `descargarPlantilla` (pieza «catálogo»): {ok, id, plantilla} (revisada y guardada en la carpeta de Esquema) o
+     *  {ok: false, id, codigo, plantilla, error} (ahí `plantilla` es la frase del error). */
     plantillaDescargada(r) {
-      const p = r.ok ? r.plantilla : null;
+      const p = r.ok && r.plantilla && typeof r.plantilla === "object" ? r.plantilla : null;
       if (E.catalogo) delete E.catalogo.bajando[p?.id ?? r.id];
-      if (!p || validarPlantilla(p).length) { toast(typeof r.error === "string" && r.error ? r.error : tr("No pude descargarla. Intenta de nuevo."), true); return pintar(); }
+      if (!p || validarPlantilla(p).length) { toast(errorCatalogo(r) || tr("No pude descargarla. Intenta de nuevo."), true); return pintar(); }
       E.plantillas = [...E.plantillas.filter((x) => x.id !== p.id), p];
       toast(Tp("«{x}» quedó en tus plantillas", { x: textoDe(p.nombre) }), true);
       if (E.nuevo && !E.nuevo.elegida) return elegirPlantilla(p.id);
@@ -1528,6 +1530,9 @@
     return e;
   }
 
+  /** El error de la pieza «catálogo» en el idioma elegido: su `plantilla` (frase en español con marcadores) o `error`. */
+  const errorCatalogo = (r) => (typeof r?.plantilla === "string" && r.plantilla ? Tp(r.plantilla, r.valores || {}) : typeof r?.error === "string" ? tr(r.error) : "");
+
   /** Una entrada del índice del catálogo sin lo propio del índice (ruta, huella y tamaño): la plantilla tal cual. */
   const sinIndice = (p) => Object.fromEntries(Object.entries(p).filter(([k]) => !["ruta", "sha256", "tamano"].includes(k)));
 
@@ -1569,9 +1574,9 @@
         return (navigator.clipboard?.writeText(d.texto) || Promise.reject()).then(() => A.copiado({ ok: true }), () => A.copiado({ ok: true }));
       case "abrirEnlace": return toast("En la app, aquí se abre el enlace en tu navegador");
       case "catalogoPlantillas": return luego(400, () => A.catalogoListo({ ok: true, plantillas: JSON.parse(JSON.stringify(DEMO.catalogo || [])) }));
-      case "descargarPlantilla": return luego(500, () => {  // en la app: Swift o Electron la bajan de raw.githubusercontent.com y bin/plantillas.py la valida
+      case "descargarPlantilla": return luego(500, () => {  // en la app: Swift o Electron (pieza «catálogo») la bajan de raw.githubusercontent.com y bin/catalogo.py la valida
         const x = (DEMO.catalogo || []).find((y) => y.id === d.id);
-        A.plantillaDescargada(x ? { ok: true, plantilla: sinIndice(JSON.parse(JSON.stringify(x))) } : { ok: false, id: d.id, error: tr("Esa plantilla no es válida.") });
+        A.plantillaDescargada(x ? { ok: true, tipo: "plantillas", id: x.id, plantilla: sinIndice(JSON.parse(JSON.stringify(x))) } : { ok: false, id: d.id, codigo: "no_esta", plantilla: "Ya no está en el catálogo. Vuelve a abrirlo.", error: "Ya no está en el catálogo. Vuelve a abrirlo." });
       });
     }
   }
