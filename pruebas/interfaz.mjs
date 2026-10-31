@@ -107,17 +107,17 @@ const VISTAS = [
   ["dibujar-historial", "E=>{E.dibujar.error=null;E.cambiosIA.push({id:'ia-y',ruta:E.sel,pedido:'Otro',antes:'',despues:'',estado:'quitado',resumen:{tipo:'secuencia',nodos:1,aristas:-2}})}"],
   ["dibujar-enviando", "E=>{E.dibujar.enviando=true}"],
   ["crear-diagrama", "E=>{E.dibujar={pedido:'',tipo:'secuencia',nuevo:true,codigo:true}}"],
-  ["confirmar", "E=>{E.dibujar=null;E.confirmar={titulo:'¿Quitar el cambio de la IA?',texto:'Lo editaste después. Si lo quitas, también se van esos cambios (puedes deshacerlo).',si:'Quitar igual',no:'Dejarlo',accion:()=>{}}}"],
-  ["conflicto", "E=>{E.confirmar=null;const d=E.docs[E.sel];d.guardado=d.texto+'%%';d.estado='cambiado';window.Esquema.archivoCambiado({ruta:E.sel,texto:'flowchart TD\\n    X --> Y\\n'})}"],
-  ["ajustes", "E=>{E.confirmar=null;E.ajustes=true;E.resultadoIA={claude:{ok:true},codex:{ok:false,error:'No encontré ChatGPT (Codex) en este computador.'}};E.probando={gemini:true}}"],
-  ["ajustes-al-dia", "E=>{E.revisando='al-dia'}"],
+  ["confirmar", "E=>{E.dibujar=null;window.Esquema._pruebas.ui.confirmar({titulo:'¿Quitar el cambio de la IA?',texto:'Lo editaste después. Si lo quitas, también se van esos cambios (puedes deshacerlo).',si:'Quitar igual',no:'Dejarlo'})}"],
+  ["conflicto", "E=>{document.querySelector('[data-pz-confirmar=no]')?.click();const d=E.docs[E.sel];d.guardado=d.texto+'%%';d.estado='cambiado';window.Esquema.archivoCambiado({ruta:E.sel,texto:'flowchart TD\\n    X --> Y\\n'})}"],
+  ["ajustes", "E=>{document.querySelector('[data-pz-confirmar=no]')?.click();E.ajustes=true;const ia=window.Esquema._pruebas.ui.ia;ia.resultados={claude:{ia:'claude',ok:true},codex:{ia:'codex',ok:false,error:'No encontré ChatGPT (Codex) en este computador.'}};ia.probando={gemini:true}}"],
+  ["ajustes-al-dia", "E=>{window.Esquema._pruebas.ui.actualizacionRevisada({hay:false})}"],
   // Lo que manda la pieza «actualizaciones»: la frase en español con sus valores; la interfaz la traduce.
-  ["ajustes-version-nueva", "E=>{E.revisando=null;E.actualizacion={hay:true,texto:'Versión {v}',valores:{v:'0.2.0'},notas:'Más rápido al abrir carpetas grandes'}}"],
-  ["ajustes-actualizando", "E=>{E.revisando={paso:'3',texto:'Instalando: {app} se cerrará y volverá a abrirse sola',valores:{app:'Esquema'},pct:40}}"],
-  ["ajustes-error-actualizar", "E=>{E.revisando={paso:'error',codigo:'errorBajar',texto:'No pude descargar la versión nueva. Revisa tu conexión e intenta de nuevo.',valores:{app:'Esquema'}}}"],
-  ["ajustes-ocupada", "E=>{E.revisando={paso:'error',codigo:'ocupada',texto:'Espera a que termine de guardar o de responder tu IA y vuelve a intentarlo.',valores:{}}}"],
+  ["ajustes-version-nueva", "E=>{window.Esquema._pruebas.ui.actualizacionRevisada({hay:true,texto:'Versión {v}',valores:{v:'0.2.0'},notas:'Más rápido al abrir carpetas grandes'})}"],
+  ["ajustes-actualizando", "E=>{window.Esquema._pruebas.ui.actualizacionProgreso({paso:'3',texto:'Instalando: {app} se cerrará y volverá a abrirse sola',valores:{app:'Esquema'},pct:40,total:3})}"],
+  ["ajustes-error-actualizar", "E=>{window.Esquema._pruebas.ui.actualizacionProgreso({paso:'error',codigo:'errorBajar',texto:'No pude descargar la versión nueva. Revisa tu conexión e intenta de nuevo.',valores:{app:'Esquema'}})}"],
+  ["ajustes-ocupada", "E=>{window.Esquema._pruebas.ui.actualizacionProgreso({paso:'error',codigo:'ocupada',texto:'Espera a que termine de guardar o de responder tu IA y vuelve a intentarlo.',valores:{}})}"],
   // La bienvenida (pieza «bienvenida»): pasos de Esquema después del idioma.
-  ["bienvenida-1", "E=>{E.ajustes=false;E.revisando=null;E.actualizacion={hay:false};window.Esquema._pruebas.bienvenida.abrir({config:{idioma_ui:E.config.idioma_ui}})}"],
+  ["bienvenida-1", "E=>{E.ajustes=false;window.Esquema._pruebas.ui.act.estado=null;window.Esquema._pruebas.ui.act.disponible=null;window.Esquema._pruebas.bienvenida.abrir({config:{idioma_ui:E.config.idioma_ui}})}"],
   ["bienvenida-2", "E=>{window.Esquema._pruebas.bienvenida.ir(2)}"],
   ["bienvenida-2-sin-carpeta", "E=>{E._carpeta=E.carpeta;E.carpeta=null}"],
   ["bienvenida-3", "E=>{E.carpeta=E._carpeta;window.Esquema._pruebas.bienvenida.ir(3)}"],
@@ -147,8 +147,10 @@ for (const oscuro of [false, true]) {
     const lum = (c) => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map(Number).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
     const contraste = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
     const v = (n) => { const d = document.createElement("div"); d.style.color = `var(${n})`; document.body.appendChild(d); const c = getComputedStyle(d).color; d.remove(); return c; };
-    const b = document.createElement("button"); b.className = "boton principal"; document.body.appendChild(b); const cs = getComputedStyle(b);
-    return { principal: contraste(cs.color, cs.backgroundColor), gris: contraste(v("--gris"), v("--fondo")), grisPanel: contraste(v("--gris"), v("--panel")), rojo: contraste(v("--rojo"), v("--panel")), rojoSuave: contraste(v("--rojo"), v("--rojo-suave")), lineas: contraste(v("--d-linea"), v("--lienzo")) };
+    // Un color con transparencia (los derivados de la pieza «tema», como --rojo-suave) se mide sobre el panel, como se ve.
+    const sobrePanel = (n) => { const c = document.createElement("canvas").getContext("2d"); c.fillStyle = v("--panel"); c.fillRect(0, 0, 1, 1); c.fillStyle = v(n); c.fillRect(0, 0, 1, 1); const [r, g, bl] = c.getImageData(0, 0, 1, 1).data; return `rgb(${r}, ${g}, ${bl})`; };
+    const b = document.createElement("button"); b.className = "pz-boton pz-principal"; document.body.appendChild(b); const cs = getComputedStyle(b);
+    return { principal: contraste(cs.color, cs.backgroundColor), gris: contraste(v("--texto-suave"), v("--fondo")), grisPanel: contraste(v("--texto-suave"), v("--panel")), rojo: contraste(v("--rojo"), v("--panel")), rojoSuave: contraste(v("--rojo"), sobrePanel("--rojo-suave")), lineas: contraste(v("--d-linea"), v("--lienzo")) };
   });
   for (const [k, x] of Object.entries(r)) if (x < (k === "lineas" ? 3 : 4.5)) falla(`Contraste ${k} (${oscuro ? "oscuro" : "claro"}): ${x.toFixed(2)}`);
   await p.close();
@@ -339,7 +341,7 @@ console.log("Documento: revisado");
   await p.evaluate(() => window.Esquema._probar((E) => { E.dibujar = { pedido: "x", tipo: "auto", cambiar: true, enviando: true }; }));
   await p.evaluate(() => window.Esquema.dibujoListo({ ok: true, texto: "flowchart TD\n    A[sin cerrar --> B\n" }));
   await espera(p, 80);
-  if ((await textoDoc(p)) !== original || !(await p.$eval(".dialogo", (d) => /línea 2/.test(d.textContent)))) falla("Una propuesta con errores se aplicó o no se explicó");
+  if ((await textoDoc(p)) !== original || !(await p.$eval(".pz-dialogo", (d) => /línea 2/.test(d.textContent)))) falla("Una propuesta con errores se aplicó o no se explicó");
   await p.close();
 }
 console.log("Dibújame: revisado");
@@ -356,7 +358,7 @@ console.log("Dibújame: revisado");
   const tarjetas = await p.$$eval(".tarjeta-inicio", (l) => l.map((x) => x.dataset.accion));
   if (tarjetas.join() !== "p-historia,p-incorporar,crear-diagrama,p-flujo") falla("El inicio no ofrece las cuatro acciones del tipo Software: " + tarjetas.join());
   // Crear es dentro del proyecto: «Nuevo en <proyecto>» en su carpeta del lateral; arriba solo «Agregar» (proyecto), que es global.
-  if (await p.$('.lateral > .nuevo, .lateral .boton.principal.nuevo')) falla("El lateral todavía tiene un «Nuevo» global arriba");
+  if (await p.$('.lateral > .nuevo, .lateral .pz-boton.pz-principal.nuevo')) falla("El lateral todavía tiene un «Nuevo» global arriba");
   if (!(await p.$eval('.lateral [data-accion="p-nuevo-en"]', (x) => /proyecto-ejemplo/.test(x.textContent)))) falla("«Nuevo en …» no dice en qué proyecto se crea");
   if (!(await p.$('.lateral .lat-cab [data-accion="p-agregar"]'))) falla("«Agregar proyecto» no está junto a «Proyectos»");
   // El árbol: «docs» se cierra y se abre; lo de adentro desaparece y vuelve.
@@ -430,7 +432,7 @@ console.log("README: revisado");
   const nombre = await p.$eval("#nombre-nuevo", (x) => x.value);
   if (nombre !== "arquitectura.mmd") falla("El nombre sugerido de la plantilla no es el de su idioma: " + nombre);
   await p.fill("#nombre-nuevo", "../fuera.mmd"); await p.click('[data-accion="crear"]');
-  if (!(await p.$(".dialogo .mal-txt"))) falla("Un nombre con «..» no se rechaza");
+  if (!(await p.$(".pz-dialogo .pz-error-texto"))) falla("Un nombre con «..» no se rechaza");
   await p.fill("#nombre-nuevo", "docs/web.mmd"); await p.click('[data-accion="crear"]');
   await p.waitForSelector('#lienzo .nodo[data-id="A"]');
   if (await p.$("#lienzo.con-error")) falla("La plantilla crea un diagrama con errores");
@@ -510,7 +512,7 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   // El trabajo por etapas: en segundo plano, cada documento al disco apenas termina. Escape no lo cancela.
   await p.evaluate(() => { window._simVelocidad = 0.08; });
   await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-trabajo", { timeout: 5000 });
-  if (await p.$(".capa")) falla("Documentar abre un diálogo que bloquea (debe ser una tarjeta en el panel)");
+  if (await p.$(".pz-capa")) falla("Documentar abre un diálogo que bloquea (debe ser una tarjeta en el panel)");
   await p.keyboard.press("Escape");
   await p.waitForFunction(() => /listo/.test(document.querySelector(".p-trabajo")?.className || ""), null, { timeout: 15000 });
   await etapa("trabajo-listo");
@@ -547,7 +549,7 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await etapa("falta");
   await p.click('[data-accion="p-completar"]'); await p.waitForSelector(".p-envio details");
   if (!(await p.$eval(".p-envio", (x) => /arquitectura\.md/.test(x.textContent)))) falla("«Completar lo que falta» no pide la arquitectura");
-  await p.click('.pie-dialogo [data-accion="cerrar"]');
+  await p.click('.pz-pie [data-accion="cerrar"]');
   // Propuestas (lo que la IA cambia en documentos que ya existen): tarjetas con «Quitar este cambio»; se ven más abajo con «Cambió cómo funciona».
   await probar(p, "E.proyecto.esquema.documentos=E._docs;delete E._docs");
   // El lienzo: un nodo enlazado muestra su elemento; uno sin enlace se enlaza (con un elemento nuevo)
@@ -569,12 +571,12 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.click('[data-p-ver-cambio="0"]'); await p.waitForSelector(".p-dif .d-mas"); await etapa("renombrar-dif");
   const nuevo = idioma === "en" ? "Pay now" : "Pagar ahora";
   await p.click('[data-accion="p-aplicar-cambio"]');
-  await p.waitForFunction(() => !document.querySelector(".capa"), null, { timeout: 4000 });
+  await p.waitForFunction(() => !document.querySelector(".pz-capa"), null, { timeout: 4000 });
   for (const r of ["README.md", "flujos/pagar-una-cuenta.md", "flujos/recibir-el-comprobante.md"]) if (!(await texto(D + r))?.includes(`[${nuevo}](`) && !(await texto(D + r))?.includes(`T[${nuevo}]`)) falla(`Renombrar no cambió ${r}`);
   if (!(await texto(D + "flujos/recibir-el-comprobante.md"))?.includes(`T[${nuevo}]`)) falla("Renombrar no cambió el nodo del diagrama");
   if (!(await texto(D + "elementos.md"))?.includes(`### ${nuevo}`)) falla("Renombrar no cambió el glosario");
   // Quitar, cambio de comportamiento con la IA y elemento nuevo: los diálogos
-  await p.click('[data-accion="p-quitar"]'); await p.waitForSelector(".p-cambio-lista"); await etapa("quitar"); await p.click('.capa [data-accion="cerrar"]');
+  await p.click('[data-accion="p-quitar"]'); await p.waitForSelector(".p-cambio-lista"); await etapa("quitar"); await p.click('.pz-capa [data-accion="cerrar"]');
   await p.click('[data-accion="p-comportamiento"]'); await p.waitForSelector("#p-pedido"); await etapa("comportamiento");
   await p.fill("#p-pedido", "pide confirmación"); await p.click('[data-accion="p-comportamiento-enviar"]'); await p.waitForSelector(".p-envio details");
   if ((await p.$$eval(".p-envio summary", (x) => x.filter((s) => /\.md/.test(s.textContent)).length)) < 3) falla("Un cambio de comportamiento no manda los documentos que usan el elemento");
@@ -583,7 +585,7 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   await p.click('[data-p-quitar="0"]'); if (await p.$(".p-prop.quitada")) falla("«Volver a agregar» no vuelve la propuesta");
   await p.click('[data-p-ver="0"]'); await p.waitForSelector(".p-prop .p-dif"); await etapa("propuesta-vista");
   await p.click('[data-accion="p-descartar"]');
-  await p.click('.p-panel [data-p="elementos"]'); await p.click('[data-accion="p-elemento-nuevo"]'); await p.waitForSelector("#p-el-nombre"); await etapa("elemento-nuevo"); await p.click('.capa [data-accion="cerrar"]');
+  await p.click('.p-panel [data-p="elementos"]'); await p.click('[data-accion="p-elemento-nuevo"]'); await p.waitForSelector("#p-el-nombre"); await etapa("elemento-nuevo"); await p.click('.pz-capa [data-accion="cerrar"]');
   // Versiones, comparar y restaurar
   await p.click(ancho < 500 ? '.barra [data-p="proyecto"]' : '.lateral [data-p-docs]'); await p.waitForSelector('.p-acciones [data-p="versiones"]');
   if (!(await p.$('[data-accion="p-deshacer"]'))) falla("Después de renombrar no se ofrece deshacer el cambio");
@@ -608,7 +610,7 @@ async function recorridoProyecto({ idioma, ancho, oscuro = false }) {
   if (!(await p.$$eval(".p-envio summary", (x) => x.some((s) => s.textContent.includes("src/api/pagos.py"))))) falla("El archivo aprobado no aparece en lo que se envía");
   await p.click('[data-accion="p-enviar"]'); await p.waitForSelector(".p-prop"); await p.click('[data-accion="p-aplicar"]');
   await p.waitForFunction(() => document.querySelectorAll(".p-doc").length >= 5, null, { timeout: 4000 });
-  await p.waitForFunction(() => !document.querySelector(".p-aviso .giro"), null, { timeout: 4000 }); await espera(p, 500);
+  await p.waitForFunction(() => !document.querySelector(".p-aviso .pz-giro"), null, { timeout: 4000 }); await espera(p, 500);
   if (await p.$('[data-accion="p-deshacer"]')) falla("Después de restaurar y documentar otra cosa, todavía se ofrece deshacer un cambio viejo");
   // Cambios del código desde la última versión
   await probar(p, "E.proyecto.cambios={n:2,desde:'abc',commits:[{id:'1',fecha:'2026-10-27',mensaje:'Pagar pide confirmación',archivos:['src/web/pagar.js']},{id:'2',fecha:'2026-10-26',mensaje:'Correo más rápido',archivos:['src/api/correo.py']}]};E.proyecto.cambiosVistos=false;E.panel='proyecto'");
@@ -664,8 +666,8 @@ async function recorridoTrabajo({ idioma, ancho, oscuro = false }) {
   if (!(await estado("return E.archivos.some((a) => a.ruta === 'docs/esquema/arquitectura.md')"))) falla("«Reintentar» no escribe el documento");
   await etapa("listo");
   // «Quitar este cambio» de un documento nuevo: se va (con confirmación).
-  await p.click('[data-t-quitar="flujos/recibir-el-comprobante.md"]'); await p.waitForSelector('[data-accion="confirmar-si"]');
-  await p.click('[data-accion="confirmar-si"]');
+  await p.click('[data-t-quitar="flujos/recibir-el-comprobante.md"]'); await p.waitForSelector('[data-pz-confirmar="si"]');
+  await p.click('[data-pz-confirmar="si"]');
   await p.waitForFunction(() => { let x; window.Esquema._probar((E) => { x = !E.archivos.some((a) => a.ruta === "docs/esquema/flujos/recibir-el-comprobante.md"); }); return x; }, null, { timeout: 4000 });
   await p.waitForSelector(".t-doc.quitado", { timeout: 3000 }).catch(() => falla("«Quitar este cambio» no marca el documento como quitado"));
   // La ficha de un archivo de código: sin su contenido, con si la IA lo leyó y dónde aparece.
@@ -686,8 +688,8 @@ async function recorridoTrabajo({ idioma, ancho, oscuro = false }) {
   await p.evaluate(() => window.Esquema._pruebas.proyectos().pedirIA("inicial", {}));
   await p.waitForSelector(".p-envio details"); await p.click('[data-accion="p-enviar"]');
   await p.waitForSelector('[data-accion="p-detener"]', { timeout: 5000 });
-  await p.click('[data-accion="p-detener"]'); await p.waitForSelector('[data-accion="confirmar-si"]'); await etapa("detener");
-  await p.click('[data-accion="confirmar-si"]');
+  await p.click('[data-accion="p-detener"]'); await p.waitForSelector('[data-pz-confirmar="si"]'); await etapa("detener");
+  await p.click('[data-pz-confirmar="si"]');
   await p.waitForFunction(() => /detenido/.test(document.querySelector(".p-trabajo")?.className || ""), null, { timeout: 8000 });
   if (!(await estado("return E.archivos.some((a) => a.ruta === 'docs/esquema/README.md')"))) falla("Detener borró lo que ya estaba escrito");
   await p.close();
@@ -758,9 +760,9 @@ async function recorridoAgregar({ idioma, ancho, oscuro = false }) {
   await p.click('[data-hu-estado="en-desarrollo"]');
   await p.waitForFunction(() => /estado: en-desarrollo/.test(document.querySelector("#texto")?.value || ""), null, { timeout: 4000 });
   await p.waitForSelector('[data-accion="p-hu-terminar"]');
-  await p.click('[data-accion="p-hu-terminar"]'); await p.waitForSelector('[data-accion="confirmar-si"]');
+  await p.click('[data-accion="p-hu-terminar"]'); await p.waitForSelector('[data-pz-confirmar="si"]');
   await etapa("terminar");
-  await p.click('[data-accion="confirmar-si"]');
+  await p.click('[data-pz-confirmar="si"]');
   await p.waitForFunction(() => { let x; window.Esquema._probar((E) => { x = E.pj.trabajo?.tipo === "historia_cierre" && E.pj.trabajo.estado === "listo"; }); return x; }, null, { timeout: 10000 });
   await espera(p, 400);
   const cerrada = await estado(`return E.docs[${JSON.stringify(D + hu.ruta)}]?.texto || ""`);
@@ -768,9 +770,9 @@ async function recorridoAgregar({ idioma, ancho, oscuro = false }) {
   await etapa("panel-historias");
   // 2) Borrar lo creado: va al historial y se deshace al tiro; el código de un proyecto vinculado no se borra desde aquí.
   await p.evaluate((r) => window.Esquema._pruebas.abrir(r), D + hu.ruta); await espera(p, 300);
-  await p.click('.barra [data-p-borrar]'); await p.waitForSelector('[data-accion="confirmar-si"].peligro-lleno');
+  await p.click('.barra [data-p-borrar]'); await p.waitForSelector('[data-pz-confirmar="si"].pz-peligro');
   await etapa("borrar");
-  await p.click('[data-accion="confirmar-si"]');
+  await p.click('[data-pz-confirmar="si"]');
   await p.waitForFunction((r) => { let x; window.Esquema._probar((E) => { x = !E.archivos.some((a) => a.ruta === r); }); return x; }, D + hu.ruta, { timeout: 4000 });
   await p.waitForSelector("#toast .toast-accion");
   await p.click("#toast .toast-accion");
@@ -840,9 +842,9 @@ async function recorridoIncorporar({ idioma, ancho, oscuro = false }) {
   // «Nuevo en …»: «Agregar información» se distingue de «Agregar un documento».
   await p.click('header.barra [data-accion="p-nuevo-en"]');
   await p.waitForSelector('[data-accion="p-incorporar"]');
-  if (!(await p.$('.capa [data-accion="p-agregar-algo"]'))) falla("«Nuevo en …» perdió «Agregar un documento»");
+  if (!(await p.$('.pz-capa [data-accion="p-agregar-algo"]'))) falla("«Nuevo en …» perdió «Agregar un documento»");
   await etapa("nuevo-en");
-  await p.click('.capa [data-accion="p-incorporar"]');
+  await p.click('.pz-capa [data-accion="p-incorporar"]');
   await p.fill("#p-pegar", demo.agregar[idioma].textos.informacion);
   await etapa("informacion");
   // Sin segundo paso: se lee y la IA empieza a ordenar. Como el proyecto ya tiene «Pagar una cuenta», pregunta dónde va.

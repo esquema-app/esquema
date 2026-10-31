@@ -5,6 +5,12 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Diálogos más cómodos con el teclado:** el foco entra al diálogo, Tab no se escapa, Esc o un clic fuera lo cierran y el foco
+  vuelve a donde estabas. Los avisos esperan su turno en vez de taparse. En Ajustes, una IA queda elegida recién cuando su prueba
+  sale bien, la actualización muestra su avance con una barra y «Acerca de» suma «Cómo aportar». · *Friendlier dialogs from the
+  keyboard: focus moves into the dialog, Tab stays inside, Esc or a click outside closes it and focus goes back to where you were.
+  Notices wait their turn instead of covering each other. In Settings, an AI is chosen only once its test passes, updates show
+  their progress with a bar and «About» adds «How to contribute».*
 - **Agregar información:** pega notas, un correo o lo que salió de una reunión y tu IA lo ordena en la documentación: crea lo
   nuevo, completa lo que ya existe y corrige lo que cambió. Antes de guardar ves cada cambio agrupado (Nuevo, Se completa, Se
   modifica), con el porqué y la frase de donde salió; lo que cambia algo que ya estaba solo se guarda si lo confirmas. Si tu IA no
