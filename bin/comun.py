@@ -1,4 +1,4 @@
-"""Lo común de los scripts de Esquema. Solo biblioteca estándar (igual en Mac, Windows y Linux).
+"""Lo propio de Esquema que comparten sus scripts (lo genérico viene de la pieza «nucleo»). Solo biblioteca estándar (igual en Mac, Windows y Linux).
 
 Contrato con las apps: cada script recibe sus datos en argumentos simples o en un archivo JSON de entrada (nunca texto de la
 persona como argumento) y deja su respuesta en el JSON de salida que va como último argumento.
@@ -7,13 +7,20 @@ import fnmatch
 import json
 import os
 import re
-import sys
-import tempfile
+
+import nucleo
+
+# De la pieza «nucleo» (bin/nucleo.py): carpeta de datos, config validada por app.json, escritura atómica y JSON. Aquí quedan solo
+# los nombres de siempre para el resto de bin/ y lo que es propio de Esquema (rutas de documentos, .gitignore, secretos, recorrer).
+leer_json = nucleo.leer_json
+carpeta_privada = nucleo.carpeta_privada
+carpeta_app = nucleo.carpeta_datos  # ESQUEMA_DATOS o la carpeta de Esquema del sistema (0700)
+config = nucleo.config  # solo las claves y valores de app.json → «config»
 
 VERSION = "0.1.0"
 EXTENSIONES = (".md", ".mmd")
 MAXIMO_ARCHIVO = 2 * 1024 * 1024
-RECURSOS = os.environ.get("ESQUEMA_RECURSOS") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RECURSOS = nucleo.recursos()
 
 # Carpetas que nunca se recorren (pesadas o de herramientas) y nombres que nunca se mandan a la IA ni se muestran como estructura.
 SIEMPRE_FUERA = {".git", "node_modules", ".venv", "venv", "env", "__pycache__", ".mypy_cache", ".pytest_cache", ".tox", "dist", "build",
@@ -24,83 +31,27 @@ SECRETOS = [".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "*.keystore", 
 NO_SON_SECRETOS = {".env.example", ".env.sample", ".env.template"}
 
 
-def carpeta_app():
-    """Dónde guarda Esquema su configuración (nunca dentro de la carpeta de la persona)."""
-    if os.environ.get("ESQUEMA_DATOS"):
-        return os.environ["ESQUEMA_DATOS"]
-    casa = os.path.expanduser("~")
-    if sys.platform == "darwin":
-        return os.path.join(casa, "Library", "Application Support", "Esquema")
-    if os.name == "nt":
-        return os.path.join(os.environ.get("APPDATA") or casa, "Esquema")
-    return os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(casa, ".config"), "esquema")
-
-
-def carpeta_privada(ruta):
-    os.makedirs(ruta, exist_ok=True)
-    try:
-        os.chmod(ruta, 0o700)
-    except OSError:
-        pass
-    return ruta
-
-
-def leer_json(ruta, defecto=None):
-    try:
-        with open(ruta, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return defecto
-
-
 def escribir_atomico(ruta, texto, modo=None):
-    """Escribe de una vez: un archivo temporal en la misma carpeta y después lo reemplaza (nunca queda a medias)."""
-    carpeta = os.path.dirname(os.path.abspath(ruta))
-    os.makedirs(carpeta, exist_ok=True)
-    anterior = None
-    try:
-        anterior = os.stat(ruta).st_mode & 0o777
-    except OSError:
-        pass
-    fd, tmp = tempfile.mkstemp(prefix=".esquema-", dir=carpeta)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
-            f.write(texto)
-        os.chmod(tmp, modo if modo is not None else anterior if anterior is not None else 0o644)
-        os.replace(tmp, ruta)
-    except BaseException:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+    """Escribe de una vez (nucleo.escribir_atomico). Un documento nuevo de la persona queda 0644 como cualquier archivo suyo; lo
+    interno de Esquema pide 0600 con `modo`. Si el archivo ya existía, conserva sus permisos."""
+    if modo is None and not os.path.exists(ruta):
+        modo = 0o644
+    nucleo.escribir_atomico(ruta, texto, modo)
 
 
 def escribir_json(ruta, datos):
     escribir_atomico(ruta, json.dumps(datos, ensure_ascii=False, indent=2) + "\n", 0o600)
 
 
-def config():
-    return leer_json(os.path.join(carpeta_app(), "config.json"), {}) or {}
-
-
-CLAVES_CONFIG = {"idioma_ui": str, "ia": str, "bienvenida": bool, "tema": str, "carpeta": str}
-
-
 def guardar_config(cambios):
-    """Solo claves conocidas y del tipo correcto: lo que manda la interfaz se valida."""
-    c = config()
-    for k, v in (cambios or {}).items():
-        if k in CLAVES_CONFIG and isinstance(v, CLAVES_CONFIG[k]):
-            c[k] = v
-    carpeta_privada(carpeta_app())
-    escribir_json(os.path.join(carpeta_app(), "config.json"), c)
-    return c
+    """Solo claves y valores de app.json. `carpeta` nunca llega por aquí: solo la cambia el selector de carpetas del sistema
+    (la app la escribe directo) o un proyecto reciente."""
+    return nucleo.guardar_config({k: v for k, v in (cambios or {}).items() if k != "carpeta"})
 
 
 def ruta_en(carpeta, relativa, extensiones=EXTENSIONES):
     """La ruta absoluta de un archivo de la carpeta de la persona, o ValueError con un mensaje listo para mostrar.
-    Solo rutas relativas, sin «..», con extensión .md/.mmd y que (siguiendo enlaces) queden dentro de la carpeta."""
+    Solo rutas relativas, sin «..», con extensión .md/.mmd y que (siguiendo enlaces) queden dentro de la carpeta (nucleo.ruta_en)."""
     if not isinstance(relativa, str) or not relativa or len(relativa) > 400 or "\x00" in relativa:
         raise ValueError("Ese nombre de archivo no sirve.")
     if os.path.isabs(relativa) or relativa.startswith(("/", "\\")) or re.match(r"^[A-Za-z]:", relativa):
@@ -110,9 +61,8 @@ def ruta_en(carpeta, relativa, extensiones=EXTENSIONES):
         raise ValueError("Ese nombre de archivo no sirve.")
     if extensiones and not relativa.lower().endswith(extensiones):
         raise ValueError("Esquema solo abre y guarda archivos .md y .mmd.")
-    base = os.path.realpath(carpeta)
-    ruta = os.path.realpath(os.path.join(base, *partes))
-    if os.path.commonpath([base, ruta]) != base:
+    ruta = nucleo.ruta_en(carpeta, os.path.join(*partes))
+    if ruta is None:
         raise ValueError("Ese archivo está fuera de la carpeta.")
     return ruta
 
@@ -251,4 +201,4 @@ def recorrer(carpeta, maximo=5000, profundidad=8, sin_secretos=True):
 
 
 def responder(salida, datos):
-    escribir_atomico(salida, json.dumps(datos, ensure_ascii=False) + "\n", 0o600)
+    nucleo.responder(salida, datos)

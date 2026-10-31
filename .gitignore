@@ -25,6 +25,9 @@
 !/build.sh
 !/instalar.sh
 !/instalar.ps1
+# Pieza: la descripción de la app y las piezas que tiene (las leen bin/nucleo.py y pieza.py).
+!/app.json
+!/piezas.json
 app/.build/
 escritorio/node_modules/
 escritorio/dist/

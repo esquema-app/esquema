@@ -8,7 +8,7 @@
   const HOST = window.ESQUEMA_HOST || "web";
   document.documentElement.dataset.host = HOST;
   const E = {
-    idioma: "es", textos: {}, config: {}, ias: [], version: "", plantillas: [], cargado: false,
+    idioma: "es", config: {}, ias: [], version: "", plantillas: [], cargado: false,
     carpeta: null,          // {nombre, ruta}
     archivos: [],           // [{ruta}]
     docs: {},               // ruta → {texto, guardado, estado: "guardado" | "cambiado" | "guardando" | "error", pila: [], futuro: [], t}
@@ -18,7 +18,6 @@
     lz: { z: 1, x: 0, y: 0, ajustar: true, mini: false },
     elegido: null,          // {tipo: "nodo" | "arista" | "participante" | "evento", id}
     menu: null,             // {tipo: "formas" | "exportar" | "flechas", x, y}
-    bv: null,               // bienvenida: 0 idioma, 1 hola, 2 carpeta, 3 IA
     ajustes: false, probando: {}, resultadoIA: {},
     nuevo: null,            // {fuente: "app" | "comunidad", categoria, busqueda, elegida, nombre}
     catalogo: null,         // plantillas de la comunidad: {estado: "cargando" | "listo" | "error", plantillas, error, bajando: {id: true}}
@@ -27,8 +26,8 @@
     cambiosIA: [],          // [{id, ruta, pedido, resumen, antes, despues, estado}]
     tarjetaIA: null,        // id del último cambio de la IA (la tarjeta del lienzo)
     confirmar: null,        // {titulo, texto, si, no, accion, alNo?}
-    actualizacion: { hay: false }, // {hay, detalle}: versión nueva (la revisa la app al abrir y cada 6 horas)
-    revisando: null,        // Ajustes → Actualizaciones: null | "buscando" | "al-dia" | "sin-conexion" | {paso, texto, pct}
+    actualizacion: { hay: false }, // {hay, texto, valores, notas}: versión nueva (pieza «actualizaciones»: la app revisa al abrir y cada 6 horas)
+    revisando: null,        // Ajustes → Actualizaciones: null | "buscando" | "al-dia" | "sin-conexion" | {paso, texto, valores, pct}
     lateral: false,         // en celular: la lista de archivos abierta
     abiertas: {},           // árbol de la carpeta: ruta de una subcarpeta → abierta (true) o cerrada (false); sin valor, decide arbolAbierta()
     sugerencias: [],
@@ -57,55 +56,39 @@
     },
   };
 
-  // ───────────── Idiomas (las claves son el texto en español) ─────────────
-  function tr(t) {
-    if (E.idioma === "es" || !t) return t;
-    const limpio = String(t).replace(/\s+/g, " ").trim();
-    if (!limpio) return t;
-    if (E.textos[limpio]) return t.replace(limpio, E.textos[limpio]);
-    if (window._faltantes && /\p{L}{2}/u.test(limpio)) window._faltantes.add(limpio);
-    return t;
-  }
-  function Tp(plantilla, valores = {}) {
-    let t = plantilla;
-    if (E.idioma !== "es") { if (E.textos[plantilla]) t = E.textos[plantilla]; else if (window._faltantes) window._faltantes.add(plantilla); }
-    for (const [k, v] of Object.entries(valores)) t = t.split(`{${k}}`).join(String(v));
-    return t;
-  }
-  /** Frase completa con marcadores, escapada (valores incluidos), lista para HTML. */
-  function T(plantilla, valores = {}) {
-    let t = plantilla;
-    if (E.idioma !== "es") { if (E.textos[plantilla]) t = E.textos[plantilla]; else if (window._faltantes) window._faltantes.add(plantilla); }
-    t = esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
-    for (const [k, v] of Object.entries(valores)) t = t.split(`{${k}}`).join(esc(String(v)));
-    return t;
-  }
-  const frase = (plantilla, valores, etiqueta = "span") => `<${etiqueta} data-sin-traducir>${T(plantilla, valores)}</${etiqueta}>`;
-  function traducirDOM(raiz) {
-    if (E.idioma === "es" || !raiz) return;
-    const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
-    const nodos = []; let n; while ((n = w.nextNode())) nodos.push(n);
-    for (const t of nodos) {
-      const el = t.parentElement;
-      if (!el || el.closest("[data-sin-traducir], script, style, svg, textarea, .md") || !/\p{L}/u.test(t.nodeValue)) continue;
-      const v = tr(t.nodeValue); if (v !== t.nodeValue) t.nodeValue = v;
-    }
-    for (const el of raiz.querySelectorAll("[title],[aria-label],[placeholder]")) {
-      if (el.closest("[data-sin-traducir]")) continue;
-      for (const a of ["title", "aria-label", "placeholder"]) { const v = el.getAttribute(a); if (v) el.setAttribute(a, tr(v)); }
-    }
-  }
+  // ───────────── Idiomas: pieza «i18n» (ui/i18n.js; las claves son el texto en español) ─────────────
+  // T escapa la frase y los valores; Tp es texto plano; tr y traducirDOM traducen lo ya pintado (nunca [data-sin-traducir],
+  // código, textarea ni lo que se lee de un documento: .md). E.idioma es solo un espejo de i18n.idioma para el resto de la app.
+  const i18n = PiezaI18n.crear({ noTraducir: ".md" });
+  const { tr, Tp, T, frase, traducirDOM } = i18n;
+  /** Lo recién puesto dentro de un contenedor que sigue en pantalla: el contenedor (y sus atributos) ya está traducido. */
+  const traducirDentro = (el) => { for (const h of el?.children || []) traducirDOM(h); };
   async function cargarIdioma(elegido) {
+    // Lo recién elegido > ?idioma= (vista previa y pruebas) > lo guardado > el del sistema.
     const pedido = new URLSearchParams(location.search).get("idioma");
-    const codigo = elegido || pedido || E.config.idioma_ui || ((navigator.language || "es").startsWith("es") ? "es" : "en");
-    if (codigo === E.idioma && (codigo === "es" || Object.keys(E.textos).length)) return;
-    E.idioma = codigo; E.textos = {};
-    if (codigo !== "es") { try { E.textos = (await (await fetch(`idiomas/${codigo}.json`)).json()).textos || {}; } catch { E.idioma = "es"; } }
-    document.documentElement.lang = E.idioma;
+    const codigo = [elegido, pedido, E.config.idioma_ui].find((c) => c === "es" || c === "en") || i18n.idiomaDelSistema();
+    await i18n.cargar(codigo);
+    E.idioma = i18n.idioma;
   }
   /** Un problema del motor (o de la IA) como frase en el idioma elegido. */
   const fraseProblema = (p) => T(p.plantilla, p.valores);
   const nombreIA = () => (E.ias.find((x) => x.id === (E.config.ia || "claude")) || { nombre: "Claude" }).nombre;
+
+  // ───────────── Bienvenida: pieza «bienvenida» (ui/bienvenida.js) ─────────────
+  // El idioma va primero (paso 0: hasta elegirlo no se pinta nada más y los avisos esperan); después los pasos de Esquema:
+  // hola → carpeta → IA. Elegir el idioma lo guarda por el mismo camino que Ajustes (`config`).
+  const bv = PiezaBienvenida.crear({
+    i18n, listo: false, pintar: () => pintar(), mostrarAviso: (...a) => toast(...a),
+    guardarIdioma: (c) => { E.config.idioma_ui = c; host.enviar("config", { idioma_ui: c }); },
+    cargarIdioma: (c) => cargarIdioma(c),
+    terminar: () => { E.config.bienvenida = true; host.enviar("config", { bienvenida: true }); },
+  });
+  bv.sumarPaso({ id: "hola", titulo: "Hola, esto es Esquema", orden: 10, saltable: false,
+    cuerpo: () => `<p>Diagramas y documentación en tu computador, en el mismo formato que GitHub ya muestra.</p><ul><li>Escribe en texto (Mermaid) o dibuja en el lienzo: los dos se mantienen al día.</li><li>Flujos, secuencias y arquitectura, con plantillas listas.</li><li>Tu propia IA te dibuja diagramas y te escribe el README.</li></ul><p>Gratis, abierto y sin cuentas. Nada sale de tu computador.</p>` });
+  bv.sumarPaso({ id: "carpeta", titulo: "Elige tu carpeta", orden: 20, saltable: false, puede: () => !!E.carpeta,
+    cuerpo: () => `<p>Esquema trabaja con los archivos .md y .mmd de una carpeta: la de tu proyecto, por ejemplo. No los mueve ni los copia.</p><div class="fila"><span class="txt">${E.carpeta ? `<b data-sin-traducir>${esc(E.carpeta.nombre)}</b><small data-sin-traducir>${esc(E.carpeta.ruta || "")}</small>` : "Todavía no eliges una carpeta."}</span><button class="boton ${E.carpeta ? "" : "principal"}" data-accion="elegir-carpeta">${ic("carpeta")} ${E.carpeta ? "Cambiar" : HOST === "web" ? "Usar la carpeta de ejemplo" : "Elegir carpeta"}</button></div>` });
+  bv.sumarPaso({ id: "ia", titulo: "Tu IA (opcional)", orden: 30,
+    cuerpo: () => `<p>Para «Dibújame» y el README, Esquema usa la IA que ya tienes, con tu cuenta. Solo ve lo que le pides; nunca tus archivos.</p>${filasIA()}` });
 
   // ───────────── Íconos de la interfaz (trazos de 16×16) ─────────────
   const IC = {
@@ -127,10 +110,9 @@
   const ic = (n) => `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
 
   // ───────────── Avisos ─────────────
-  let avisosPendientes = [];
   /** Un aviso corto abajo. Con `accion` ({texto, f}) lleva un botón (p. ej. «Deshacer») y dura más. */
   function toast(texto, traducido = false, accion = null) {
-    if (E.bv === 0) { avisosPendientes.push([texto, traducido]); return; }
+    if (bv.retener(texto, traducido)) return;  // mientras se elige el idioma, los avisos esperan
     const t = $("#toast"); t.textContent = traducido ? texto : tr(texto); t.classList.add("visible");
     toast._accion = accion;
     t.classList.toggle("con-accion", !!accion);
@@ -221,7 +203,7 @@
 
   // ───────────── Proyectos (ui/proyectos.js) ─────────────
   const P = window.EsquemaProyectos({
-    E, M, host, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA,
+    E, M, host, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA, enBienvenida: () => bv.activa,
     pintar: () => pintar(), abrir: (r) => abrir(r), cambiarTextoDe: (r, t, op) => cambiarTextoDe(r, t, op), guardarTodo: () => guardarTodo(),
     textoLienzo: () => textoLienzo(), traducirDOM: (r) => traducirDOM(r), nombreDe: (r) => nombreDe(r), ponerTextoLienzo: (t, op) => ponerTextoLienzo(t, op), resultadoBloque: (t, p) => resultadoBloque(t, p),
     abrirMenu: (tipo, b) => abrirMenu(tipo, b), pintarMenu: () => pintarMenu(), esDiagrama: (r) => esDiagrama(r), porRuta,
@@ -237,7 +219,7 @@
     const scrollDoc = $(".vista-doc")?.scrollTop;
     document.documentElement.dataset.tema = E.config.tema === "claro" ? "claro" : E.config.tema === "oscuro" ? "oscuro" : "";
     if (!document.documentElement.dataset.tema) delete document.documentElement.dataset.tema;
-    if (E.bv === 0) { app.innerHTML = dialogos(); traducirDOM(app); $(".idiomas .principal")?.focus(); return; }
+    if (bv.soloIdioma) { app.innerHTML = dialogos(); traducirDOM(app); bv.enfocar(); return; }  // nada más detrás
     app.innerHTML = `${lateral()}<main class="contenido">${barra()}${area()}</main>${E.lateral ? '<div class="velo" data-accion="cerrar-lateral"></div>' : ""}${dialogos()}${menu()}`;
     traducirDOM(app);
     const t = $("#texto");
@@ -330,7 +312,7 @@
     </header>`;
   }
   const botonesHistorial = () => { const d = doc(); return `<button class="boton plano icono" data-accion="deshacer" aria-label="Deshacer" title="Deshacer (⌘Z)" ${d?.pila.length ? "" : "disabled"}>${ic("deshacer")}</button><button class="boton plano icono" data-accion="rehacer" aria-label="Rehacer" title="Rehacer (⇧⌘Z)" ${d?.futuro.length ? "" : "disabled"}>${ic("rehacer")}</button>`; };
-  function pintarBarraHistorial() { const h = $("#historial"); if (h) { h.innerHTML = botonesHistorial(); traducirDOM(h); } }
+  function pintarBarraHistorial() { const h = $("#historial"); if (h) { h.innerHTML = botonesHistorial(); traducirDentro(h); } }
   function estadoGuardado() {
     const d = doc();
     if (!d) return "";
@@ -484,7 +466,7 @@
     const el = $("#sugerencias");
     if (!el) return;
     el.innerHTML = lista.length ? lista.map((s, i) => `<button data-sugerencia="${i}" data-sin-traducir>${esc(s.mostrar)}</button>`).join("") + `<span class="tecla">Tab ↹</span>` : "";
-    traducirDOM(el);
+    traducirDentro(el);
   }
   function usarSugerencia(i) {
     const s = E.sugerencias[i], t = $("#texto");
@@ -632,7 +614,7 @@
     if (s.tipo === "nodo" || s.tipo === "participante") botones += P.botonElemento(s.id);
     barraSel.className = botones ? "lz-sel" : "";
     barraSel.innerHTML = botones;
-    traducirDOM(barraSel);
+    traducirDentro(barraSel);
     // La barra va justo arriba de lo elegido (o abajo si no cabe), sin taparlo.
     if (botones) {
       const lz = $("#lienzo").getBoundingClientRect(), b = el.getBoundingClientRect(), w = barraSel.offsetWidth, h = barraSel.offsetHeight;
@@ -903,8 +885,8 @@
   // ───────────── Diálogos ─────────────
   function dialogos() {
     const capa = (id, html, clase = "") => `<div class="capa"><div class="dialogo ${clase}" role="dialog" aria-modal="true" aria-labelledby="${id}">${html}</div></div>`;
-    if (E.bv === 0) return `<div class="capa capa-idioma"><div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv">${bienvenida()}</div></div>`;
-    if (E.bv !== null) return capa("t-bv", bienvenida(), "bienvenida");
+    if (bv.soloIdioma) return `<div class="capa capa-idioma"><div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv">${bv.html()}</div></div>`;
+    if (bv.activa) return capa("t-bv", bv.html(), "bienvenida");
     // titulo y texto llegan como HTML ya escapado (frase() o esc() del texto en español; traducirDOM lo traduce); los botones, como texto.
     const dp = P.dialogoHTML(capa); if (dp && !E.confirmar) return dp;
     if (E.confirmar) return capa("t-conf", `<h2 id="t-conf" ${E.confirmar.traducido ? "data-sin-traducir" : ""}>${E.confirmar.titulo}</h2><p ${E.confirmar.traducido ? "data-sin-traducir" : ""}>${E.confirmar.texto}</p><div class="pie-dialogo" ${E.confirmar.traducido ? "data-sin-traducir" : ""}><button class="boton" data-accion="confirmar-no">${esc(E.confirmar.no)}</button><button class="boton principal${E.confirmar.peligro ? " peligro-lleno" : ""}" data-accion="confirmar-si" data-autofoco>${esc(E.confirmar.si)}</button></div>`);
@@ -914,36 +896,22 @@
     if (E.nuevo) return capa("t-nv", dialogoNuevo(), "ancho");
     return "";
   }
-  function pasoIdioma() {
-    const sugerido = (navigator.language || "es").toLowerCase().startsWith("es") ? "es" : "en";
-    const op = [["es", "Español", "Sugerido"], ["en", "English", "Suggested"]];
-    if (sugerido === "en") op.reverse();
-    return `<h2 id="t-bv" data-sin-traducir>Elige tu idioma · Choose your language</h2>
-      <div class="idiomas" data-sin-traducir>${op.map(([c, n, s], i) => `<button class="boton ${i === 0 ? "principal" : ""}" data-idioma="${c}" lang="${c}">${n}${i === 0 ? `<small>${s}</small>` : ""}</button>`).join("")}</div>`;
-  }
-  function bienvenida() {
-    const paso = E.bv;
-    const puntos = `<div class="pasos-bv" aria-hidden="true">${[0, 1, 2, 3].map((i) => `<i class="${i <= paso ? "hecho" : ""}"></i>`).join("")}</div>`;
-    if (paso === 0) return puntos + pasoIdioma();
-    const pasos = [null,
-      ["Hola, esto es Esquema", `<p>Diagramas y documentación en tu computador, en el mismo formato que GitHub ya muestra.</p><ul><li>Escribe en texto (Mermaid) o dibuja en el lienzo: los dos se mantienen al día.</li><li>Flujos, secuencias y arquitectura, con plantillas listas.</li><li>Tu propia IA te dibuja diagramas y te escribe el README.</li></ul><p>Gratis, abierto y sin cuentas. Nada sale de tu computador.</p>`, true],
-      ["Elige tu carpeta", `<p>Esquema trabaja con los archivos .md y .mmd de una carpeta: la de tu proyecto, por ejemplo. No los mueve ni los copia.</p><div class="fila"><span class="txt">${E.carpeta ? `<b data-sin-traducir>${esc(E.carpeta.nombre)}</b><small data-sin-traducir>${esc(E.carpeta.ruta || "")}</small>` : "Todavía no eliges una carpeta."}</span><button class="boton ${E.carpeta ? "" : "principal"}" data-accion="elegir-carpeta">${ic("carpeta")} ${E.carpeta ? "Cambiar" : HOST === "web" ? "Usar la carpeta de ejemplo" : "Elegir carpeta"}</button></div>`, !!E.carpeta],
-      ["Tu IA (opcional)", `<p>Para «Dibújame» y el README, Esquema usa la IA que ya tienes, con tu cuenta. Solo ve lo que le pides; nunca tus archivos.</p>${filasIA()}`, true],
-    ];
-    const [titulo, cuerpo, puede] = pasos[paso];
-    return `${puntos}<h2 id="t-bv" tabindex="-1">${titulo}</h2>${cuerpo}
-      <div class="pie-dialogo"><button class="boton izq" data-bv="${paso - 1}">Atrás</button>
-        ${paso < pasos.length - 1 ? `<button class="boton principal" data-bv="${paso + 1}" ${puede ? "" : "disabled"} data-autofoco>Siguiente</button>` : `<button class="boton" data-accion="bv-fin">Lo hago después</button><button class="boton principal" data-accion="bv-fin" data-autofoco>Empezar</button>`}</div>`;
-  }
+  // Lo que manda la pieza «actualizaciones» (y los avisos propios de la app, con la misma forma): `texto` es la frase en
+  // español con marcadores y `valores` lo que va en ellos; se traduce aquí, al pintar (T escapa todo). Las notas del Release van tal cual.
+  const frasePieza = (r) => (r && typeof r.texto === "string" && r.texto ? T(r.texto, r.valores && typeof r.valores === "object" ? r.valores : {}) : "");
+  const versionNueva = (r) => (r && r.hay ? { hay: true, texto: String(r.texto || ""), valores: r.valores || {}, notas: String(r.notas || "") } : { hay: false });
   /** Ajustes → Actualizaciones: buscar, el aviso de versión nueva con sus notas y el avance por pasos al instalarla. */
   function filaActualizacion() {
     const v = E.revisando, a = E.actualizacion || {};
     if (v && typeof v === "object") {
       const pct = typeof v.pct === "number" ? ` · ${Math.max(0, Math.min(100, Math.round(v.pct)))}%` : "";
       const error = v.paso === "error";
-      return `<div class="fila"><span class="txt"><b class="${error ? "error-texto" : ""}" data-sin-traducir>${esc(v.texto || "")}${pct}</b>${error ? "" : frase("Paso {n} de 3", { n: v.paso }, "small")}</span>${error ? `<button class="boton" data-accion="buscar-actualizacion">Buscar de nuevo</button>` : ""}</div>`;
+      return `<div class="fila"><span class="txt"><b class="${error ? "error-texto" : ""}" data-sin-traducir>${frasePieza(v)}${pct}</b>${error ? "" : frase("Paso {n} de 3", { n: v.paso }, "small")}</span>${error ? `<button class="boton" data-accion="buscar-actualizacion">Buscar de nuevo</button>` : ""}</div>`;
     }
-    if (a.hay) return `<div class="fila"><span class="txt"><b>Hay una versión nueva de Esquema</b><small class="notas-version" data-sin-traducir>${esc(a.detalle || "")}</small></span><button class="boton principal" data-accion="actualizar">Actualizar ahora</button></div>`;
+    if (a.hay) {
+      const detalle = [frasePieza(a), esc(a.notas)].filter(Boolean).join("\n");
+      return `<div class="fila"><span class="txt"><b>Hay una versión nueva de Esquema</b><small class="notas-version" data-sin-traducir>${detalle}</small></span><button class="boton principal" data-accion="actualizar">Actualizar ahora</button></div>`;
+    }
     const estado = v === "buscando" ? "Buscando…" : v === "al-dia" ? "Estás en la última versión" : v === "sin-conexion" ? "No pude revisar: sin conexión" : "Esquema revisa sola si hay versiones nuevas.";
     return `<div class="fila"><span class="txt">${estado}</span><button class="boton" data-accion="buscar-actualizacion" ${v === "buscando" ? "disabled" : ""}>Buscar actualizaciones</button></div>`;
   }
@@ -1155,7 +1123,7 @@
     const c = E.cambiosIA.find((x) => x.id === E.tarjetaIA && x.ruta === E.sel && x.estado === "aplicado");
     el.className = c ? "tarjeta-ia" : "";
     el.innerHTML = c ? `<p>${ic("chispa")} <b data-sin-traducir>${esc(c.pedido)}</b></p><p class="meta" data-sin-traducir>${esc(resumenCambio(c))}</p><div class="acciones"><button class="boton" data-quitar-ia="${c.id}">${ic("deshacer")} Quitar este cambio</button><button class="boton plano" data-accion="cerrar-tarjeta">Se queda</button></div>` : "";
-    traducirDOM(el);
+    traducirDentro(el);
   }
   /** Quita justo lo que hizo la IA. Si la persona lo editó después, pregunta antes (y se puede deshacer). */
   function quitarCambioIA(id, forzar = false) {
@@ -1240,15 +1208,14 @@
 
   // ───────────── Eventos ─────────────
   document.addEventListener("click", (e) => {
+    if (bv.manejarClic(e)) return;  // idioma, Atrás, Siguiente, Empezar (pieza «bienvenida»)
     const t = e.target.closest("button, [data-abrir], a[data-enlace], .velo");
     if (!t) { if (E.menu && !e.target.closest("#menu")) { E.menu = null; pintarMenu(); } return; }
     if (t.closest("#menu") === null && E.menu && !t.dataset.accion?.startsWith("menu-")) { E.menu = null; pintarMenu(); }
     const d = t.dataset;
-    if (d.idioma) return elegirIdioma(d.idioma);
     if (d.abrir && d.pBloque !== undefined) return P.clic(t, d, e);
     if (d.abrir) return abrir(d.abrir);
     if (d.vista) { E.vista = d.vista; return pintar(); }
-    if (d.bv !== undefined && t.closest(".bienvenida, .capa")) { E.bv = Math.max(1, Number(d.bv)); return pintar(); }
     if (d.probarIa) { E.config.ia = d.probarIa; host.enviar("config", { ia: d.probarIa }); E.probando[d.probarIa] = true; host.enviar("probarIA", { ia: d.probarIa }); return pintar(); }
     if (d.ajusteIdioma) { E.config.idioma_ui = d.ajusteIdioma; host.enviar("config", { idioma_ui: d.ajusteIdioma }); return cargarIdioma(d.ajusteIdioma).then(pintar); }
     if (d.tema) { E.config.tema = d.tema; host.enviar("config", { tema: d.tema }); return pintar(); }
@@ -1307,8 +1274,7 @@
       case "confirmar-si": { const c = E.confirmar; E.confirmar = null; c?.accion(); return pintar(); }
       case "confirmar-no": { const c = E.confirmar; E.confirmar = null; c?.alNo?.(); return pintar(); }
       case "buscar-actualizacion": E.revisando = "buscando"; host.enviar("buscarActualizacion"); return pintar();
-      case "actualizar": guardarTodo(); E.revisando = { paso: "0", texto: tr("Preparando…") }; host.enviar("actualizar"); return pintar();
-      case "bv-fin": E.bv = null; E.config.bienvenida = true; host.enviar("config", { bienvenida: true }); return pintar();
+      case "actualizar": guardarTodo(); E.revisando = { paso: "0", texto: "Preparando…" }; host.enviar("actualizar"); return pintar();
       case "deshacer": return deshacer();
       case "rehacer": return rehacer();
       case "volver-doc": E.bloque = null; E.elegido = null; if (movil()) E.vista = "dibujo"; return pintar();
@@ -1331,7 +1297,7 @@
   let pendienteDibujo = null;  // «Dibújame» que se cerró mientras la IA dibujaba: se aplica igual cuando responda
   function cerrarDialogo() {
     if (E.dibujar?.enviando) pendienteDibujo = { ...E.dibujar, ruta: E.sel, bloque: E.bloque, enviando: false };
-    if (E.bv !== null && E.bv !== 0) { E.bv = null; E.config.bienvenida = true; host.enviar("config", { bienvenida: true }); }
+    if (bv.activa && !bv.soloIdioma) { bv.terminar(); }
     E.ajustes = false; E.nuevo = null; E.readme = null; E.dibujar = null; E.confirmar = null; E.menu = null;
     P.cerrarDialogo();
     pintar();
@@ -1406,11 +1372,11 @@
     E.lz.x = lz.clientWidth / 2 - cx * E.lz.z; E.lz.y = lz.clientHeight / 2 - cy * E.lz.z; aplicarVista();
   });
   document.addEventListener("keydown", (e) => {
-    if (E.bv === 0) return;
+    if (bv.manejarTecla(e) || bv.soloIdioma) return;  // en el idioma: 1/2 y flechas; nada más
     const cmd = e.metaKey || e.ctrlKey;
     if (e.key === "Escape") {
       if (E.menu) { E.menu = null; pintarMenu(); return; }
-      if (E.confirmar || E.ajustes || E.nuevo || E.readme || E.dibujar || P.hayDialogo() || (E.bv !== null)) return cerrarDialogo();
+      if (E.confirmar || E.ajustes || E.nuevo || E.readme || E.dibujar || P.hayDialogo() || bv.activa) return cerrarDialogo();
       if (E.lateral) { E.lateral = false; return pintar(); }
       if (E.elegido) { E.elegido = null; return pintarSeleccion(); }
       if (E.bloque != null) { E.bloque = null; return pintar(); }
@@ -1434,32 +1400,22 @@
   let anchoAntes = window.innerWidth;
   window.addEventListener("resize", () => { const m = window.innerWidth <= 760, a = anchoAntes <= 760; anchoAntes = window.innerWidth; if (m !== a) pintar(); else if ($("#lienzo")) aplicarVista(); });
 
-  async function elegirIdioma(codigo) {
-    E.config.idioma_ui = codigo;
-    host.enviar("config", { idioma_ui: codigo });  // el mismo camino que el selector de Ajustes
-    await cargarIdioma(codigo);
-    E.bv = 1;
-    pintar();
-    $("#t-bv")?.focus();
-    const avisos = avisosPendientes; avisosPendientes = [];
-    if (avisos.length) toast(...avisos[avisos.length - 1]);
-  }
-
   // ───────────── Lo que llama la app ─────────────
   window.Esquema = {
     async estado(e) {
       if (e.actualizacion) {
-        E.actualizacion = e.actualizacion.hay ? { hay: true, detalle: e.actualizacion.detalle || "" } : { hay: false };
+        E.actualizacion = versionNueva(e.actualizacion);
         if (E.actualizacion.hay && !E.avisoVersion) { E.avisoVersion = true; toast("Hay una versión nueva de Esquema: está en Ajustes"); }
       }
       Object.assign(E, { config: e.config || {}, ias: e.ias || [], version: e.version || "", plantillas: (e.plantillas || []).filter((p) => !validarPlantilla(p).length), tipos: (Array.isArray(e.tipos) ? e.tipos : []).filter((t) => !M.validarTipo(t).length), carpeta: e.carpeta || null, archivos: (e.archivos || []).slice().sort(porRuta), recientes: Array.isArray(e.proyectos) ? e.proyectos : [] });
       const parametros = new URLSearchParams(location.search);
       if (parametros.has("vacio")) { E.carpeta = null; E.archivos = []; }
       await cargarIdioma();
-      if (!E.config.bienvenida || parametros.has("bienvenida")) E.bv = E.config.idioma_ui && !parametros.has("bienvenida") ? 1 : 0;
+      // La bienvenida se decide con el primer estado (los siguientes no la reinician a medio camino).
+      if (!E.cargado) bv.abrir({ config: E.config, forzar: parametros.has("bienvenida") });
       E.cargado = true;
       if (E.carpeta && !E.proyecto) P.alCambiarCarpeta({});
-      if (!E.sel && E.archivos.length && E.bv === null) {
+      if (!E.sel && E.archivos.length && !bv.activa) {
         let ultimo = null; try { ultimo = localStorage.getItem("esquema.ultimo"); } catch { /* sin almacenamiento */ }
         return abrir(E.archivos.some((a) => a.ruta === ultimo) ? ultimo : primerArchivo());
       }
@@ -1564,15 +1520,15 @@
     exportado(r) { if (r.ok) toast(r.ruta ? Tp("Guardado en {x}", { x: r.ruta }) : tr("Listo"), true); else if (r.error) toast(r.error); },
     copiado(r) { toast(r.ok ? "Copiado: pégalo en GitHub y se verá como diagrama" : "No pude copiar"); },
     actualizacionRevisada(r) {
-      E.actualizacion = r.hay ? { hay: true, detalle: r.detalle || "" } : { hay: false };
+      E.actualizacion = versionNueva(r);
       E.revisando = r.hay ? null : r.sinConexion ? "sin-conexion" : "al-dia";
       pintar();
     },
-    actualizacionProgreso(r) { E.revisando = { paso: String(r.paso || ""), texto: r.texto || "", pct: r.pct }; pintar(); },
+    actualizacionProgreso(r) { E.revisando = { paso: String(r.paso || ""), texto: String(r.texto || ""), valores: r.valores || {}, pct: r.pct }; pintar(); },
     /** Los menús de la app (Mac: barra de menús; Windows y Linux: menú de la ventana). Nada antes de elegir el idioma. */
     menu(r) {
       const a = r && r.accion;
-      if (E.bv === 0 || !E.cargado) return;
+      if (bv.soloIdioma || !E.cargado) return;
       const campo = document.activeElement;
       const enCampo = campo && campo.id !== "texto" && (campo.tagName === "INPUT" || campo.tagName === "TEXTAREA");
       const conDibujo = () => $("#lienzo") && (ultimoBueno || ultimoResultado);
@@ -1585,12 +1541,12 @@
         case "ajustar": if (conDibujo()) { ajustarVista(ultimoBueno || ultimoResultado); aplicarVista(); pintarSeleccion(); } return;
         case "texto": case "ambos": case "dibujo": if (E.sel) { E.vista = a; pintar(); } return;
       }
-      if (E.bv !== null) return;  // en la bienvenida no se abren otros diálogos
+      if (bv.activa) return;  // en la bienvenida no se abren otros diálogos
       if (a === "nuevo") { if (!E.carpeta) return toast("Elige una carpeta primero"); E.lateral = false; E.nuevo = { fuente: "app", categoria: "todas", busqueda: "", elegida: null, nombre: "" }; return pintar(); }
       if (a === "ajustes") { E.lateral = false; E.ajustes = true; return pintar(); }
     },
     _probar(f) { f(E); pintar(); },
-    _pruebas: { validarPlantilla, validarNombre, resumen, abrir, motor: M, proyectos: () => P },
+    _pruebas: { validarPlantilla, validarNombre, resumen, abrir, motor: M, proyectos: () => P, bienvenida: bv },
   };
 
   /** Una plantilla es solo datos: se valida antes de mostrarla (las incluidas y las del catálogo de la comunidad).
@@ -1653,8 +1609,8 @@
         window._copiado = d.texto;
         return (navigator.clipboard?.writeText(d.texto) || Promise.reject()).then(() => A.copiado({ ok: true }), () => A.copiado({ ok: true }));
       case "abrirEnlace": return toast("En la app, aquí se abre el enlace en tu navegador");
-      case "buscarActualizacion": return luego(300, () => A.actualizacionRevisada({ hay: false, detalle: "" }));
-      case "actualizar": return luego(300, () => A.actualizacionProgreso({ paso: "error", texto: tr("En la vista previa no hay nada que actualizar.") }));
+      case "buscarActualizacion": return luego(300, () => A.actualizacionRevisada({ hay: false, sinConexion: false }));
+      case "actualizar": return luego(300, () => A.actualizacionProgreso({ paso: "error", codigo: "vista-previa", texto: "En la vista previa no hay nada que actualizar.", valores: {} }));
       case "catalogoPlantillas": return luego(400, () => A.catalogoListo({ ok: true, plantillas: JSON.parse(JSON.stringify(DEMO.catalogo || [])) }));
       case "descargarPlantilla": return luego(500, () => {  // en la app: Swift o Electron la bajan de raw.githubusercontent.com y bin/plantillas.py la valida
         const x = (DEMO.catalogo || []).find((y) => y.id === d.id);

@@ -59,6 +59,16 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
   documentos y escritos, y la documentación y «Lo que falta» se ajustan a eso (visión, arquitectura, una página por parte, flujos…).
   · *Organized for your project: Esquema detects whether it's an app, a library, a site, a project with several parts or writing,
   and the documentation and «What's missing» adapt to it.*
+- **Primer uso con teclado:** en la pantalla del idioma ahora eliges con 1 o 2 (o con las flechas), y los dos idiomas se ven lado a
+  lado. Las actualizaciones usan la pieza compartida de la familia: siguen bajando solo de nuestros Releases, con su huella, y sus
+  avisos se ven en tu idioma. · *First run with the keyboard: on the language screen you can now pick with 1 or 2 (or the arrow
+  keys), with both languages side by side. Updates use the family's shared piece: they still download only from our Releases,
+  with their checksum, and their messages show in your language.*
+- **Por dentro, piezas de Pieza:** tu IA, la configuración y los idiomas ahora usan las piezas compartidas de la familia
+  (`nucleo`, `ia`, `i18n`). Tu IA siempre trabaja en una carpeta temporal, también al revisar tu código a fondo (solo lo lee),
+  así nunca carga la configuración de ese repo. · *Under the hood, Pieza pieces: your AI, settings and languages now use the
+  family's shared pieces (`nucleo`, `ia`, `i18n`). Your AI always works in a temporary folder, also when reviewing your code in
+  depth (it only reads it), so it never loads that repo's configuration.*
 - **Revisión a fondo:** al documentar tu proyecto, tu IA puede leer (solo leer) toda la carpeta del código para que no se le escape
   nada; nunca abre tus `.env`, llaves ni la carpeta `.git`, y puedes desmarcarla. · *Thorough review: when documenting your
   project, your AI can read (only read) the whole code folder so nothing slips through; it never opens your `.env`, keys or the

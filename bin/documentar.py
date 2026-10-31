@@ -26,6 +26,7 @@ import unicodedata
 import asistente
 import comun
 import ia
+import ia_vivo
 import inventario as inv
 import proyecto as P
 import trabajos
@@ -511,10 +512,10 @@ def correr(e, t):
             # Lo mismo que mostró «Ver lo que se envía» (preparar) para esta tarea.
             _, _, ps, _ = P.piezas({"carpeta": e["carpeta"], "docs": e.get("docs"), "tarea": d["tarea"], "pedido": d.get("pedido", "")})
             leer = codigo if d.get("a_fondo", True) and ia.puede_leer() else None
-            texto, error = ia.preguntar_vivo(prompt_explorar(d, L, perfil, ps, esquema, solo_faltan, leer), timeout=TIEMPO_EXPLORAR,
+            texto, error = ia_vivo.preguntar_vivo(prompt_explorar(d, L, perfil, ps, esquema, solo_faltan, leer), timeout=TIEMPO_EXPLORAR,
                                              leer=leer, no_leer=P.NO_LEER, al_evento=al_evento, detener=t.detenido)
             inv.registrar_lecturas(pid, codigo, [r for r in t.x.get("vistos", []) if r not in vistos_antes])
-            if error == "detenido":
+            if ia_vivo.detenido(error):
                 return t.terminar("detenido")
             if error:
                 return t.terminar("error", error)
@@ -562,8 +563,8 @@ def correr(e, t):
                     t.leyo(p["ruta"])
             inv.registrar_lecturas(pid, codigo, [c[0] for c in claves])
             otros = [x for x in plan["documentos"] if x["ruta"] != doc["ruta"]] + [{"ruta": x, "titulo": ""} for x in sorted(existentes - {x["ruta"] for x in plan["documentos"]}) if x != P.GLOSARIO]
-            texto, error = ia.preguntar_vivo(prompt_documento(d, plan, doc, otros, claves, nombre), timeout=TIEMPO_DOCUMENTO, detener=t.detenido)
-            if error == "detenido":
+            texto, error = ia_vivo.preguntar_vivo(prompt_documento(d, plan, doc, otros, claves, nombre), timeout=TIEMPO_DOCUMENTO, detener=t.detenido)
+            if ia_vivo.detenido(error):
                 t.poner_item(doc["ruta"], estado="cola")
                 return
             md = limpiar_respuesta_doc(texto, doc["titulo"]) if not error else None

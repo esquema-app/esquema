@@ -8,7 +8,7 @@ import sys
 import time
 
 if sys.argv[1:] == ["--help"]:
-    print("Usage: claude [options]\n  --safe-mode   Start with all customizations disabled\n  --output-format <format>  text, json or stream-json")
+    print("Usage: claude [options]\n  --safe-mode   Start with all customizations disabled\n  --strict-mcp-config\n  --disallowedTools <tools...>\n  --output-format <format>  text, json or stream-json")
     sys.exit(0)
 prompt = sys.stdin.read()
 registro = os.environ.get("IA_FALSA_REGISTRO")
@@ -21,6 +21,8 @@ if modo == "falla":
     print("se cayó", file=sys.stderr)
     sys.exit(1)
 flujo = "stream-json" in sys.argv
+# La carpeta que puede leer (revisión a fondo): la IA corre en una carpeta temporal y la recibe con --add-dir.
+codigo = sys.argv[sys.argv.index("--add-dir") + 1] if "--add-dir" in sys.argv else os.getcwd()
 
 
 def responder(texto):
@@ -39,7 +41,7 @@ def entre(texto, a, b):
 if "ENTENDER una historia de usuario" in prompt:
     ronda = int(entre(prompt, "Ronda: ", ".") or 1)
     if flujo and "--add-dir" in sys.argv:
-        print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": os.path.join(os.getcwd(), "src/grabar.py")}}]}}), flush=True)
+        print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": os.path.join(codigo, "src/grabar.py")}}]}}), flush=True)
     preguntas = [{"pregunta": "¿Cuántas cuotas como máximo?", "porque": "Cambia los criterios de aceptación.", "opciones": ["3", "6", "12"]},
                  {"pregunta": "¿Se cobra interés?", "porque": "Afecta el total que ve el cliente."},
                  {"pregunta": "¿Qué pasa si falla el pago de una cuota?", "porque": "Es un caso borde.", "opciones": ["Se reintenta", "Se avisa"]}][:3 if ronda == 1 else 1 if ronda == 2 else 0]
@@ -106,7 +108,7 @@ if "arma un PLAN" in prompt:
         print(json.dumps({"type": "system", "subtype": "init", "tools": ["Read", "Glob", "Grep"]}), flush=True)
         print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Glob", "input": {"pattern": "**/*.py"}}]}}), flush=True)
         for r in ("README.md", "src/grabar.py", "../afuera.txt"):
-            print(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "Leo."}, {"type": "tool_use", "name": "Read", "input": {"file_path": os.path.join(os.getcwd(), r)}}]}}), flush=True)
+            print(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "Leo."}, {"type": "tool_use", "name": "Read", "input": {"file_path": os.path.join(codigo, r)}}]}}), flush=True)
             if lento:
                 time.sleep(lento)
         print("esto no es json", flush=True)

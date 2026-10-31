@@ -28,6 +28,7 @@ import comun
 import contenido as C
 import documentar as D
 import ia
+import ia_vivo
 import inventario as inv
 import proyecto as P
 import trabajos
@@ -247,10 +248,10 @@ def correr(e, t):
             elif ev.get("t") == "busca":
                 t.busco(ev.get("patron", ""))
 
-        texto, error = ia.preguntar_vivo(prompt_analizar(d, c, leer), timeout=TIEMPO, leer=leer, no_leer=P.NO_LEER, al_evento=al_evento, detener=t.detenido)
+        texto, error = ia_vivo.preguntar_vivo(prompt_analizar(d, c, leer), timeout=TIEMPO, leer=leer, no_leer=P.NO_LEER, al_evento=al_evento, detener=t.detenido)
         if leer:
             inv.registrar_lecturas(pid, leer, [r for r in t.x.get("vistos", []) if r not in vistos_antes])
-        if error == "detenido":
+        if ia_vivo.detenido(error):
             return t.terminar("detenido")
         if error:
             t.poner_item(d["ruta"], estado="fallo", error=error)
@@ -549,8 +550,8 @@ def correr_cierre(e, t):
         t.etapa("comparar")
         indice = "\n".join(f"{doc['ruta']} — {doc['titulo']}" for doc in (x or {}).get("documentos", []) if doc["tipo"] != "fuente")
         elementos = "\n".join(f"{el['id']} — {el['nombre']} ({el['tipo']})" for el in (x or {}).get("elementos", [])[:300])
-        texto, error = ia.preguntar_vivo(prompt_cierre(d, original[:60_000], commits, dif, archivos, docs, elementos, indice), timeout=TIEMPO, detener=t.detenido)
-        if error == "detenido":
+        texto, error = ia_vivo.preguntar_vivo(prompt_cierre(d, original[:60_000], commits, dif, archivos, docs, elementos, indice), timeout=TIEMPO, detener=t.detenido)
+        if ia_vivo.detenido(error):
             return t.terminar("detenido")
         if error:
             return t.terminar("error", error)

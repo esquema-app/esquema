@@ -30,12 +30,13 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
    se oculta (`proyecto.ocultar_secretos`). **Revisión a fondo** (`a_fondo`, casilla del diálogo de envío, marcada de partida en
    las tareas de `proyecto.A_FONDO`: `inicial`, `flujo`, `completar`; se puede desmarcar): además, la IA puede **leer** la carpeta del
    código por su cuenta para revisarla entera. Solo leer: Claude con `--add-dir <código> --allowedTools Read,Glob,Grep` y
-   `--disallowedTools` de todo lo que escribe, ejecuta o sale a internet (`ia.PROHIBIDAS`: solo herramientas que Claude Code conoce,
-   o avisa en cada corrida), más `Read(**/<patrón>)` de `proyecto.NO_LEER` (`.env*`,
-   llaves, credenciales, `.git/`); Codex `-s read-only -C <código>`; Gemini solo con Antigravity (`ia.puede_leer`). El diálogo dice
+   `--disallowedTools` de todo lo que escribe, ejecuta o sale a internet, más `Read(**/<patrón>)` de `proyecto.NO_LEER` (`.env*`,
+   llaves, credenciales, `.git/`); Codex `-s read-only`; Gemini solo con Antigravity (`ia.puede_leer`). La IA siempre corre en una carpeta temporal
+   (nunca dentro del código: su CLI cargaría la configuración y los hooks de ese repo) y el pedido le dice dónde leer. El diálogo dice
    qué carpeta y qué no abre. Nunca escribe en la carpeta del código. «Documentar» (y «Completar lo que falta») son un **trabajo por
    etapas** (`bin/documentar.py`): explorar usa esta lectura a fondo y pide **solo un plan**; cada documento después va en su propia
-   llamada **sin herramientas**, con sus archivos clave adentro (solo si la revisión a fondo está marcada).
+   llamada **sin herramientas**, con sus archivos clave adentro (solo si la revisión a fondo está marcada). Los trabajos largos usan
+   `bin/ia_vivo.py` (propio de Esquema, sobre la pieza «ia»: mismas protecciones, más el avance en vivo y «Detener»).
 4. **Plantillas = solo datos.** Todo lo que viene de afuera (plantillas, traducciones, respuestas de la IA, el texto de un diagrama)
    se valida antes de usarse y se escapa antes de mostrarse.
 5. **Rápido y liviano.** El motor y la interfaz no tienen dependencias (ni npm ni CDN); Python solo con biblioteca estándar.
@@ -47,18 +48,39 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
 | Ruta | Qué es |
 |---|---|
 | `ui/motor/` | El motor, JS sin dependencias; cada archivo se suma a `globalThis.EsquemaMotor` (igual en el navegador y en Node). `texto.js` (medir con caché, partir etiquetas, escapar, errores con marcadores, línea `%% esquema:`), `flujo.js` (leer/escribir/editar flowchart conservando el texto), `secuencia.js` (leer/acomodar/dibujar/editar sequenceDiagram), `capas.js` (acomodo por capas), `formas.js` (formas e íconos propios), `dibujo.js` (elige el tipo, acomoda con caché, SVG por partes con clave, SVG independiente para exportar), `markdown.js` (bloques de un `.md` y Markdown → HTML seguro). |
-| `ui/` | Interfaz única (`index.html` con CSP, `app.js`, `proyectos.js` (proyectos: paneles, diálogos, el trabajo «Documentar», el árbol «Código» y su simulación), `app.css`, `favicon.svg`), `demo.json` (ficticio, sale de `herramientas/generar_demo.py`) e `idiomas/en.json`. `motor/proyecto.js`: lógica pura de proyectos (validar `esquema.json`, refs, usos, cambiar en todas partes, glosario, comparar, documentos afectados). |
-| `bin/` | Python **solo biblioteca estándar**, lo que corren las apps: `comun.py` (versión, carpeta de Esquema, config, escritura atómica, `ruta_en`, `.gitignore`, secretos, `recorrer`), `carpeta.py` (listar, leer, guardar, estructura para el README), `ia.py` (la IA del usuario, sin herramientas; `probar`), `asistente.py` (README y Dibújame: prompts y limpieza de la respuesta), `plantilla_formato.py` (formato de una plantilla y del índice del catálogo: `validar`, `indice`, `validar_indice`; el MISMO archivo que `herramientas/plantilla_formato.py` del catálogo), `plantillas.py` (incluidas + descargadas, validar, índice, `catalogo` e `instalar` para lo que baja la app), `estado.py` (lo que pide la interfaz al abrir; guardar config), `proyecto.py` (proyectos: abrir, leer el repo sin IA, lo que va a la IA, generar, `esquema.json`, versiones con git o copias, ver y restaurar; recientes en la carpeta de Esquema), `inventario.py` (todo el código sin IA: clase de cada archivo, lenguajes, partes con manifiesto, tipo de proyecto; lo que leyó la IA en `lecturas.json`), `trabajos.py` (el motor de trabajos largos: estado en disco, eventos de progreso, latido, detener, esperar respuestas), `documentar.py` (el trabajo «Documentar»: inventario → explorar → escribir → cerrar), `tipos.py` (tipos de proyecto: validar y leer `tipos/`), `contenido.py` (leer lo que se agrega: md, txt, pdf, docx, odt, epub, html; adivinar qué es; partir en capítulos), `agregar.py` (Agregar, crear un proyecto Libro, responder, seguir, borrar y recuperar), `historias.py` (historias de usuario y «Terminé el desarrollo»), `incorporar.py` («Agregar información»: un plan de cambios que la persona revisa), `libros.py` (libros, material de estudio, incongruencias y documentos), `wiki.py` (publicar en la wiki de GitHub). El último argumento siempre es el JSON de salida; lo de la persona llega en un JSON de entrada. |
+| `ui/` | Interfaz única (`index.html` con CSP, `app.js`, `i18n.js` (pieza «i18n»: `T`, `Tp`, `tr`, `traducirDOM`, paquetes de idioma validados), `proyectos.js` (proyectos: paneles, diálogos, el trabajo «Documentar», el árbol «Código» y su simulación), `app.css`, `favicon.svg`), `demo.json` (ficticio, sale de `herramientas/generar_demo.py`) e `idiomas/en.json`. `motor/proyecto.js`: lógica pura de proyectos (validar `esquema.json`, refs, usos, cambiar en todas partes, glosario, comparar, documentos afectados). |
+| `bin/` | Python **solo biblioteca estándar**, lo que corren las apps: `nucleo.py` (pieza «nucleo»: `app.json`, carpeta de datos, config validada, escritura atómica, contrato de scripts), `comun.py` (lo propio de Esquema sobre `nucleo`: versión, `ruta_en` de documentos con sus mensajes, `.gitignore`, secretos, `recorrer`), `carpeta.py` (listar, leer, guardar, estructura para el README), `ia.py` (pieza «ia»: la IA del usuario, sin herramientas, siempre en una carpeta temporal, revisión a fondo de solo lectura; `probar`; errores como `{codigo, valores}` que `ia.frase()` pasa a texto), `asistente.py` (README y Dibújame: prompts y limpieza de la respuesta), `plantilla_formato.py` (formato de una plantilla y del índice del catálogo: `validar`, `indice`, `validar_indice`; el MISMO archivo que `herramientas/plantilla_formato.py` del catálogo), `plantillas.py` (incluidas + descargadas, validar, índice, `catalogo` e `instalar` para lo que baja la app), `estado.py` (lo que pide la interfaz al abrir; guardar config), `proyecto.py` (proyectos: abrir, leer el repo sin IA, lo que va a la IA, generar, `esquema.json`, versiones con git o copias, ver y restaurar; recientes en la carpeta de Esquema), `ia_vivo.py` (propio de Esquema, sobre la pieza «ia»: `preguntar_vivo` cuenta lo que la IA lee mientras trabaja —stream-json en Claude, `--json` en Codex— y se puede detener; mismas protecciones y errores `{codigo, plantilla, valores}`), `inventario.py` (todo el código sin IA: clase de cada archivo, lenguajes, partes con manifiesto, tipo de proyecto; lo que leyó la IA en `lecturas.json`), `trabajos.py` (el motor de trabajos largos: estado en disco, eventos de progreso, latido, detener, esperar respuestas), `documentar.py` (el trabajo «Documentar»: inventario → explorar → escribir → cerrar), `tipos.py` (tipos de proyecto: validar y leer `tipos/`), `contenido.py` (leer lo que se agrega: md, txt, pdf, docx, odt, epub, html; adivinar qué es; partir en capítulos), `agregar.py` (Agregar, crear un proyecto Libro, responder, seguir, borrar y recuperar), `historias.py` (historias de usuario y «Terminé el desarrollo»), `incorporar.py` («Agregar información»: un plan de cambios que la persona revisa), `libros.py` (libros, material de estudio, incongruencias y documentos), `wiki.py` (publicar en la wiki de GitHub). El último argumento siempre es el JSON de salida; lo de la persona llega en un JSON de entrada. |
 | `tipos/` | Tipos de proyecto incluidos (`software.json`, `libro.json`; ver «Tipos de proyecto»). |
+| `app.json`, `piezas.json` | **Pieza** (ver «Piezas» abajo): `app.json` describe la app para las piezas (id, nombre, datos, plataformas, claves de config); `piezas.json` lo escribe `pieza.py` (versión y huella de cada archivo copiado). |
 | `plantillas/` | Plantillas incluidas (`<categoria>/<id>.json`) y `README.md` con el formato. |
 | `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo, con un poco de «código» para «Documentar un proyecto»), `ia-simulada/` (lo que responde la IA en la vista previa del navegador), `agregar/` (una historia de usuario, un libro y unas notas de reunión ficticios, en es y en, para probar «Agregar» y los proyectos Libro), `catalogo-ejemplo/` (copia de las plantillas del catálogo de la comunidad: «Comunidad» en la demo y las pruebas) y scripts para construir encima del formato (`listar_diagramas.py`). |
 | `pruebas/` | `correr.sh` (todo), `motor.mjs` (motor en Node), `interfaz.mjs` (Playwright; `window._simVelocidad` y `window._simFallar` aceleran el trabajo simulado o hacen fallar un documento), `test_python.py`, `contrato.py` + `puente.json` (contrato del puente), `casos.json` (casos compartidos), `compat/` (ejemplos Mermaid que se leen y se escriben igual; `variantes/`: formas no canónicas), `ia_falsa.py` (responde planes y documentos, con stream-json si se lo piden; `IA_FALSA_FALLA_DOC`, `IA_FALSA_LENTO`, `IA_FALSA_MODO=plan-basura`; también rondas de preguntas de una HU, su cierre, capítulos, estudio e incongruencias). |
 | `herramientas/` | `revisar_privacidad.sh`, `generar_demo.py`, `comparar_mermaid.mjs` (rendimiento y compatibilidad contra Mermaid real, instalado aparte), `empaquetar.sh` (arma `dist/Esquema.app` + zip + `.sha256`, en un Mac), `generar_icono.mjs` (íconos de las apps desde `ui/favicon.svg`), `pagina_capturas.mjs` (sirve la página como en GitHub Pages, arma `compartir.png` y `apple-touch-icon.png` y revisa la página en los dos idiomas). |
-| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (arranque, menús), `Ventana.swift` (WKWebView + puente: un `case` por acción), `Carpeta.swift` (elegir la carpeta con marcador, rutas, `Vigilante` con FSEvents), `Servicios.swift` (rutas, config, idioma, `Procesador`, `EnOrden`), `Catalogo.swift` (plantillas de la comunidad), `Actualizaciones.swift`; `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
-| `escritorio/` | App de Windows y Linux (Electron): `src/main.js` (ventana, puente `ACCIONES`, menú, protocolo `esquema://ui/`), `src/preload.js`, `src/rutas.js`, `src/servicios.js`, `src/vigilante.js` (`fs.watch`), `src/catalogo.js` (plantillas de la comunidad), `src/actualizaciones.js`; `herramientas/` (Python portátil, instalador NSIS), `pruebas/` (`arranque.mjs` con Xvfb, `vigilante.mjs`, `catalogo.mjs`), `iconos/`. Ver «Windows y Linux». |
+| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (arranque, menús), `Ventana.swift` (WKWebView + puente: un `case` por acción), `Carpeta.swift` (elegir la carpeta con marcador, rutas, `Vigilante` con FSEvents), `Servicios.swift` (rutas, config, idioma, `Procesador`, `EnOrden`), `Catalogo.swift` (plantillas de la comunidad); `Sources/PiezaActualizaciones/` (pieza «actualizaciones», su propio target); `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
+| `escritorio/` | App de Windows y Linux (Electron): `src/main.js` (ventana, puente `ACCIONES`, menú, protocolo `esquema://ui/`), `src/preload.js`, `src/rutas.js`, `src/servicios.js`, `src/vigilante.js` (`fs.watch`), `src/catalogo.js` (plantillas de la comunidad), `src/actualizaciones.js` (pieza «actualizaciones»); `herramientas/` (Python portátil, instalador NSIS), `pruebas/` (`arranque.mjs` con Xvfb, `vigilante.mjs`, `catalogo.mjs`), `iconos/`. Ver «Windows y Linux». |
 | `build.sh`, `instalar.sh`, `instalar.ps1` | Compilar e instalar en el Mac de desarrollo; instaladores de un comando (Mac/Linux y Windows) que verifican la huella. |
 | `docs/` | La página pública (GitHub Pages, `pagina.yml` la publica con `ui/` en `/demo/`): `index.html` bilingüe (es/en), `pagina.css`, `pagina.js`, `sitemap.xml`, `apple-touch-icon.png`, `favicon.svg` e `img/` (capturas y `compartir.png`). Ver «Página pública». |
 | `CHANGELOG.md` | Lo que cambia para quien usa la app, en palabras simples (ver «Lo que rodea a un cambio»). |
+
+## Piezas (de [Pieza](https://github.com/pieza-app/pieza))
+Esquema usa piezas de Pieza, la base de la familia de apps: código probado que se copia a la app (modelo «copiar y adueñarse»).
+
+| Pieza | Archivos | Qué usa Esquema |
+|---|---|---|
+| `nucleo` | `bin/nucleo.py` | `app.json`, carpeta de datos (`ESQUEMA_DATOS`), config validada por `app.json`, `escribir_atomico`, `ruta_en`, `responder`. `comun.py` lo envuelve con lo propio de Esquema. |
+| `ia` | `bin/ia.py` | La IA de la persona (`preguntar`, `probar`, `lista`, `puede_leer`, `frase`). Lo propio de Esquema (prompts, `SOLO_ESTO`, `NO_LEER`) sigue en `asistente.py` y `proyecto.py`. `ia.py probar <entrada {ia}> <salida>`. |
+| `i18n` | `ui/i18n.js` | `T`, `Tp`, `tr`, `frase`, `traducirDOM` (`app.js` crea la instancia con `noTraducir: ".md"`). `ui/idiomas/en.json` lleva `codigo`. |
+| `bienvenida` | `ui/bienvenida.js`, `ui/bienvenida.css` | El paso del idioma (`data-bv-idioma`, `.opciones-idioma`, teclas 1/2, el del sistema sugerido y enfocado, avisos que esperan con `retener`) y el mecanismo de pasos. Los pasos de Esquema (hola → carpeta → IA) se suman en `app.js` con `sumarPaso` (`listo: false`: la IA es el último y dice «Empezar»; hola y carpeta con `saltable: false`). Sus colores, `--bv-*` en `app.css` con la paleta de Esquema. |
+| `actualizaciones` | `app/Sources/PiezaActualizaciones/Actualizaciones.swift`, `escritorio/src/actualizaciones.js` | Mac: target propio en `app/Package.swift`, configurado en `EsquemaApp.swift` (`Actualizaciones.configurar(.init(repo:nombre:archivoDesarrollo:variableProgreso:))`). Electron: `crear({app, net, repo, nombre})` en `main.js`. Lo que llega a la interfaz trae `texto` (español, con marcadores) y `valores`; la interfaz lo traduce con `T` (`frasePieza`). El aviso propio «espera a que termine de guardar» va con la misma forma (`codigo: "ocupada"`). |
+
+- **No edites a mano los archivos de una pieza.** Se actualizan con «Pieza al día» (`.github/workflows/pieza-al-dia.yml`, una vez por
+  semana abre un PR o un issue) o con `python3 <pieza>/herramientas/pieza.py actualizar .`. Si hay que cambiar algo, el cambio va
+  primero a Pieza (`pieza.py diferencias . <pieza>` lo muestra) y vuelve desde allá; `pieza.py estado .` dice si algo quedó distinto.
+- `app.json` va dentro de las apps (`herramientas/empaquetar.sh` y `extraResources` de `escritorio/package.json`): `bin/nucleo.py`
+  lo busca junto a `bin/`. Las claves de config que aceptan las apps (Swift y Electron) son las de `app.json`; `carpeta` solo la
+  escribe el selector de carpetas, nunca `config` (`comun.guardar_config` la descarta).
+- `.gitignore` es una lista blanca: `app.json` y `piezas.json` están en ella.
+- En las pruebas, la bienvenida se maneja con `window.Esquema._pruebas.bienvenida` (`abrir`, `ir`, `terminar`), no con el estado.
 
 ## Formato de los archivos
 - **Documento** `.md`: Markdown de GitHub. Cada diagrama es un bloque ```` ```mermaid ````. GitHub lo muestra igual que Esquema.
@@ -150,10 +172,15 @@ Lo que tarda minutos (documentar un proyecto entero) **no** es una llamada gigan
   (Swift) / `ORDENES_CON_PROGRESO` (main.js) lo reciben. La respuesta final llega como siempre (`proyectoRespuesta {trabajo}`).
   Si la ventana se cerró y se vuelve a abrir, la interfaz pide `trabajo` (el último del proyecto) y, mientras corra sin eventos,
   vuelve a preguntar cada 6 s.
-- **La IA en vivo** (`ia.preguntar_vivo`): Claude con `--output-format stream-json --verbose` (`_evento_claude`: `tool_use` Read →
-  `lee`, Glob/Grep → `busca`; la línea `{"type": "result"}` trae la respuesta y `is_error`); Codex con `exec --json`
-  (`_evento_codex`: de un comando de lectura se deduce el archivo); Gemini/agy, solo etapas. `detener()` corta el proceso; el tope
-  de tiempo da un error con el nombre de la IA. `ia.preguntar` sigue para todo lo demás.
+- **La IA en vivo** (`ia_vivo.preguntar_vivo`, en `bin/ia_vivo.py`, propio de Esquema sobre la pieza «ia»: arma el comando con las
+  mismas protecciones que `ia.ejecutar` —carpeta temporal, sin MCP ni memoria, solo leer, `--tools`, `--setting-sources user`, pide
+  actualizar si falta una protección— y usa sus funciones; `bin/ia.py` no se toca): Claude con `--output-format stream-json
+  --verbose` (`_evento_claude`: `tool_use` Read → `lee`, Glob/Grep → `busca`; la línea `{"type": "result"}` trae la respuesta y
+  `is_error`); Codex con `exec --json` si `codex exec --help` lo conoce (`_evento_codex`: de un comando de lectura se deduce el
+  archivo); Gemini/agy, solo etapas. `detener()` corta el proceso. Los errores tienen la forma de la pieza (`{codigo, plantilla,
+  valores}`; `demora`, `sin_respuesta`… y el propio `detenido`, que no es una falla: `ia_vivo.detenido(error)`); `t.terminar` y
+  `t.poner_item` guardan su frase en `error` y el error entero en `error_ia`, y la interfaz lo traduce con su plantilla
+  (`errorTrabajo` en `proyectos.js`). `ia.preguntar` sigue para todo lo demás.
 - **Detener:** `detener {id}` deja `trabajos/<id>.detener`; el trabajo lo ve, corta la IA y queda `detenido` (con una versión de
   lo que alcanzó). En la interfaz, «Detener» con confirmación; **Escape o tocar fuera nunca cancelan un trabajo**.
 - **Documentar** (`bin/documentar.py`, órdenes `documentar`, `trabajo`, `detener`, `quitar` de `proyecto.py`):
@@ -410,7 +437,8 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
 - **Menús de la app** (`window.Esquema.menu({accion})`): guardar, deshacer, rehacer, acercar, alejar, ajustar, texto, ambos, dibujo,
   nuevo, ajustes. Nada antes del idioma; en la bienvenida no se abren otros diálogos.
 - **Actualizaciones** (Ajustes → Actualizaciones, `filaActualizacion`): buscar, «Hay una versión nueva» con sus notas, «Actualizar
-  ahora» (guarda todo antes) y el avance por pasos. Un aviso corto la primera vez que el estado trae una versión nueva.
+  ahora» (guarda todo antes) y el avance por pasos. Lo de la app llega como `{texto, valores}` (pieza «actualizaciones») y se
+  traduce al pintar con `frasePieza`; las notas del Release van tal cual. Un aviso corto la primera vez que el estado trae una versión nueva.
 - **Lateral:** cabecera «Proyectos» con «Agregar» (un proyecto nuevo, global); en cada proyecto, «Nuevo en <proyecto>» (lo del
   proyecto; también arriba del panel), «Código» solo si el tipo tiene `fuente: "carpeta"`, ícono por tipo y un punto en lo que
   espera respuestas y en cada HU. El panel agrupa los documentos por las `secciones` del tipo y muestra hasta 4 tarjetas de acciones.
@@ -437,8 +465,9 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
   documentos afecta» → la IA los pone al día (tarea `revisar`). En el navegador, `P.simular` usa `demo.json → proyecto` (el trabajo
   «Documentar» con `simularTrabajo`: lee los archivos del ejemplo y escribe de a 2; el árbol con `proyecto.arbol`; git
   ficticio, IA simulada desde `ejemplos/ia-simulada/`, versiones en memoria).
-- **Primer uso:** lo primero es el idioma (`pasoIdioma`, título bilingüe fijo, el del sistema sugerido y enfocado; nada más se muestra
-  ni se pide antes); al elegir se guarda por `config` igual que en Ajustes y sigue la bienvenida traducida: hola → carpeta → IA.
+- **Primer uso** (pieza «bienvenida», `bv` en `app.js`): lo primero es el idioma (título bilingüe fijo, el del sistema sugerido y
+  enfocado, teclas 1/2; nada más se muestra ni se pide antes y los avisos esperan); al elegir se guarda por `config` igual que en
+  Ajustes y sigue la bienvenida traducida: hola → carpeta → IA. Se decide con el primer estado (`bv.abrir`).
 
 ## Puente interfaz ↔ app (contrato en `pruebas/puente.json`)
 La UI llama `host.enviar(accion, datos)` y la app responde con `window.Esquema.<funcion>(json)`. En el navegador responde `simular()`
@@ -486,8 +515,9 @@ desconocidos en `config.json`, abrir algo que no sea https, pasar a `bin/proyect
 - **Arranque:** menús y ventana de inmediato (en el idioma del sistema hasta que la persona elija); lo que corre solo
   (actualizaciones al abrir y cada 6 h) parte en `EsquemaApp.iniciarTareas()` recién con `Idioma.elegido`. Un aviso automático solo
   llega a la interfaz si hay versión nueva (nunca se vuelve a mandar el estado: no interrumpe la bienvenida).
-- **Actualizaciones:** `Esquema-macOS.zip` + `.sha256` solo desde `https://github.com/esquema-app/esquema/releases/download/…`
-  (`esDescargaNuestra`), con `curl --proto '=https'`; un guion (todo lo variable con `comillas()`) espera a que la app se cierre, la
+- **Actualizaciones** (pieza «actualizaciones», target `PiezaActualizaciones`): `Esquema-macOS.zip` + `.sha256` solo desde
+  `https://github.com/esquema-app/esquema/releases/download/…` (`esDescargaNuestra`), con `curl --proto '=https' --proto-redir '=https'`
+  y huella de 64 hex obligatoria; un guion (todo lo variable con `comillas()`) espera a que la app se cierre, la
   reemplaza (deja `.anterior` si falla) y la abre. Instalación de desarrollo (`build.sh` deja la ruta del checkout en
   `~/Library/Application Support/Esquema/desarrollo`): `git pull --ff-only` + `empaquetar.sh`. Nunca con un guardado o la IA en curso.
 - Desarrollo: checkout en `~/Developer/esquema`; `bash build.sh` (se niega si la IA está respondiendo) instala en
@@ -512,8 +542,9 @@ desconocidos en `config.json`, abrir algo que no sea https, pasar a `bin/proyect
   bash herramientas/instalador-windows.sh` (NSIS propio por usuario en `%LOCALAPPDATA%\Programs\Esquema`, `/S` silencioso; al
   actualizar primero le pide cerrar a la app para que guarde). Linux con `instalar.sh` en `~/.local/share/Esquema` + lanzador
   `~/.local/bin/esquema` (agrega `--no-sandbox` si el sistema restringe user namespaces), o AppImage, o .deb (no se actualiza solo).
-- **Actualizaciones** (`src/actualizaciones.js`): instalador de Windows, AppImage o tar.gz según cómo se instaló, solo desde los
-  Releases de este repo y verificados con su `.sha256`; sin empaquetar no busca.
+- **Actualizaciones** (`src/actualizaciones.js`, pieza «actualizaciones»): instalador de Windows, AppImage o tar.gz según cómo se
+  instaló, solo desde los Releases de este repo y verificados con su `.sha256`; sin empaquetar no busca. Al abrir (15 s después) y
+  cada 6 h con `revisarCadaRato`, recién con el idioma elegido.
 - **Pruebas:** `pruebas/arranque.mjs` abre la app de verdad con Xvfb (HOME temporal, carpeta e IA ficticias): idioma primero,
   config, abrir/guardar, cambio de afuera, conflicto, archivo nuevo, rutas fuera de la carpeta, IA sin herramientas, menú,
   navegación y protocolo; con `ELECTRON=dist/linux-unpacked/esquema APP=1` prueba la empaquetada. **Windows no se puede probar
@@ -584,6 +615,7 @@ explorador; varias carpetas recientes; firma y notarización si algún día hay 
 - No cambies el formato de los archivos sin compatibilidad: lo que Esquema escribe tiene que seguir siendo Mermaid que GitHub muestra.
 - Si cambias cómo se lee o escribe Mermaid: un caso en `pruebas/casos.json` y, si es sintaxis nueva, un ejemplo en `pruebas/compat/`
   revisado con `node herramientas/comparar_mermaid.mjs`.
+- Archivos de piezas (`bin/nucleo.py`, `bin/ia.py`, `ui/i18n.js`): no se editan aquí; ver «Piezas».
 - Antes de cerrar un cambio: `bash pruebas/correr.sh` y mirar la interfaz (`cd ui && python3 -m http.server 8765`, `?idioma=en`,
   `?bienvenida`, `?vacio`, `window.Esquema._probar(E => …)`), también a 390 px y en claro y oscuro.
 - Seguridad (detalle en `SECURITY.md`): CSP de `ui/index.html` sin scripts ni manejadores en línea; todo dato externo validado y
@@ -609,6 +641,7 @@ revisa cada fila ("no aplica" se decide, no se supone):
 | quita algo | bórralo de la página, el README y las guías: nada que prometa lo que ya no hace |
 | cambia el formato de datos o el puente | la documentación del formato, `ejemplos/` si existe y esta guía |
 | cambia carpetas, reglas o pruebas | esta guía (`AGENTS.md`) y `CONTRIBUTING.md` |
+| actualiza o agrega una pieza | `piezas.json` (lo escribe `pieza.py`), la tabla «Piezas» de esta guía y `app.json` si pide config |
 | resuelve un issue | ciérralo con «Resuelto en …» dando crédito y abre issues para lo que quedó pendiente |
 | lo nota quien usa Esquema | `CHANGELOG.md`: una línea en «Sin publicar», en lenguaje de persona («Ahora puedes…»), en español e inglés |
 

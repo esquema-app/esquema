@@ -29,6 +29,7 @@ import comun
 import contenido as C
 import documentar as D
 import ia
+import ia_vivo
 import inventario as inv
 import proyecto as P
 import trabajos
@@ -274,8 +275,8 @@ def correr_libro(e, t):
                 return t.poner_item(i["ruta"], estado="fallo", error="Ese capítulo ya no está en el libro.")
             t.poner_item(i["ruta"], estado="escribiendo", desde=trabajos.ahora())
             elementos, ids = _elementos_texto(L)
-            texto, error = ia.preguntar_vivo(prompt_capitulo(d, libro, c, pref, elementos, len(caps)), timeout=TIEMPO, detener=t.detenido)
-            if error == "detenido":
+            texto, error = ia_vivo.preguntar_vivo(prompt_capitulo(d, libro, c, pref, elementos, len(caps)), timeout=TIEMPO, detener=t.detenido)
+            if ia_vivo.detenido(error):
                 return t.poner_item(i["ruta"], estado="cola")
             md = _cuerpo(texto, f"{c['n']}. {c['titulo']}") if not error else None
             if not md:
@@ -299,7 +300,7 @@ def correr_libro(e, t):
                 resumenes.append((c["n"], c["titulo"], r))
         if resumenes:
             elementos, ids = _elementos_texto(L)
-            texto, error = ia.preguntar_vivo(prompt_cierre_libro(d, libro, resumenes[:120], elementos), timeout=TIEMPO, detener=t.detenido)
+            texto, error = ia_vivo.preguntar_vivo(prompt_cierre_libro(d, libro, resumenes[:120], elementos), timeout=TIEMPO, detener=t.detenido)
             if not error:
                 _escribir_cierre(L, t, d, libro, texto, ids, caps)
             else:
@@ -408,8 +409,8 @@ def correr_estudio(e, t):
             t.poner_item(i["ruta"], estado="escribiendo", desde=trabajos.ahora())
             p = os.path.join(L["dir_docs"], *c["ruta"].split("/"))
             resumen = P.leer_texto(p, 6_000)[0] if os.path.isfile(p) else ""
-            texto, error = ia.preguntar_vivo(prompt_estudio(d, libro, c, resumen, pref), timeout=TIEMPO, detener=t.detenido)
-            if error == "detenido":
+            texto, error = ia_vivo.preguntar_vivo(prompt_estudio(d, libro, c, resumen, pref), timeout=TIEMPO, detener=t.detenido)
+            if ia_vivo.detenido(error):
                 return t.poner_item(i["ruta"], estado="cola")
             md = _cuerpo(texto, f"{c['n']}. {c['titulo']}") if not error else None
             if not md:
@@ -577,8 +578,8 @@ def correr_incongruencias(e, t):
             if not c:
                 return t.poner_item(i["ruta"], estado="fallo", error="Ese capítulo ya no está en el libro.")
             t.poner_item(i["ruta"], estado="escribiendo", desde=trabajos.ahora())
-            texto, error = ia.preguntar_vivo(prompt_hechos(d, libro, c), timeout=TIEMPO, detener=t.detenido)
-            if error == "detenido":
+            texto, error = ia_vivo.preguntar_vivo(prompt_hechos(d, libro, c), timeout=TIEMPO, detener=t.detenido)
+            if ia_vivo.detenido(error):
                 return t.poner_item(i["ruta"], estado="cola")
             try:
                 hechos = json.loads(asistente._limpiar_cercos(asistente.bloque(texto, "HECHOS", "")) or "null") if not error else None
@@ -598,8 +599,8 @@ def correr_incongruencias(e, t):
         if t.detenido():
             return t.terminar("detenido")
         t.etapa("comparar")
-        texto, error = ia.preguntar_vivo(prompt_comparar(d, libro, d["hechos"], [(c["n"], c["titulo"]) for c in caps]), timeout=TIEMPO, detener=t.detenido)
-        if error == "detenido":
+        texto, error = ia_vivo.preguntar_vivo(prompt_comparar(d, libro, d["hechos"], [(c["n"], c["titulo"]) for c in caps]), timeout=TIEMPO, detener=t.detenido)
+        if ia_vivo.detenido(error):
             return t.terminar("detenido")
         if error:
             return t.terminar("error", error)
@@ -664,8 +665,8 @@ def correr_documento(e, t):
         elementos, ids = _elementos_texto(L)
         t.etapa("escribir")
         t.poner_item(d["ruta"], estado="escribiendo", desde=trabajos.ahora())
-        texto, error = ia.preguntar_vivo(prompt_documento(d, elementos), timeout=TIEMPO, detener=t.detenido)
-        if error == "detenido":
+        texto, error = ia_vivo.preguntar_vivo(prompt_documento(d, elementos), timeout=TIEMPO, detener=t.detenido)
+        if ia_vivo.detenido(error):
             t.poner_item(d["ruta"], estado="cola")
             return t.terminar("detenido")
         md = _cuerpo(texto, d["titulo"]) if not error else None

@@ -24,6 +24,7 @@ import threading
 import time
 
 import comun
+import ia_vivo
 
 LATIDO = 5          # segundos entre latidos
 MUERTO = 45         # sin latido por más que esto = el proceso ya no está
@@ -108,6 +109,9 @@ class Trabajo:
             self.guardar()
 
     def terminar(self, estado, error=""):
+        """`error`: un texto o un error de la IA ({codigo, plantilla, valores}); este último queda además en `error_ia` para que la
+        interfaz lo traduzca."""
+        texto, error_ia = _error(error)
         with self._lock:
             if estado == "listo" and self.x["etapa"] not in self.x["hechas"]:
                 self.x["hechas"].append(self.x["etapa"])
@@ -115,7 +119,10 @@ class Trabajo:
             for i in self.x["items"]:
                 if i.get("estado") == "escribiendo":
                     i["estado"] = "cola"
-            self.x.update({"estado": estado, "fin": ahora(), "error": str(error)[:600], "leyendo": ""})
+            self.x.update({"estado": estado, "fin": ahora(), "error": texto, "leyendo": ""})
+            self.x.pop("error_ia", None)
+            if error_ia:
+                self.x["error_ia"] = error_ia
             self.guardar()
         self._latiendo = False
         try:
@@ -130,6 +137,7 @@ class Trabajo:
             self.x.setdefault("publico", {}).update({"preguntas": preguntas, **publico})
             self.x["publico"].pop("visto", None)
             self.x.update({"estado": "esperando", "fin": ahora(), "error": "", "leyendo": ""})
+            self.x.pop("error_ia", None)
             self.guardar()
         self._latiendo = False
 
@@ -137,6 +145,7 @@ class Trabajo:
         """Vuelve a correr (después de «responder», «Seguir» o «Reintentar»)."""
         with self._lock:
             self.x.update({"estado": "corriendo", "error": "", "latido": time.time()})
+            self.x.pop("error_ia", None)
             self.x.pop("fin", None)
             self.x.setdefault("publico", {}).pop("preguntas", None)
             self.guardar()
@@ -145,6 +154,9 @@ class Trabajo:
         return next((i for i in self.x["items"] if i["ruta"] == ruta), None)
 
     def poner_item(self, ruta, **campos):
+        if "error" in campos:
+            campos["error"], error_ia = _error(campos["error"])
+            campos["error_ia"] = error_ia
         with self._lock:
             i = self.item(ruta)
             if i is None:
@@ -152,7 +164,10 @@ class Trabajo:
                 self.x["items"].append(i)
             if "error" not in campos and campos.get("estado") in ("escribiendo", "listo", "cola"):
                 i.pop("error", None)
+                i.pop("error_ia", None)
             i.update(campos)
+            if not i.get("error_ia"):
+                i.pop("error_ia", None)
             self.guardar()
 
     def leyo(self, ruta):
@@ -193,7 +208,16 @@ class Trabajo:
         x = self.x
         return {"id": x["id"], "tipo": x["tipo"], "carpeta": x["proyecto"], "estado": estado_real(x), "etapa": x["etapa"], "etapas": x["etapas"], "hechas": x["hechas"],
                 "inicio": x["inicio"], "fin": x.get("fin"), "items": [dict(i) for i in x["items"]], "leidos": x.get("leidos", 0),
-                "leyendo": x.get("leyendo", ""), "error": x.get("error", ""), **{k: v for k, v in (x.get("publico") or {}).items()}}
+                "leyendo": x.get("leyendo", ""), "error": x.get("error", ""), **({"error_ia": x["error_ia"]} if x.get("error_ia") else {}), **{k: v for k, v in (x.get("publico") or {}).items()}}
+
+
+def _error(error):
+    """(texto en español, error_ia o None): un error de la IA llega como {codigo, plantilla, valores} (pieza «ia» / ia_vivo)."""
+    if isinstance(error, dict):
+        ia_ = {"codigo": str(error.get("codigo", "")), "plantilla": str(error.get("plantilla", "")),
+               "valores": {str(k): str(v)[:300] for k, v in (error.get("valores") or {}).items()}}
+        return ia_vivo.frase(error)[:600], ia_
+    return str(error or "")[:600], None
 
 
 def estado_real(x):

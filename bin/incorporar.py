@@ -29,6 +29,7 @@ import contenido as C
 import documentar as D
 import historias as H
 import ia
+import ia_vivo
 import proyecto as P
 import tipos as tipos_mod
 import trabajos
@@ -260,8 +261,8 @@ def correr(e, t):
         c = contexto(L, d["texto"])
         t.x["publico"]["consulto"] = len(c["docs"])
         t.etapa("ordenar")
-        texto, error = ia.preguntar_vivo(prompt(d, c), timeout=TIEMPO, detener=t.detenido)
-        if error == "detenido":
+        texto, error = ia_vivo.preguntar_vivo(prompt(d, c), timeout=TIEMPO, detener=t.detenido)
+        if ia_vivo.detenido(error):
             return t.terminar("detenido")
         if error:
             return t.terminar("error", error)

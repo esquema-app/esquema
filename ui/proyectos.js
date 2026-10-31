@@ -7,7 +7,11 @@
 (() => {
   "use strict";
   window.EsquemaProyectos = function (api) {
-    const { E, M, host, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA } = api;
+    const { E, M, host, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA, enBienvenida } = api;
+    /** El error de un trabajo o de uno de sus ítems, en el idioma de la persona: un error de la IA trae {codigo, plantilla, valores}
+     *  (pieza «ia» / bin/ia_vivo.py) y se traduce con su plantilla; los demás son una frase en español. */
+    const errorTrabajo = (x) => (x?.error_ia?.plantilla ? Tp(x.error_ia.plantilla, x.error_ia.valores || {}) : tr(x?.error || ""));
+    const errorTrabajoHTML = (x) => esc(errorTrabajo(x));
     const pj = (E.pj = { dialogo: null, generando: null, versiones: null, elemento: null, buscar: "", editar: null, ultimo: null, espera: null, pedido: false, ultimoEnvio: null,
       trabajo: null,       // el trabajo largo de este proyecto (bin/trabajos.py): {id, estado, etapa, etapas, hechas, items, leidos, leyendo, …}
       esperando: false,    // se pidió `documentar` y todavía no llega su primer evento
@@ -515,8 +519,8 @@
           if (t.estado === "listo") toast(cuenta(n, "Listo: escribí 1 documento y guardé una versión", "Listo: escribí {n} documentos y guardé una versión"), true);
           else if (t.estado === "con-fallas") toast("Terminé, pero algunos documentos fallaron: puedes reintentarlos");
           else if (t.estado === "detenido") toast("Detenido. Lo que ya estaba escrito se quedó");
-          else if (t.estado === "error") toast(t.error || "No pude documentar el proyecto", true);
-        } else if (t.estado === "error") toast(t.error || "No pude terminar", true);
+          else if (t.estado === "error") toast(errorTrabajo(t) || tr("No pude documentar el proyecto"), true);
+        } else if (t.estado === "error") toast(errorTrabajo(t) || tr("No pude terminar"), true);
         else if (["listo", "con-fallas", "detenido"].includes(t.estado)) { const div = document.createElement("div"); div.innerHTML = tituloTrabajo(t); toast(div.textContent, true); }
       }
       enviar("abrir"); enviar("arbol");
@@ -578,7 +582,7 @@
         // Un documento listo se abre tocando su nombre (sin un botón «Abrir» más por fila).
         const nombre = i.estado === "listo" && i.tipo !== "lectura" ? `<button class="t-abrir" data-abrir="${esc(completa(i.ruta))}" data-sin-traducir>${esc(i.titulo || i.ruta)}</button>` : `<b data-sin-traducir>${esc(i.titulo || i.ruta)}</b>`;
         return `<li class="t-doc ${esc(i.estado)}"><span class="t-ic">${est[1] === "giro" ? `<span class="giro chico"></span>` : est[1] === "listo" ? ic("listo") : est[1] === "mal" ? ic("cerrar") : ic(i.tipo === "lectura" ? "libro" : "doc")}</span>
-          <span class="p-txt">${nombre}<small>${esc(i.ruta)} · ${T(est[0])}</small>${i.error ? `<small class="mal-txt">${esc(i.error)}</small>` : ""}</span>
+          <span class="p-txt">${nombre}<small>${esc(i.ruta)} · ${T(est[0])}</small>${i.error ? `<small class="mal-txt">${errorTrabajoHTML(i)}</small>` : ""}</span>
           ${acc ? `<span class="t-acc">${acc}</span>` : ""}</li>`;
       };
       const lee = vivo && t.etapa === "explorar" || (vivo && t.leyendo);
@@ -598,7 +602,7 @@
         ${t.aviso === "plan" ? `<p class="p-ayuda">${frase("{ia} no devolvió un plan que sirva: uso uno armado con lo que encontré en el código.", { ia: t.ia || nombreIA() })}</p>` : ""}
         ${t.aviso === "tope" ? `<p class="p-ayuda">${T("Ya hubo tres rondas de preguntas: lo que falta quedó en «Preguntas abiertas» del documento.")}</p>` : ""}
         ${otroTipo ? `<p class="p-aviso">${frase("{ia} cree que esto es {x}. Si tiene razón, bórralo y agrégalo de nuevo con ese tipo.", { ia: t.ia || nombreIA(), x: tr(otroTipo) })}</p>` : ""}
-        ${t.error ? `<p class="mal-txt" data-sin-traducir>${esc(tr(t.error))}</p>` : ""}
+        ${t.error ? `<p class="mal-txt" data-sin-traducir>${errorTrabajoHTML(t)}</p>` : ""}
         ${muestra.length ? `<ul class="t-docs">${muestra.map(fila).join("")}</ul>${ocultos ? `<p class="p-ayuda">${frase("Y {n} más ({l} listos).", { n: ocultos, l: listos })}</p>` : ""}` : ""}
         <div class="p-acciones izq">
           ${espera ? `<button class="boton principal" data-p-responder="${esc(t.id)}">${ic("pregunta")} ${n2(t)}</button><button class="boton plano" data-t-descartar="${esc(t.id)}">${T("No responder ahora")}</button>` : ""}
@@ -833,7 +837,7 @@
         vision: [{ ok: tipos.includes("vision"), titulo: "Visión general", falta: "la visión general (README.md): qué es el proyecto y para quién" }],
         arquitectura: tipo === "escritos" ? [] : [{ ok: tipos.includes("arquitectura"), titulo: "Arquitectura", falta: "la arquitectura (arquitectura.md): sus componentes y cómo se conectan, con un diagrama" }],
         "segun-codigo": porTipo,
-        flujos: tipo === "escritos" || tipo === "biblioteca" ? [] : [{ ok: flujos > 0, titulo: "Flujos principales", n: flujos, falta: "los flujos principales (flujos/<nombre>.md), cada uno con su diagrama" }],
+        flujos: tipo === "escritos" || tipo === "biblioteca" ? [] : [{ ok: flujos > 0, titulo: "Flujos principales", n: flujos, falta: "los flujos principales (un archivo por flujo en flujos/), cada uno con su diagrama" }],
         elementos: [{ ok: x.elementos.length > 0, titulo: t.fuente === "texto" ? "Personajes y conceptos" : "Elementos", n: x.elementos.length, falta: "los elementos del proyecto (pantallas, botones, servicios, módulos…)" }],
         "elementos-usados": [{ ok: !sinUso.length, titulo: "Cada elemento aparece en un documento", n: sinUso.length, nombres: sinUso.map((e) => e.nombre), falta: "documentar los elementos que ningún documento nombra" }],
         "al-dia": [{ ok: !c?.n, titulo: "Al día con el código", n: c?.n || 0, falta: "poner al día lo que cambió en el código desde la última versión" }],
@@ -1621,7 +1625,7 @@
       if (d.tDescartar !== undefined) { enviar("continuar", { id: d.tDescartar, descartar: true }); pj.esperan = (pj.esperan || []).filter((x) => x.id !== d.tDescartar); if (pj.trabajo?.id === d.tDescartar) pj.trabajo = { ...pj.trabajo, descartado: true }; toast("Quedan como preguntas abiertas en el documento"); api.pintar(); return true; }
       if (d.tPropuestas !== undefined) { abrirPropuestasDe(d.tPropuestas, pj.propuestasDe?.[d.tPropuestas]); return true; }
       if (d.pFicha !== undefined) { E.lateral = false; pj.ficha = d.pFicha; E.panel = "ficha"; E.sel = null; api.pintar(); return true; }
-      if (d.tReintentar !== undefined && pj.trabajo) { if (pj.trabajo.tipo === "documentar" || !pj.trabajo.tipo) enviar("documentar", { reintentar: pj.trabajo.id, ruta: d.tReintentar, idioma: E.idioma }); else enviar("continuar", { id: pj.trabajo.id, reintentar: d.tReintentar, idioma: E.idioma }); const i = pj.trabajo.items.find((x) => x.ruta === d.tReintentar); if (i) { i.estado = "cola"; delete i.error; } if (!corriendo()) { pj.trabajo.estado = "corriendo"; relojTrabajo(); } api.pintar(); return true; }
+      if (d.tReintentar !== undefined && pj.trabajo) { if (pj.trabajo.tipo === "documentar" || !pj.trabajo.tipo) enviar("documentar", { reintentar: pj.trabajo.id, ruta: d.tReintentar, idioma: E.idioma }); else enviar("continuar", { id: pj.trabajo.id, reintentar: d.tReintentar, idioma: E.idioma }); const i = pj.trabajo.items.find((x) => x.ruta === d.tReintentar); if (i) { i.estado = "cola"; delete i.error; delete i.error_ia; } if (!corriendo()) { pj.trabajo.estado = "corriendo"; relojTrabajo(); } api.pintar(); return true; }
       if (d.tQuitar !== undefined && pj.trabajo) {
         const i = pj.trabajo.items.find((x) => x.ruta === d.tQuitar);
         E.confirmar = { titulo: frase("¿Quitar «{x}»?", { x: i?.titulo || d.tQuitar }), texto: i?.nuevo === false ? esc(tr("Vuelvo este documento a como estaba antes. Queda en la historia de versiones.")) : esc(tr("Era nuevo: lo saco de la documentación. Queda en la historia de versiones.")),
@@ -1814,7 +1818,7 @@
       if (![...(e.dataTransfer?.types || [])].includes("Files")) return;
       e.preventDefault();
       const archivos = e.dataTransfer.files;
-      if (!archivos?.length || E.bv !== null) return;
+      if (!archivos?.length || enBienvenida()) return;
       if (pj.dialogo?.tipo === "agregar" || (pj.dialogo?.tipo === "nuevo-proyecto" && tipoDe(pj.dialogo.t).fuente === "texto")) { pj.dialogo.texto = $("#p-pegar")?.value ?? pj.dialogo.texto; return leerArchivos(archivos); }
       if (pj.dialogo || E.confirmar || E.nuevo) return;
       if (E.carpeta && ofrece("acciones", "agregar")) return abrirAgregar(null, archivos);
@@ -2009,7 +2013,7 @@
       }
       // documentar: nuevo, seguir o reintentar
       if (d.reintentar && sim.trabajo) {
-        const i = sim.trabajo.items.find((x) => x.ruta === d.ruta); if (i) { i.estado = "cola"; delete i.error; }
+        const i = sim.trabajo.items.find((x) => x.ruta === d.ruta); if (i) { i.estado = "cola"; delete i.error; delete i.error_ia; }
         if (sim.corriendo) { sim.cola.push(d.ruta); return luego(40, () => A.proyectoRespuesta({ orden: "documentar", ok: true, encolado: true, trabajo: vista() })); }
       } else if (!d.seguir || !sim.trabajo) {
         if (sim.corriendo) return luego(40, () => A.proyectoRespuesta({ orden: "documentar", ok: false, error: tr("Ya estoy documentando este proyecto."), trabajo: vista() }));
@@ -2064,7 +2068,7 @@
           luego(1600 * v(), () => {
             activos--;
             if (sim.detener) { i.estado = "cola"; return siguiente(); }
-            if (sim.fallo === i.ruta) { sim.fallo = null; i.estado = "fallo"; i.error = Tp("{ia} no respondió. Se cortó la conexión.", { ia: t.ia }); }
+            if (sim.fallo === i.ruta) { sim.fallo = null; i.estado = "fallo"; i.error_ia = { codigo: "sin_respuesta", plantilla: "{ia} no respondió. Se cortó la conexión.", valores: { ia: t.ia } }; i.error = i.error_ia.plantilla.replace("{ia}", t.ia); }
             else {
               const p = sim.plan.find((x) => x.ruta === i.ruta);
               if (!(i.ruta in sim.antes)) sim.antes[i.ruta] = memoria[pref + i.ruta] ?? null;

@@ -111,15 +111,18 @@ const VISTAS = [
   ["conflicto", "E=>{E.confirmar=null;const d=E.docs[E.sel];d.guardado=d.texto+'%%';d.estado='cambiado';window.Esquema.archivoCambiado({ruta:E.sel,texto:'flowchart TD\\n    X --> Y\\n'})}"],
   ["ajustes", "E=>{E.confirmar=null;E.ajustes=true;E.resultadoIA={claude:{ok:true},codex:{ok:false,error:'No encontré ChatGPT (Codex) en este computador.'}};E.probando={gemini:true}}"],
   ["ajustes-al-dia", "E=>{E.revisando='al-dia'}"],
-  ["ajustes-version-nueva", "E=>{E.revisando=null;E.actualizacion={hay:true,detalle:'Versión 0.2.0\\nMás rápido al abrir carpetas grandes'}}"],
-  ["ajustes-actualizando", "E=>{E.revisando={paso:'1',texto:'Descargando la versión nueva…',pct:40}}"],
-  ["ajustes-error-actualizar", "E=>{E.revisando={paso:'error',texto:'No pude descargar la versión nueva.'}}"],
-  ["bienvenida-1", "E=>{E.ajustes=false;E.revisando=null;E.actualizacion={hay:false};E.bv=1}"],
-  ["bienvenida-2", "E=>{E.bv=2}"],
-  ["bienvenida-2-sin-carpeta", "E=>{E.bv=2;E._carpeta=E.carpeta;E.carpeta=null}"],
-  ["bienvenida-3", "E=>{E.carpeta=E._carpeta;E.bv=3}"],
+  // Lo que manda la pieza «actualizaciones»: la frase en español con sus valores; la interfaz la traduce.
+  ["ajustes-version-nueva", "E=>{E.revisando=null;E.actualizacion={hay:true,texto:'Versión {v}',valores:{v:'0.2.0'},notas:'Más rápido al abrir carpetas grandes'}}"],
+  ["ajustes-actualizando", "E=>{E.revisando={paso:'3',texto:'Instalando: {app} se cerrará y volverá a abrirse sola',valores:{app:'Esquema'},pct:40}}"],
+  ["ajustes-error-actualizar", "E=>{E.revisando={paso:'error',codigo:'errorBajar',texto:'No pude descargar la versión nueva. Revisa tu conexión e intenta de nuevo.',valores:{app:'Esquema'}}}"],
+  ["ajustes-ocupada", "E=>{E.revisando={paso:'error',codigo:'ocupada',texto:'Espera a que termine de guardar o de responder tu IA y vuelve a intentarlo.',valores:{}}}"],
+  // La bienvenida (pieza «bienvenida»): pasos de Esquema después del idioma.
+  ["bienvenida-1", "E=>{E.ajustes=false;E.revisando=null;E.actualizacion={hay:false};window.Esquema._pruebas.bienvenida.abrir({config:{idioma_ui:E.config.idioma_ui}})}"],
+  ["bienvenida-2", "E=>{window.Esquema._pruebas.bienvenida.ir(2)}"],
+  ["bienvenida-2-sin-carpeta", "E=>{E._carpeta=E.carpeta;E.carpeta=null}"],
+  ["bienvenida-3", "E=>{E.carpeta=E._carpeta;window.Esquema._pruebas.bienvenida.ir(3)}"],
   ["bienvenida-3-sin-ia", "E=>{E._ias=E.ias;E.ias=[]}"],
-  ["sin-archivo", "E=>{E.ias=E._ias;E.bv=null;E.sel=null}"],
+  ["sin-archivo", "E=>{E.ias=E._ias;window.Esquema._pruebas.bienvenida.terminar();E.sel=null}"],
   ["lateral-celular", "E=>{E.lateral=true}"],
   ["arbol-cerrado", "E=>{E.abiertas={docs:false}}"],
   ["sin-carpeta", "E=>{E.lateral=false;E.carpeta=null;E.archivos=[]}"],
@@ -155,10 +158,15 @@ console.log("Contraste: revisado");
 // ── 5) Lo primero es el idioma ──
 {
   const p = await pagina({ idioma: "en", config: null, query: "?bienvenida" });
-  const h = await p.evaluate(() => ({ titulo: document.querySelector("#t-bv")?.textContent, botones: [...document.querySelectorAll("#app button")].map((b) => b.textContent.trim()), lateral: !!document.querySelector(".lateral"), foco: document.activeElement?.dataset.idioma }));
+  // Pieza «bienvenida»: data-bv-idioma, .opciones-idioma y .opcion-idioma (la sugerida con la clase «sugerido»).
+  const h = await p.evaluate(() => ({ titulo: document.querySelector("#t-bv")?.textContent.replace(/\s+/g, " ").trim(), botones: [...document.querySelectorAll("#app button")].map((b) => b.textContent.trim()), lateral: !!document.querySelector(".lateral, .contenido"), foco: document.activeElement?.dataset.bvIdioma, sugerido: document.querySelector(".opciones-idioma .opcion-idioma.sugerido")?.dataset.bvIdioma, nombres: [...document.querySelectorAll(".opcion-idioma b")].map((b) => b.textContent) }));
   if (!/Elige tu idioma · Choose your language/.test(h.titulo || "")) falla("La primera pantalla no es elegir el idioma: " + h.titulo);
   if (h.lateral || h.botones.length !== 2) falla("Antes del idioma se ve otra cosa: " + h.botones.join(" | "));
-  if (h.foco !== "en") falla("El idioma del sistema (inglés) no queda sugerido y enfocado: " + h.foco);
+  if (JSON.stringify(h.nombres) !== '["Español","English"]') falla("Cada idioma no está escrito en su propio idioma: " + h.nombres);
+  if (h.foco !== "en" || h.sugerido !== "en") falla("El idioma del sistema (inglés) no queda sugerido y enfocado: " + h.foco + " " + h.sugerido);
+  // Un aviso que llega antes de elegir espera (no se ve detrás).
+  await p.evaluate(() => window.Esquema.copiado({ ok: true }));
+  if (await p.evaluate(() => document.querySelector("#toast")?.classList.contains("visible"))) falla("Antes del idioma se mostró un aviso");
   await captura(p, "bienvenida-idioma");
   await p.keyboard.press("Enter");
   await espera(p, 200);
@@ -167,6 +175,18 @@ console.log("Contraste: revisado");
   const guardado = await p.evaluate(() => JSON.parse(localStorage.getItem("esquema.config")).idioma_ui);
   if (guardado !== "en") falla("El idioma no se guarda por el mismo camino que Ajustes");
   await sinTraducir(p, "bienvenida inglés");
+  if (!(await p.evaluate(() => document.querySelector("#toast")?.classList.contains("visible")))) falla("El aviso que esperaba no se mostró después de elegir el idioma");
+  await p.close();
+}
+{
+  // Con teclado: 1 y 2 eligen (aquí, el sistema en español y se elige inglés con la tecla 2).
+  const p = await pagina({ idioma: "es", config: null, query: "?bienvenida" });
+  const foco = await p.evaluate(() => document.activeElement?.dataset.bvIdioma);
+  if (foco !== "es") falla("El idioma del sistema (español) no queda enfocado: " + foco);
+  await p.keyboard.press("2");
+  await espera(p, 200);
+  const t = await p.evaluate(() => document.querySelector("#t-bv")?.textContent);
+  if (t !== "Hi, this is Esquema") falla("La tecla 2 no eligió inglés: " + t);
   await p.close();
 }
 console.log("Idioma primero: revisado");

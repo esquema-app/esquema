@@ -58,7 +58,7 @@
         "ia": "claude|codex|gemini"
       },
       "responde": "iaProbada",
-      "como": "bin/ia.py probar <ia> <salida>"
+      "como": "bin/ia.py probar <entrada {ia}> <salida> (pieza «ia»)"
     },
     "estructura": {
       "datos": {},
@@ -122,12 +122,12 @@
     "buscarActualizacion": {
       "datos": {},
       "responde": "actualizacionRevisada",
-      "como": "GitHub Releases de esquema-app/esquema (o git fetch en un checkout de desarrollo)."
+      "como": "Pieza «actualizaciones»: GitHub Releases de esquema-app/esquema (o git fetch en un checkout de desarrollo)."
     },
     "actualizar": {
       "datos": {},
       "responde": "actualizacionProgreso",
-      "como": "Baja Esquema-macOS.zip / Esquema-Windows.exe / Esquema-Linux.AppImage|tar.gz solo desde github.com/esquema-app/esquema/releases/download/, verifica su .sha256, espera a que la app se cierre, la reemplaza y la abre. Nunca con un guardado en curso."
+      "como": "Baja Esquema-macOS.zip / Esquema-Windows.exe / Esquema-Linux.AppImage|tar.gz solo desde github.com/esquema-app/esquema/releases/download/, verifica su .sha256, espera a que la app se cierre, la reemplaza y la abre. Nunca con un guardado en curso (entonces responde {paso: \"error\", codigo: \"ocupada\", texto, valores})."
     },
     "catalogoPlantillas": {
       "datos": {},
@@ -143,7 +143,7 @@
     }
   },
   "respuestas": {
-    "estado": "{config, ias: [{id, nombre, instalada}], version, plantillas, tipos: [tipos de proyecto de tipos/*.json], proyectos: [{nombre, ruta, ubicacion, tipo, codigo?}], carpeta: {nombre, ruta} | null, archivos: [{ruta, tamano}], actualizacion: {hay, detalle?}}",
+    "estado": "{config, ias: [{id, nombre, instalada}], version, plantillas, tipos: [tipos de proyecto de tipos/*.json], proyectos: [{nombre, ruta, ubicacion, tipo, codigo?}], carpeta: {nombre, ruta} | null, archivos: [{ruta, tamano}], actualizacion: {hay, version?, notas?, texto?, valores?}}",
     "carpetaElegida": "{ok, carpeta, archivos, proyecto?} | {ok: false, error?}",
     "archivoAbierto": "{ok, ruta, texto} | {ok: false, ruta, error}",
     "archivoGuardado": "{ok, ruta} | {ok: false, ruta, error}",
@@ -158,8 +158,8 @@
     "proyectoProgreso": "{eventos: [{t: \"estado\", trabajo} | {t: \"lee\", id, ruta, n} | {t: \"busca\", id, patron}]}: mientras corre una orden larga (documentar), las líneas nuevas del archivo de ESQUEMA_PROGRESO, cada ~0,5 s. «trabajo» es la vista del trabajo (bin/trabajos.py: id, estado, etapa, etapas, hechas, items, leidos, leyendo…); «ruta», relativa a la carpeta del código.",
     "exportado": "{ok, ruta?} | {ok: false, error?}",
     "copiado": "{ok}",
-    "actualizacionRevisada": "{hay, detalle, sinConexion}",
-    "actualizacionProgreso": "{paso: \"1\" | \"2\" | \"3\" | \"error\", texto, total?, pct?}",
+    "actualizacionRevisada": "{hay, version, notas, sinConexion, texto, valores}: texto es la frase en español con marcadores; la interfaz la traduce con T(texto, valores)",
+    "actualizacionProgreso": "{paso: \"1\" | \"2\" | \"3\" | \"error\", codigo, texto, valores, total?, pct?}: texto en español con marcadores (T en la interfaz)",
     "menu": "{accion: guardar | deshacer | rehacer | acercar | alejar | ajustar | texto | ambos | dibujo | nuevo | ajustes}: los menús nativos de la app (Archivo, Edición, Ver).",
     "catalogoListo": "{ok, plantillas: [{…plantilla, ruta, sha256, tamano}]} | {ok: false, error}",
     "plantillaDescargada": "{ok, plantilla} | {ok: false, id, error}"

@@ -31,6 +31,7 @@ import asistente  # noqa: E402
 import carpeta  # noqa: E402
 import comun  # noqa: E402
 import ia  # noqa: E402
+import ia_vivo  # noqa: E402
 import plantilla_formato  # noqa: E402
 import plantillas  # noqa: E402
 import incorporar  # noqa: E402
@@ -147,7 +148,8 @@ class Carpeta(unittest.TestCase):
 
 class Config(unittest.TestCase):
     def test_solo_claves_conocidas(self):
-        r = correr("estado.py", "config", entrada({"idioma_ui": "en", "ia": "codex", "bienvenida": True, "malicioso": "x", "tema": 3}))
+        r = correr("estado.py", "config", entrada({"idioma_ui": "en", "ia": "codex", "bienvenida": True, "malicioso": "x", "tema": 3,
+                                                     "carpeta": "/otra"}))
         self.assertEqual(r["config"], {"idioma_ui": "en", "ia": "codex", "bienvenida": True})
         ruta = os.path.join(os.environ["ESQUEMA_DATOS"], "config.json")
         self.assertEqual(stat.S_IMODE(os.stat(ruta).st_mode), 0o600)
@@ -169,7 +171,7 @@ class IA(unittest.TestCase):
             return json.loads(f.read().strip().splitlines()[-1])
 
     def test_probar_sin_herramientas(self):
-        r = correr("ia.py", "probar", "claude")
+        r = correr("ia.py", "probar", entrada({"ia": "claude"}))
         self.assertEqual(r, {"ia": "claude", "ok": True})
         u = self.ultimo()
         self.assertIn("--disallowedTools", u["args"])
@@ -183,10 +185,14 @@ class IA(unittest.TestCase):
 
     def test_probar_falla_con_mensaje(self):
         os.environ["IA_FALSA_MODO"] = "falla"
-        r = correr("ia.py", "probar", "claude")
+        r = correr("ia.py", "probar", entrada({"ia": "claude"}))
         self.assertFalse(r["ok"])
         self.assertIn("Claude no respondió", r["error"])
-        self.assertFalse(correr("ia.py", "probar", "otra")["ok"])
+        self.assertEqual(r["codigo"], "sin_respuesta")
+        d = correr("asistente.py", "dibujar", entrada({"pedido": "un flujo", "idioma": "es"}))
+        self.assertEqual((d["ok"], d["codigo"]), (False, "sin_respuesta"))
+        self.assertIn("Claude no respondió", d["error"])
+        self.assertFalse(correr("ia.py", "probar", entrada({"ia": "otra"}))["ok"])
 
     def test_readme_solo_nombres(self):
         p = proyecto()
@@ -472,8 +478,12 @@ class Proyecto(unittest.TestCase):
         with open(REGISTRO, encoding="utf-8") as f:
             llamada = [json.loads(l) for l in f][-1]
         a = llamada["args"]
-        self.assertEqual(os.path.realpath(llamada["cwd"]), os.path.realpath(p))
+        # Corre en una carpeta temporal (nunca dentro del código: su CLI cargaría AGENTS.md, .claude/settings.json y sus hooks);
+        # la carpeta del código solo se agrega para leer y se le dice dónde está en el pedido.
+        self.assertNotEqual(os.path.realpath(llamada["cwd"]), os.path.realpath(p))
+        self.assertTrue(os.path.basename(llamada["cwd"]).startswith("esquema-ia-"))
         self.assertEqual(os.path.realpath(a[a.index("--add-dir") + 1]), os.path.realpath(p))
+        self.assertIn(p, llamada["prompt"])
         self.assertEqual(a[a.index("--allowedTools") + 1], "Read,Glob,Grep")
         prohibido = a[a.index("--disallowedTools") + 1].split(",")
         for x in ("Bash", "Edit", "Write", "WebFetch", "Read(**/.env)", "Read(**/.git/**)", "Read(**/*.pem)"):
@@ -732,14 +742,14 @@ class Documentar(unittest.TestCase):
                   json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Grep", "input": {"pattern": "def ", "path": "/a"}}]}}),
                   json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "rm"}}]}})]
         for l in lineas:
-            self.assertIsNone(ia._evento_claude(l, vistos.append))
+            self.assertIsNone(ia_vivo._evento_claude(l, vistos.append))
         self.assertEqual(vistos, [{"t": "lee", "ruta": "/a/b.py"}, {"t": "busca", "patron": "def ", "ruta": "/a"}])
-        self.assertEqual(ia._evento_claude('{"type":"result","is_error":false,"result":"hola"}', vistos.append), ("hola", False))
-        self.assertEqual(ia._evento_claude('{"type":"result","is_error":true,"result":"sin saldo"}', vistos.append), ("sin saldo", True))
+        self.assertEqual(ia_vivo._evento_claude('{"type":"result","is_error":false,"result":"hola"}', vistos.append), ("hola", False))
+        self.assertEqual(ia_vivo._evento_claude('{"type":"result","is_error":true,"result":"sin saldo"}', vistos.append), ("sin saldo", True))
         # Codex --json: se deduce el archivo de un comando de lectura.
         c = []
-        ia._evento_codex(json.dumps({"type": "item.started", "item": {"type": "command_execution", "command": "bash -lc 'sed -n 1,200p src/app.py'"}}), c.append)
-        ia._evento_codex(json.dumps({"type": "item.started", "item": {"type": "command_execution", "command": ["rg", "-n", "pagar"]}}), c.append)
+        ia_vivo._evento_codex(json.dumps({"type": "item.started", "item": {"type": "command_execution", "command": "bash -lc 'sed -n 1,200p src/app.py'"}}), c.append)
+        ia_vivo._evento_codex(json.dumps({"type": "item.started", "item": {"type": "command_execution", "command": ["rg", "-n", "pagar"]}}), c.append)
         self.assertEqual(c, [{"t": "lee", "ruta": "src/app.py"}, {"t": "busca", "patron": "-n pagar"}])
 
     def test_plan_valido_ordenado_y_plan_invalido(self):
@@ -799,7 +809,6 @@ class Documentar(unittest.TestCase):
         exp = llamadas[0]["args"]
         self.assertIn("stream-json", exp)
         self.assertEqual(exp[exp.index("--allowedTools") + 1], "Read,Glob,Grep")
-        self.assertNotIn("MultiEdit", exp[exp.index("--disallowedTools") + 1])
         self.assertIn("Read(**/.env)", exp[exp.index("--disallowedTools") + 1])
         self.assertIn("NO leas todo", llamadas[0]["prompt"])
         for l in llamadas[1:]:
@@ -1032,9 +1041,23 @@ class Repo(unittest.TestCase):
         self.assertIn("END OF TERMS AND CONDITIONS", t)
         self.assertGreater(len(t), 30000)
 
+    def test_piezas_y_app_json(self):
+        """Las piezas (bin/nucleo.py, bin/ia.py) leen app.json junto a bin/: tiene que ir dentro de la app de Mac y de la de
+        Windows/Linux, y la config que aceptan las apps es la misma que declara app.json."""
+        app = json.load(open(os.path.join(RAIZ, "app.json"), encoding="utf-8"))
+        self.assertEqual((app["id"], app["nombre"]), ("esquema", "Esquema"))
+        self.assertEqual(set(app["config"]), {"idioma_ui", "tema", "bienvenida", "ia", "carpeta"})
+        self.assertIn('cp "$RAIZ/app.json"', open(os.path.join(RAIZ, "herramientas", "empaquetar.sh"), encoding="utf-8").read())
+        extra = json.load(open(os.path.join(RAIZ, "escritorio", "package.json"), encoding="utf-8"))["build"]["extraResources"]
+        self.assertIn({"from": "../app.json", "to": "esquema/app.json"}, extra)
+        piezas = json.load(open(os.path.join(RAIZ, "piezas.json"), encoding="utf-8"))["piezas"]
+        for pid, info in piezas.items():
+            for ruta in info["archivos"]:
+                self.assertTrue(os.path.exists(os.path.join(RAIZ, ruta)), f"{pid}: falta {ruta}")
+
     def test_solo_biblioteca_estandar(self):
-        permitidos = set(sys.stdlib_module_names) | {"comun", "carpeta", "ia", "asistente", "plantillas", "plantilla_formato", "estado", "proyecto",
-                                                     "inventario", "trabajos", "documentar", "tipos", "contenido", "historias", "libros", "agregar", "wiki", "incorporar"}
+        permitidos = set(sys.stdlib_module_names) | {"comun", "carpeta", "ia", "asistente", "plantillas", "plantilla_formato", "estado", "proyecto", "nucleo",
+                                                     "ia_vivo", "inventario", "trabajos", "documentar", "tipos", "contenido", "historias", "libros", "agregar", "wiki", "incorporar"}
         for f in os.listdir(BIN):
             if not f.endswith(".py"):
                 continue

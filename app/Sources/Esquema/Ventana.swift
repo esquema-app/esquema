@@ -1,4 +1,5 @@
 import AppKit
+import PiezaActualizaciones
 import UniformTypeIdentifiers
 import WebKit
 
@@ -303,7 +304,7 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
         case "probarIA":
             let ia = d["ia"] as? String ?? ""
             guard Config.ias.contains(ia) else { return llamar("iaProbada", ["ia": ia, "ok": false, "error": Idioma.t("No conozco esa IA.")]) }
-            Procesador.correrJSON("ia.py", ["probar", ia]) { r in
+            Procesador.conEntrada("ia.py", "probar", ["ia": ia]) { r in
                 var x = r
                 x["ia"] = ia
                 Ventana.shared.llamar("iaProbada", x)
@@ -340,9 +341,7 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
             let id = texto("id", 60)
             Catalogo.descargar(id) { Ventana.shared.llamar("plantillaDescargada", $0) }
         case "buscarActualizacion":
-            Actualizaciones.revisar { hay, detalle in
-                Ventana.shared.llamar("actualizacionRevisada", ["hay": hay, "detalle": hay ? detalle : "", "sinConexion": detalle == Actualizaciones.sinConexion])
-            }
+            Actualizaciones.revisar { Ventana.shared.llamar("actualizacionRevisada", $0) }
         case "actualizar":
             // La interfaz guarda todo justo antes de pedirlo: se espera a que esos guardados terminen (hasta 5 segundos).
             actualizarCuandoPueda(hasta: Date().addingTimeInterval(5))
@@ -355,14 +354,15 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
     private func actualizarCuandoPueda(hasta limite: Date) {
         if ocupada {
             guard Date() < limite else {
-                return llamar("actualizacionProgreso", ["paso": "error", "texto": Idioma.t("Espera a que termine de guardar o de responder tu IA y vuelve a intentarlo.")])
+                // La misma forma que los avisos de la pieza: el texto en español y la interfaz lo traduce.
+                return llamar("actualizacionProgreso", ["paso": "error", "codigo": "ocupada", "texto": "Espera a que termine de guardar o de responder tu IA y vuelve a intentarlo.", "valores": [String: String](), "total": 3])
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { Task { @MainActor in Ventana.shared.actualizarCuandoPueda(hasta: limite) } }
             return
         }
         Actualizaciones.seguir { Ventana.shared.llamar("actualizacionProgreso", $0) }
-        Actualizaciones.instalar { ok, error in
-            if !ok { Ventana.shared.llamar("actualizacionProgreso", ["paso": "error", "texto": error]) }
+        Actualizaciones.instalar { ok, codigo in
+            if !ok { Ventana.shared.llamar("actualizacionProgreso", Actualizaciones.aviso("error", codigo)) }
         }
     }
 

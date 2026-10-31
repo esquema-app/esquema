@@ -1,5 +1,5 @@
 {
- "idioma": "en",
+ "codigo": "en",
  "nombre": "English",
  "textos": {
   "# Título\n\nEscribe aquí.\n": "# Title\n\nWrite here.\n",
@@ -355,7 +355,6 @@
   "Idioma": "Language",
   "Inicio o fin": "Start or end",
   "Instalada": "Installed",
-  "Instalando: Esquema se cerrará y volverá a abrirse sola": "Installing: Esquema will close and open again by itself",
   "La flecha que sale de «{n}» no llega a ningún nodo.": "The arrow leaving “{n}” doesn't reach any node.",
   "La primera línea tiene que ser «flowchart TD» (o LR, BT, RL).": "The first line must be “flowchart TD” (or LR, BT, RL).",
   "La primera línea tiene que ser «sequenceDiagram».": "The first line must be “sequenceDiagram”.",
@@ -397,7 +396,6 @@
   "No pude guardar el archivo.": "I couldn't save the file.",
   "No pude guardar: el texto no es válido o es demasiado grande.": "I couldn't save: the text isn't valid or is too big.",
   "No pude leer la línea «%% esquema:»; la ignoro.": "I couldn't read the “%% esquema:” line; I'm ignoring it.",
-  "No pude preparar la versión nueva. Esquema sigue igual que antes; intenta de nuevo más tarde.": "I couldn’t prepare the new version. Esquema is the same as before; try again later.",
   "No pude revisar: sin conexión": "I couldn’t check: no connection",
   "No pude terminar. Intenta de nuevo.": "I couldn’t finish. Try again.",
   "No reconozco «{x}». Empieza con «flowchart TD» o «sequenceDiagram».": "I don't recognize “{x}”. Start with “flowchart TD” or “sequenceDiagram”.",
@@ -507,7 +505,6 @@
   "Ver lo que se envía": "See what is sent",
   "Ver todo": "Fit to screen",
   "Ver todo (0)": "Fit to screen (0)",
-  "Versión": "Version",
   "Vista": "Preview",
   "Vista del documento": "Document preview",
   "Volver al acomodo automático": "Back to automatic layout",
@@ -618,7 +615,7 @@
   "Al día con el código": "Up to date with the code",
   "la visión general (README.md): qué es el proyecto y para quién": "the overview (README.md): what the project is and who it's for",
   "la arquitectura (arquitectura.md): sus componentes y cómo se conectan, con un diagrama": "the architecture (arquitectura.md): its components and how they connect, with a diagram",
-  "los flujos principales (flujos/<nombre>.md), cada uno con su diagrama": "the main flows (flujos/<name>.md), each with its diagram",
+  "los flujos principales (un archivo por flujo en flujos/), cada uno con su diagrama": "the main flows (one file per flow in flujos/), each with its diagram",
   "los elementos del proyecto (pantallas, botones, servicios, módulos…)": "the project's elements (screens, buttons, services, modules…)",
   "documentar los elementos que ningún documento nombra": "document the elements that no document mentions",
   "poner al día lo que cambió en el código desde la última versión": "bring up to date what changed in the code since the last version",
@@ -1035,6 +1032,18 @@
   "Tu IA lo reparte en la documentación: crea lo nuevo, completa lo que existe y corrige lo que cambió. Antes de guardar ves cada cambio y por qué.": "Your AI spreads it across the documentation: it creates what's new, completes what exists and fixes what changed. Before saving you see each change and why.",
   "Esquema no abre enlaces (nada sale de tu computador). Pega también el texto.": "Esquema doesn't open links (nothing leaves your computer). Paste the text too.",
   "Con lo que respondas, tu IA termina de ordenar la información. Si cierras Esquema, las preguntas te esperan.": "With your answers, your AI finishes sorting out the information. If you close Esquema, the questions wait for you.",
-  "Si cierras Esquema, las preguntas te esperan.": "If you close Esquema, the questions wait for you."
+  "Si cierras Esquema, las preguntas te esperan.": "If you close Esquema, the questions wait for you.",
+  "No encontré {ia} en este computador. Revisa en Ajustes → Tu IA.": "I couldn't find {ia} on this computer. Check Settings → Your AI.",
+  "{ia} se demoró demasiado en responder. Inténtalo de nuevo.": "{ia} took too long to answer. Please try again.",
+  "{ia} no respondió. {detalle}": "{ia} didn't answer. {detalle}",
+  "Todo listo": "All set",
+  "Ya puedes empezar. Todo lo que elegiste se cambia cuando quieras en Ajustes.": "You're ready to go. You can change anything you chose at any time in Settings.",
+  "Versión {v}": "Version {v}",
+  "Instalando: {app} se cerrará y volverá a abrirse sola": "Installing: {app} will close and reopen on its own",
+  "No pude preparar la versión nueva. {app} sigue igual que antes; intenta de nuevo más tarde.": "I couldn't get the new version ready. {app} is just as it was; try again later.",
+  "Actualiza {ia} para usarla con {app}: tu versión no conoce las protecciones que necesitamos.": "Update {ia} to use it with {app}: your version doesn't know the protections we need.",
+  "No encontré {ia} en este computador.": "I couldn't find {ia} on this computer.",
+  "{ia} no respondió.": "{ia} didn't answer.",
+  "Detuviste a {ia}.": "You stopped {ia}."
  }
 }
