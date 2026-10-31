@@ -6,7 +6,7 @@ import WebKit
 /// Ventana principal: la interfaz web (ui/) dentro de un WKWebView. La interfaz llama `host.enviar(accion, datos)` y la app responde
 /// con `window.Esquema.<funcion>(json)`. El contrato está en pruebas/puente.json y lo revisa pruebas/contrato.py (un `case` por acción).
 @MainActor
-final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavigationDelegate {
+final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     static let shared = Ventana()
     private var ventana: NSWindow?
     private var web: WKWebView?
@@ -16,7 +16,11 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
 
     static let maximoExportar = 50 * 1024 * 1024
     /// Proyectos: lo que bin/proyecto.py sabe hacer (la interfaz no puede pedir otra cosa).
-    static let ordenesProyecto: Set<String> = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar", "codigo", "codigo_leer", "codigo_guardar"]
+    static let ordenesProyecto: Set<String> = ["abrir", "leer", "preparar", "generar", "guardar", "version", "versiones", "ver", "restaurar", "vincular", "mover", "destinos", "pasar", "codigo", "codigo_leer", "codigo_guardar", "arbol", "documentar", "trabajo", "detener", "quitar", "detectar", "agregar", "crear", "responder", "continuar", "borrar", "recuperar", "historia_estado", "historia_cierre", "estudiar", "incongruencias", "wiki_preparar", "wiki_publicar"]
+    /// Las órdenes largas que cuentan cómo van (bin/trabajos.py): sus eventos llegan a la interfaz como `proyectoProgreso`.
+    static let ordenesConProgreso: Set<String> = ["documentar", "agregar", "crear", "responder", "continuar", "historia_cierre", "estudiar", "incongruencias"]
+    /// Las que no necesitan una carpeta abierta (crear un proyecto Libro desde cero): no reciben `carpeta`.
+    static let ordenesSinCarpeta: Set<String> = ["detectar", "crear"]
 
     func mostrar() {
         if ventana == nil { crear() }
@@ -37,6 +41,7 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
         conf.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         let w = WKWebView(frame: NSRect(x: 0, y: 0, width: 1280, height: 800), configuration: conf)
         w.navigationDelegate = self
+        w.uiDelegate = self
         w.autoresizingMask = [.width, .height]
         let v = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 800),
                          styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -185,6 +190,18 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
         return .cancel
     }
 
+    /// «Elegir archivos» de la interfaz (un <input type="file">, para «Agregar» al proyecto): el panel del sistema. La interfaz lee lo
+    /// elegido con FileReader y lo manda a bin/ (que lo valida); la app no abre ni guarda nada por su cuenta.
+    func webView(_ webView: WKWebView, runOpenPanelWith parametros: WKOpenPanelParameters, initiatedByFrame marco: WKFrameInfo) async -> [URL]? {
+        guard marco.isMainFrame, marco.securityOrigin.protocol == "file" else { return nil }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = parametros.allowsMultipleSelection
+        panel.prompt = Idioma.t("Agregar")
+        return panel.runModal() == .OK ? panel.urls : nil
+    }
+
     /// Si el proceso de la página se cae (poca memoria), se vuelve a cargar la interfaz: lo guardado está en el disco.
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         lista = false
@@ -218,16 +235,37 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
         case "proyecto":
             // Solo órdenes conocidas y siempre sobre la carpeta actual; bin/proyecto.py valida el resto (rutas, docs, esquema.json, tamaños).
             let orden = d["orden"] as? String ?? ""
-            guard Ventana.ordenesProyecto.contains(orden), let base = Carpeta.actual() else {
+            let base = Carpeta.actual()
+            guard Ventana.ordenesProyecto.contains(orden), base != nil || Ventana.ordenesSinCarpeta.contains(orden) else {
                 return llamar("proyectoRespuesta", ["orden": String(orden.prefix(20)), "ok": false, "error": Idioma.t("Elige una carpeta primero")])
             }
             var e = d
             e.removeValue(forKey: "orden")
-            e["carpeta"] = base.path
-            Procesador.conEntrada("proyecto.py", orden, e) { r in
+            // La carpeta siempre la pone la app (nunca la interfaz).
+            e.removeValue(forKey: "carpeta")
+            if let base { e["carpeta"] = base.path }
+            var progreso: (@MainActor ([[String: Any]]) -> Void)? = nil
+            if Ventana.ordenesConProgreso.contains(orden) {
+                progreso = { (eventos: [[String: Any]]) in Ventana.shared.llamar("proyectoProgreso", ["eventos": eventos]) }
+            }
+            Procesador.conEntrada("proyecto.py", orden, e, progreso: progreso) { r in
                 var x = r
                 x["orden"] = orden
                 Ventana.shared.llamar("proyectoRespuesta", x)
+            }
+        case "papelera":
+            // Un .md/.mmd de la carpeta abierta (que no es documentación de Esquema) va a la Papelera del sistema, donde se puede
+            // recuperar. La documentación se borra con la orden `borrar` (queda en el historial); el código vinculado, nunca.
+            let ruta = d["ruta"] as? String ?? ""
+            guard let base = Carpeta.actual(), let u = Carpeta.absoluta(ruta, en: base) else {
+                return llamar("enPapelera", ["ok": false, "ruta": ruta, "error": Idioma.t("Ese archivo no se puede borrar.")])
+            }
+            do {
+                try FileManager.default.trashItem(at: u, resultingItemURL: nil)
+                Vigilante.conocidos.removeValue(forKey: ruta)
+                llamar("enPapelera", ["ok": true, "ruta": ruta])
+            } catch {
+                llamar("enPapelera", ["ok": false, "ruta": ruta, "error": Idioma.t("No pude mandarlo a la Papelera.")])
             }
         case "abrirArchivo":
             let ruta = d["ruta"] as? String ?? ""

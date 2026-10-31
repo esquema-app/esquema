@@ -64,6 +64,13 @@
         ]
       },
       {
+        "from": "../tipos",
+        "to": "esquema/tipos",
+        "filter": [
+          "*.json"
+        ]
+      },
+      {
         "from": "vendor/${os}/python",
         "to": "python"
       },

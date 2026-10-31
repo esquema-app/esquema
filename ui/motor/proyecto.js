@@ -8,14 +8,19 @@
 //   subcarpeta). En GitHub se ve como un enlace que lleva a la ficha del elemento; Esquema lo reconoce por `elementos.md#el-<id>`.
 (function (M) {
   "use strict";
-  const TIPOS_ELEMENTO = ["pantalla", "boton", "accion", "servicio", "modulo", "dato", "actor", "otro"];
-  const TIPOS_DOCUMENTO = ["vision", "arquitectura", "flujo", "glosario", "otro"];
+  // Las mismas listas que bin/tipos.py (tipos de proyecto, elementos y documentos).
+  const TIPOS_ELEMENTO = ["pantalla", "boton", "accion", "servicio", "modulo", "dato", "actor", "personaje", "concepto", "lugar", "otro"];
+  const TIPOS_DOCUMENTO = ["vision", "arquitectura", "flujo", "glosario", "otro", "historia", "libro", "capitulo", "documento", "fuente", "estudio", "revision"];
+  const EXT_FUENTE = ["md", "txt", "pdf", "docx", "epub", "odt", "html", "htm"];
   M.TIPOS_ELEMENTO = TIPOS_ELEMENTO;
   M.TIPOS_DOCUMENTO = TIPOS_DOCUMENTO;
   M.GLOSARIO = "elementos.md";
 
   const esTexto = (v, max, vacio = false) => typeof v === "string" && v.length <= max && (vacio || v.trim().length > 0);
   const rutaRelativa = (r, max = 200) => typeof r === "string" && r.length > 0 && r.length <= max && !/\0/.test(r) && !/^([\\/]|[A-Za-z]:)/.test(r) && r.replace(/\/$/, "").split(/[\\/]/).every((p) => p && p !== "." && p !== "..");
+  /** Un original en fuentes/ (un solo nivel, extensión conocida): lo que la persona agregó, tal cual. */
+  const rutaFuente = (r) => typeof r === "string" && r.length > 0 && r.length <= 160 && new RegExp(`^fuentes/[\\w-][\\w.-]*\\.(${EXT_FUENTE.join("|")})$`).test(r);
+  M.rutaFuente = rutaFuente;
   const rutaDoc = (r) => rutaRelativa(r, 160) && /^[\w.-]+(\/[\w.-]+){0,2}\.(md|mmd)$/.test(r) && !r.split("/").some((p) => p.startsWith("."));
 
   /** Errores de un elemento (vacío = válido). La misma regla que bin/proyecto.py (casos en pruebas/casos.json, «proyecto_esquema»). */
@@ -34,15 +39,16 @@
   M.validarEsquema = function (x) {
     const e = [];
     if (!x || typeof x !== "object" || Array.isArray(x)) return ["no es un objeto"];
-    for (const k of Object.keys(x)) if (!["formato", "nombre", "descripcion", "documentos", "elementos", "fuentes"].includes(k)) e.push("campo desconocido: " + k);
+    for (const k of Object.keys(x)) if (!["formato", "tipo", "nombre", "descripcion", "documentos", "elementos", "fuentes"].includes(k)) e.push("campo desconocido: " + k);
     if (x.formato !== 1) e.push("formato");
+    if (x.tipo !== undefined && !(typeof x.tipo === "string" && x.tipo.length <= 40 && M.ID_ELEMENTO.test(x.tipo))) e.push("tipo");
     if (!esTexto(x.nombre, 80)) e.push("nombre");
     if (x.descripcion !== undefined && !esTexto(x.descripcion, 1000, true)) e.push("descripcion");
     if (!Array.isArray(x.documentos) || x.documentos.length > 300) e.push("documentos");
     else {
       const vistas = new Set();
       for (const d of x.documentos) {
-        if (!d || typeof d !== "object" || !rutaDoc(d.ruta) || !esTexto(d.titulo, 120) || !TIPOS_DOCUMENTO.includes(d.tipo) || Object.keys(d).some((k) => !["ruta", "titulo", "tipo"].includes(k)) || vistas.has(d.ruta)) { e.push("documento: " + JSON.stringify(d).slice(0, 60)); continue; }
+        if (!d || typeof d !== "object" || !(d.tipo === "fuente" ? rutaFuente(d.ruta) : rutaDoc(d.ruta)) || !esTexto(d.titulo, 120) || !TIPOS_DOCUMENTO.includes(d.tipo) || Object.keys(d).some((k) => !["ruta", "titulo", "tipo"].includes(k)) || vistas.has(d.ruta)) { e.push("documento: " + JSON.stringify(d).slice(0, 60)); continue; }
         vistas.add(d.ruta);
       }
     }
@@ -63,6 +69,49 @@
     return e;
   };
   M.rutaDocProyecto = rutaDoc;
+
+  // ───────────── Tipos de proyecto (tipos/<id>.json): la misma regla que bin/tipos.py (casos «tipos» de pruebas/casos.json) ─────────────
+  const T_ICONOS = ["codigo", "libro", "proyecto", "doc", "diagrama", "persona", "elemento", "chispa", "carpeta", "historia", "datos", "archivo", "flecha", "listo", "imagen", "tarjetas"];
+  const T_FALTA = ["vision", "arquitectura", "segun-codigo", "flujos", "elementos", "elementos-usados", "al-dia", "capitulos", "resumenes", "libro-readme", "estudio", "incongruencias"];
+  const T_ACCIONES = ["documentar", "completar", "flujo", "diagrama", "historia", "agregar", "readme", "wiki", "estudiar", "incongruencias", "incorporar"];
+  const T_NUEVO = ["diagrama", "documento", "historia", "agregar", "incorporar"];
+  const T_AGREGAR = ["historia", "documento", "libro", "incorporar"];
+  M.TIPO_DEFECTO = "software";
+  const tTexto = (o, max) => !!o && typeof o === "object" && !Array.isArray(o) && typeof o.es === "string" && o.es.trim() !== "" && Object.entries(o).every(([k, v]) => /^[a-z]{2}(-[A-Z]{2})?$/.test(k) && typeof v === "string" && v.length <= max);
+  const tLista = (v, ok, min = 0) => Array.isArray(v) && v.length >= min && v.length <= 20 && new Set(v).size === v.length && v.every((x) => ok.includes(x));
+  M.validarTipo = function (t) {
+    if (!t || typeof t !== "object" || Array.isArray(t)) return ["no es un objeto"];
+    const claves = ["formato", "id", "icono", "nombre", "descripcion", "fuente", "elementos", "secciones", "falta", "acciones", "nuevo", "agregar"];
+    const e = Object.keys(t).filter((k) => !claves.includes(k)).map((k) => "campo desconocido: " + k);
+    if (t.formato !== 1) e.push("formato");
+    if (typeof t.id !== "string" || t.id.length > 40 || !M.ID_ELEMENTO.test(t.id)) e.push("id");
+    if (!T_ICONOS.includes(t.icono)) e.push("icono");
+    if (!tTexto(t.nombre, 40)) e.push("nombre");
+    if (!tTexto(t.descripcion, 200)) e.push("descripcion");
+    if (!["carpeta", "texto"].includes(t.fuente)) e.push("fuente");
+    if (!tLista(t.elementos, TIPOS_ELEMENTO, 1)) e.push("elementos");
+    if (!Array.isArray(t.secciones) || t.secciones.length < 1 || t.secciones.length > 16) e.push("secciones");
+    else {
+      const vistos = new Set();
+      for (const x of t.secciones) {
+        if (!x || typeof x !== "object" || typeof x.id !== "string" || !M.ID_ELEMENTO.test(x.id) || vistos.has(x.id)) { e.push("seccion"); continue; }
+        vistos.add(x.id);
+        const especial = ["elementos", "versiones"].includes(x.id);
+        if (Object.keys(x).some((k) => !["id", "nombre", "icono", "carpetas", "tipos"].includes(k)) || !tTexto(x.nombre, 40)) e.push("seccion " + x.id);
+        else if (especial) { if ("carpetas" in x || "tipos" in x) e.push("seccion " + x.id); }
+        else if (!T_ICONOS.includes(x.icono) || ("carpetas" in x && !(Array.isArray(x.carpetas) && x.carpetas.length <= 10 && x.carpetas.every((c) => typeof c === "string" && (c === "" || M.ID_ELEMENTO.test(c))))) || ("tipos" in x && !tLista(x.tipos, TIPOS_DOCUMENTO))) e.push("seccion " + x.id);
+      }
+    }
+    for (const [k, ok] of [["falta", T_FALTA], ["acciones", T_ACCIONES], ["nuevo", T_NUEVO], ["agregar", T_AGREGAR]]) if (!tLista(t[k], ok)) e.push(k);
+    return e;
+  };
+  /** La sección de un tipo donde va un documento: la primera cuyas carpetas y tipos calzan (sin carpetas ni tipos = todo lo demás). */
+  M.seccionDe = function (tipo, doc) {
+    const carpeta = doc.ruta.includes("/") ? doc.ruta.split("/")[0] : "";
+    const secs = (tipo?.secciones || []).filter((s) => !["elementos", "versiones"].includes(s.id));
+    const calza = (s) => (!s.carpetas || !s.carpetas.length || s.carpetas.includes(carpeta)) && (!s.tipos || s.tipos.includes(doc.tipo));
+    return (secs.find((s) => (s.carpetas?.length || s.tipos) && calza(s)) || secs.find((s) => !s.carpetas?.length && !s.tipos) || null)?.id || null;
+  };
 
   /** Un id para un elemento nuevo desde su nombre: «Botón Grabar» → «boton-grabar» (sin repetir los que ya hay). */
   M.idElemento = function (nombre, usados = []) {
@@ -248,8 +297,8 @@
 
   // ───────────── Glosario (elementos.md) ─────────────
   const NOMBRE_TIPO = {
-    es: { pantalla: "Pantallas", boton: "Botones", accion: "Acciones", servicio: "Servicios", modulo: "Módulos y archivos", dato: "Datos", actor: "Personas y sistemas", otro: "Otros" },
-    en: { pantalla: "Screens", boton: "Buttons", accion: "Actions", servicio: "Services", modulo: "Modules and files", dato: "Data", actor: "People and systems", otro: "Other" },
+    es: { pantalla: "Pantallas", boton: "Botones", accion: "Acciones", servicio: "Servicios", modulo: "Módulos y archivos", dato: "Datos", actor: "Personas y sistemas", personaje: "Personajes", concepto: "Conceptos", lugar: "Lugares", otro: "Otros" },
+    en: { pantalla: "Screens", boton: "Buttons", accion: "Actions", servicio: "Services", modulo: "Modules and files", dato: "Data", actor: "People and systems", personaje: "Characters", concepto: "Concepts", lugar: "Places", otro: "Other" },
   };
   /** El glosario que GitHub muestra: un ancla invisible por elemento (`<a id="el-…">`) para que los enlaces lleguen a su ficha. */
   M.glosario = function (esquema, idioma = "es") {

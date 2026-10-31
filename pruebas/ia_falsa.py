@@ -5,9 +5,10 @@ argumentos, para que las pruebas revisen que corre sin herramientas ni MCP."""
 import json
 import os
 import sys
+import time
 
 if sys.argv[1:] == ["--help"]:
-    print("Usage: claude [options]\n  --safe-mode   Start with all customizations disabled\n  --strict-mcp-config\n  --disallowedTools <tools...>")
+    print("Usage: claude [options]\n  --safe-mode   Start with all customizations disabled\n  --strict-mcp-config\n  --disallowedTools <tools...>\n  --output-format <format>  text, json or stream-json")
     sys.exit(0)
 prompt = sys.stdin.read()
 registro = os.environ.get("IA_FALSA_REGISTRO")
@@ -19,6 +20,128 @@ modo = os.environ.get("IA_FALSA_MODO", "")
 if modo == "falla":
     print("se cayó", file=sys.stderr)
     sys.exit(1)
+flujo = "stream-json" in sys.argv
+# La carpeta que puede leer (revisión a fondo): la IA corre en una carpeta temporal y la recibe con --add-dir.
+codigo = sys.argv[sys.argv.index("--add-dir") + 1] if "--add-dir" in sys.argv else os.getcwd()
+
+
+def responder(texto):
+    if flujo:
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": texto}), flush=True)
+    else:
+        print(texto)
+    sys.exit(0)
+
+
+def entre(texto, a, b):
+    return texto.split(a, 1)[1].split(b, 1)[0] if a in texto else ""
+
+
+# Historias de usuario (bin/historias.py): ronda 1 pregunta 3 cosas, ronda 2 una, ronda 3 nada.
+if "ENTENDER una historia de usuario" in prompt:
+    ronda = int(entre(prompt, "Ronda: ", ".") or 1)
+    if flujo and "--add-dir" in sys.argv:
+        print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": os.path.join(codigo, "src/grabar.py")}}]}}), flush=True)
+    preguntas = [{"pregunta": "¿Cuántas cuotas como máximo?", "porque": "Cambia los criterios de aceptación.", "opciones": ["3", "6", "12"]},
+                 {"pregunta": "¿Se cobra interés?", "porque": "Afecta el total que ve el cliente."},
+                 {"pregunta": "¿Qué pasa si falla el pago de una cuota?", "porque": "Es un caso borde.", "opciones": ["Se reintenta", "Se avisa"]}][:3 if ronda == 1 else 1 if ronda == 2 else 0]
+    decidido = entre(prompt, "<decisiones>\n", "\n</decisiones>")
+    tipo = "libro" if modo == "tipo-libro" else "historia"
+    responder(f"===TIPO===\n{tipo}\n===FIN===\n===TITULO===\nPagar en cuotas\n===FIN===\n===DOCUMENTO===\n# Algo\n## Resumen\nEl cliente quiere pagar en cuotas. Ronda {ronda}.\n"
+              f"{('Decidido: ' + decidido.replace(chr(10), ' ')) if decidido else ''}\n## Qué partes del proyecto toca\n[Grabar](../elementos.md#el-boton-grabar) y [Fantasma](../elementos.md#el-no-existe).\n"
+              "## Cómo debería funcionar\n```mermaid\nsequenceDiagram\n    participant C as Cliente\n    participant A as API\n    C->>A: Pagar en cuotas\n```\n"
+              "## Preguntas abiertas\nEsto lo quita Esquema.\n===FIN===\n===PREGUNTAS===\n" + json.dumps(preguntas, ensure_ascii=False) + "\n===FIN===")
+if "se terminó de desarrollar" in prompt:
+    responder("===COMO_QUEDO===\nSe agregó el pago en cuotas en `src/grabar.py`.\n\n- ✅ Dado un cliente, cuando paga en cuotas, entonces ve el total.\n===FIN===\n"
+              '===ARCHIVO ruta="arquitectura.md" titulo="Arquitectura" tipo="arquitectura"===\n# Arquitectura\n\nAhora con cuotas.\n===FIN===\n'
+              '===ARCHIVO ruta="historias/hu-42-x.md" titulo="x" tipo="otro"===\n# no\n===FIN===\n'
+              "===NOTA===\nPuse al día la arquitectura.\n===FIN===")
+# «Agregar información» (bin/incorporar.py): crea un flujo, completa el README, cambia la arquitectura y deja algo sin lugar.
+# Con IA_FALSA_MODO=incorporar-pregunta, primero pregunta a qué historia pertenece.
+if "información SIN CLASIFICAR" in prompt:
+    respuestas = entre(prompt, "<respuestas-de-la-persona>\n", "\n</respuestas-de-la-persona>")
+    if modo == "incorporar-pregunta" and not respuestas and "NO mandes PLAN" in prompt:
+        responder('===PREGUNTAS===\n[{"pregunta": "¿A qué historia pertenece la devolución?", "porque": "Para completar la correcta.", "opciones": ["HU-12", "Ninguna"]}]\n===FIN===')
+    readme = entre(prompt, '<documento ruta="README.md">\n', "\n</documento>")
+    arq = entre(prompt, '<documento ruta="arquitectura.md">\n', "\n</documento>")
+    plan = [{"accion": "crear", "ruta": "flujos/devolver-un-pago.md", "titulo": "Devolver un pago", "tipo": "flujo", "porque": "Es un flujo nuevo que no estaba documentado.", "cita": "las devoluciones se hacen en 5 días"},
+            {"accion": "completar", "ruta": "README.md", "titulo": "X", "tipo": "vision", "porque": "Agrega las devoluciones a lo que hace el proyecto.", "cita": "una cita que no está"},
+            {"accion": "completar", "ruta": "arquitectura.md", "titulo": "Arquitectura", "tipo": "arquitectura", "porque": "El correo ahora lo manda otro servicio.", "cita": "el correo lo manda Avisos"},
+            {"accion": "crear", "ruta": "fuentes/no.md", "titulo": "No", "tipo": "otro", "porque": "", "cita": ""}]
+    partes = ["===PLAN===\n" + json.dumps(plan, ensure_ascii=False) + "\n===FIN===",
+              '===ARCHIVO ruta="flujos/devolver-un-pago.md" titulo="Devolver un pago" tipo="flujo"===\n# Devolver un pago\n\n' + (f"Respuesta: {respuestas}\n\n" if respuestas else "")
+              + "La [API de pagos](../elementos.md#el-api-pagos) devuelve el dinero en 5 días.\n\n```mermaid\nflowchart TD\n    A[Pedir devolución] --> B[Devolver]\n```\n===FIN===",
+              '===ARCHIVO ruta="fuentes/no.md" titulo="No" tipo="otro"===\n# No\n===FIN===']
+    if readme:
+        partes.append(f'===ARCHIVO ruta="README.md" titulo="Otro título" tipo="vision"===\n{readme}\n\nTambién devuelve pagos.\n===FIN===')
+    if arq:
+        partes.append('===ARCHIVO ruta="arquitectura.md" titulo="Arquitectura" tipo="arquitectura"===\n' + arq.split("\n")[0] + "\n\nEl servicio Avisos manda el correo.\n===FIN===")
+    partes += ['===ELEMENTOS===\n[{"id": "servicio-avisos", "tipo": "servicio", "nombre": "Avisos", "descripcion": "Manda los correos."}]\n===FIN===',
+               "===SIN_LUGAR===\nEl equipo almuerza junto el viernes.\n===FIN===", "===NOTA===\nRepartí la información en tres documentos.\n===FIN==="]
+    responder("\n".join(partes))
+if "La persona agregó a su proyecto" in prompt:
+    responder("===TIPO===\ndocumento\n===FIN===\n===DOCUMENTO===\n# X\n## Resumen\nUn documento de prueba bastante claro.\n## Diagrama\n```mermaid\nflowchart TD\n    A[Inicio] --> B[Fin]\n```\n===FIN===")
+if "Resume, en" in prompt and "<capitulo>" in prompt:
+    n = entre(prompt, "el capítulo ", " ")
+    responder(f"===DOCUMENTO===\n## Resumen\nEl capítulo {n} cuenta algo sobre [Marta](../elementos.md#el-marta) y el faro.\n## Citas\n«Texto del capítulo»\n===FIN===\n"
+              '===ELEMENTOS===\n[{"id": "marta", "tipo": "personaje", "nombre": "Marta", "descripcion": "La guardiana."}, {"id": "Malo", "tipo": "x", "nombre": ""}]\n===FIN===')
+if "Estos son los resúmenes de todos los capítulos" in prompt:
+    responder("===README===\n## De qué trata\nDe un faro y de Marta.\n## Ideas principales\n- Cuidar la luz.\n===FIN===\n"
+              '===MAPA===\n```mermaid\nflowchart LR\n    M[Marta] --> F[Faro]\n%% esquema: {"refs":{"M":"marta"}}\n```\nMarta cuida el faro.\n===FIN===\n===LINEA===\nNO APLICA\n===FIN===')
+if "Arma, en" in prompt and "material para estudiar" in prompt:
+    responder("===DOCUMENTO===\n## Esquema\n- Idea\n## Preguntas de repaso\n**P:** ¿Quién cuida el faro?\n\n**R:** Marta.\n## Tarjetas\n| Frente | Reverso |\n|---|---|\n| Faro | Luz |\n===FIN===")
+if "hechos verificables" in prompt:
+    cap = entre(prompt, "<capitulo>\n", "\n</capitulo>")
+    cita = " ".join(cap.split()[:5])
+    n = entre(prompt, "el capítulo ", " ")
+    responder("===HECHOS===\n" + json.dumps([{"tipo": "fecha", "hecho": f"Marta tiene {30 + int(n)} años", "cita": cita, "seccion": ""}], ensure_ascii=False) + "\n===FIN===")
+if "Busca, en" in prompt and "incongruencias" in prompt:
+    hechos = [json.loads(l) for l in entre(prompt, "<hechos>\n", "\n</hechos>").split("\n") if l.strip()]
+    citas = [{"capitulo": h["capitulo"], "seccion": "", "cita": h["cita"]} for h in hechos[:2]] + [{"capitulo": 1, "cita": "esto no está en el libro"}, {"capitulo": 99, "cita": "x"}]
+    responder("===HALLAZGOS===\n" + json.dumps([{"tipo": "fecha", "descripcion": "La edad de Marta no calza entre capítulos.", "gravedad": "alta", "citas": citas},
+                                                 {"tipo": "raro", "descripcion": "Sin citas", "citas": []}], ensure_ascii=False) + "\n===FIN===")
+# Documentar por etapas (bin/documentar.py): primero un plan en JSON, después cada documento por separado.
+if "arma un PLAN" in prompt:
+    lento = float(os.environ.get("IA_FALSA_LENTO") or 0)
+    if flujo:
+        # Lo que cuenta Claude Code con --output-format stream-json --verbose: lo que va leyendo y, al final, la respuesta.
+        print(json.dumps({"type": "system", "subtype": "init", "tools": ["Read", "Glob", "Grep"]}), flush=True)
+        print(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Glob", "input": {"pattern": "**/*.py"}}]}}), flush=True)
+        for r in ("README.md", "src/grabar.py", "../afuera.txt"):
+            print(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "Leo."}, {"type": "tool_use", "name": "Read", "input": {"file_path": os.path.join(codigo, r)}}]}}), flush=True)
+            if lento:
+                time.sleep(lento)
+        print("esto no es json", flush=True)
+    if modo == "plan-basura":
+        plan = "No sé armar un plan."
+    else:
+        plan = "Este es el plan:\n```json\n" + json.dumps({"tipo": "app", "resumen": "Notas de reuniones.", "componentes": [],
+            "elementos": [{"id": "boton-grabar", "tipo": "boton", "nombre": "Grabar", "codigo": ["src/grabar.py", "../afuera"]}, {"id": "Malo Id", "tipo": "boton", "nombre": "x"}],
+            "documentos": [{"ruta": "flujos/Grabar Reunion.md", "titulo": "Grabar una reunión", "tipo": "flujo", "que": "Cómo se graba.", "archivos": ["src/grabar.py", ".env", "../x"]},
+                           {"ruta": "vision.md", "titulo": "Visión general", "tipo": "vision", "que": "Qué es.", "archivos": ["README.md"]},
+                           {"ruta": "../fuera.md", "titulo": "x", "tipo": "otro"},
+                           {"ruta": "arquitectura.md", "titulo": "Arquitectura", "tipo": "arquitectura", "que": "Partes.", "archivos": []}]}, ensure_ascii=False) + "\n```"
+    if flujo:
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": plan}), flush=True)
+    else:
+        print(plan)
+    sys.exit(0)
+if "SOLO el documento «" in prompt:
+    ruta = prompt.split("SOLO el documento «", 1)[1].split("»", 1)[0]
+    titulo = prompt.split("titulado «", 1)[1].split("»", 1)[0]
+    if ruta == os.environ.get("IA_FALSA_FALLA_DOC"):
+        print("se cayó escribiendo " + ruta, file=sys.stderr)
+        sys.exit(1)
+    if os.environ.get("IA_FALSA_LENTO"):
+        time.sleep(float(os.environ["IA_FALSA_LENTO"]))
+    nivel = "../" * ruta.count("/")
+    texto = (f"Aquí va:\n# Otro título\n\nToca [Grabar]({nivel}elementos.md#el-boton-grabar) y [Fantasma]({nivel}elementos.md#el-no-existe).\n\n"
+             "```mermaid\n%%{init: {}}%%\nflowchart TD\n    G[Grabar] --> F[Fantasma]\n%% esquema: {\"refs\":{\"F\":\"no-existe\",\"G\":\"boton-grabar\"}}\n```\n")
+    if flujo:
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": texto}), flush=True)
+    else:
+        print(texto)
+    sys.exit(0)
 if "===ARCHIVO" in prompt:
     # Proyectos (bin/proyecto.py): bloques con documentos, elementos, archivos pedidos y una nota. Trae a propósito cosas que
     # no deben pasar: una ruta fuera de la carpeta, el glosario (lo arma Esquema), un elemento inválido y configuración en un diagrama.

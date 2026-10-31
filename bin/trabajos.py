@@ -1,0 +1,294 @@
+"""Trabajos largos en segundo plano (documentar un proyecto, y lo que venga: historias de usuario, libros…). Solo biblioteca estándar.
+
+Un trabajo corre por etapas y deja TODO en disco a medida que avanza, así nada se pierde si se cierra la ventana o la app:
+- su estado en <carpeta de Esquema>/trabajos/<id>.json (nunca en la carpeta de la persona), escrito de una vez en cada cambio;
+- sus eventos, línea por línea (JSONL), en el archivo que dice ESQUEMA_PROGRESO (lo pone la app y lo lee cada ~0,5 s para pasarlo a
+  la interfaz como `proyectoProgreso`): {"t": "estado", "trabajo": <vista>} en cada cambio de estado y {"t": "lee" | "busca", …}
+  por cada archivo que lee la IA;
+- un «latido» cada pocos segundos: si el estado dice «corriendo» y el latido es viejo, el proceso murió (la app se cerró) y el trabajo
+  queda «interrumpido», listo para «Seguir» (lo ya hecho no se repite);
+- «Detener» deja el archivo trabajos/<id>.detener: el trabajo lo ve, corta la IA y queda «detenido».
+
+- «esperando»: el trabajo le preguntó algo a la persona (publico.preguntas) y terminó su proceso; todo queda en disco y la respuesta lo
+  retoma (orden `responder`). Un trabajo que espera no se borra con los viejos.
+
+Cómo se agrega un tipo de trabajo nuevo: ver AGENTS.md («Trabajos»). En corto: un módulo con ETAPAS y una función correr(t) que
+avanza con t.etapa(...), t.items, t.guardar() y t.detenido(); si necesita a la persona, t.esperar(preguntas); se registra en las órdenes
+de proyecto.py y la interfaz lo muestra con la misma tarjeta (etapas + lista de ítems con su estado) y la tarjeta de preguntas.
+"""
+import datetime
+import json
+import os
+import re
+import threading
+import time
+
+import comun
+import ia_vivo
+
+LATIDO = 5          # segundos entre latidos
+MUERTO = 45         # sin latido por más que esto = el proceso ya no está
+MAX_GUARDADOS = 40  # trabajos viejos que se conservan
+
+
+def carpeta():
+    return os.path.join(comun.carpeta_app(), "trabajos")
+
+
+def ahora():
+    return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def id_valido(i):
+    return isinstance(i, str) and re.fullmatch(r"\d{8}T\d{6}-[0-9a-f]{6}", i) is not None
+
+
+_lock_progreso = threading.Lock()
+
+
+def emitir(evento):
+    """Una línea de progreso para la app (si la app la pidió con ESQUEMA_PROGRESO)."""
+    ruta = os.environ.get("ESQUEMA_PROGRESO")
+    if not ruta:
+        return
+    linea = json.dumps(evento, ensure_ascii=False) + "\n"
+    with _lock_progreso:
+        try:
+            with open(ruta, "a", encoding="utf-8") as f:
+                f.write(linea)
+        except OSError:
+            pass
+
+
+class Trabajo:
+    """Estado de un trabajo: {formato, id, tipo, proyecto (carpeta abierta, absoluta), estado, etapa, etapas, inicio, fin, latido,
+    datos (lo propio del tipo), items (la lista visible: [{ruta, titulo, tipo, estado, error?}]), leidos, leyendo, error}."""
+
+    def __init__(self, x):
+        self.x = x
+        self._lock = threading.RLock()
+        self._latiendo = False
+
+    # ── crear y cargar ──
+    @classmethod
+    def nuevo(cls, tipo, proyecto, etapas, datos):
+        i = datetime.datetime.now().strftime("%Y%m%dT%H%M%S") + "-" + os.urandom(3).hex()
+        t = cls({"formato": 1, "id": i, "tipo": tipo, "proyecto": proyecto, "estado": "corriendo", "etapa": etapas[0],
+                 "etapas": list(etapas), "hechas": [], "inicio": ahora(), "latido": time.time(), "datos": datos, "items": [],
+                 "leidos": 0, "leyendo": "", "error": ""})
+        t.guardar()
+        limpiar_viejos()
+        return t
+
+    @classmethod
+    def cargar(cls, i):
+        if not id_valido(i):
+            raise ValueError("No encontré ese trabajo.")
+        x = comun.leer_json(os.path.join(carpeta(), i + ".json"), None)
+        if not isinstance(x, dict) or x.get("formato") != 1:
+            raise ValueError("No encontré ese trabajo.")
+        return cls(x)
+
+    @property
+    def id(self):
+        return self.x["id"]
+
+    def guardar(self, emitir_estado=True):
+        with self._lock:
+            comun.carpeta_privada(carpeta())
+            comun.escribir_json(os.path.join(carpeta(), self.id + ".json"), self.x)
+            if emitir_estado:
+                emitir({"t": "estado", "trabajo": self.vista()})
+
+    # ── avanzar ──
+    def etapa(self, nombre):
+        with self._lock:
+            if self.x["etapa"] not in self.x["hechas"] and self.x["etapa"] != nombre:
+                self.x["hechas"].append(self.x["etapa"])
+            self.x["etapa"] = nombre
+            self.guardar()
+
+    def terminar(self, estado, error=""):
+        """`error`: un texto o un error de la IA ({codigo, plantilla, valores}); este último queda además en `error_ia` para que la
+        interfaz lo traduzca."""
+        texto, error_ia = _error(error)
+        with self._lock:
+            if estado == "listo" and self.x["etapa"] not in self.x["hechas"]:
+                self.x["hechas"].append(self.x["etapa"])
+            # Lo que quedó a medias vuelve a la cola: «Seguir» lo retoma.
+            for i in self.x["items"]:
+                if i.get("estado") == "escribiendo":
+                    i["estado"] = "cola"
+            self.x.update({"estado": estado, "fin": ahora(), "error": texto, "leyendo": ""})
+            self.x.pop("error_ia", None)
+            if error_ia:
+                self.x["error_ia"] = error_ia
+            self.guardar()
+        self._latiendo = False
+        try:
+            os.unlink(self.ruta_detener())
+        except OSError:
+            pass
+
+    def esperar(self, preguntas, **publico):
+        """Le pregunta algo a la persona: queda «esperando» con las preguntas (ya validadas) y el proceso termina. La respuesta llega
+        con la orden `responder` y el trabajo sigue donde quedó."""
+        with self._lock:
+            self.x.setdefault("publico", {}).update({"preguntas": preguntas, **publico})
+            self.x["publico"].pop("visto", None)
+            self.x.update({"estado": "esperando", "fin": ahora(), "error": "", "leyendo": ""})
+            self.x.pop("error_ia", None)
+            self.guardar()
+        self._latiendo = False
+
+    def seguir(self):
+        """Vuelve a correr (después de «responder», «Seguir» o «Reintentar»)."""
+        with self._lock:
+            self.x.update({"estado": "corriendo", "error": "", "latido": time.time()})
+            self.x.pop("error_ia", None)
+            self.x.pop("fin", None)
+            self.x.setdefault("publico", {}).pop("preguntas", None)
+            self.guardar()
+
+    def item(self, ruta):
+        return next((i for i in self.x["items"] if i["ruta"] == ruta), None)
+
+    def poner_item(self, ruta, **campos):
+        if "error" in campos:
+            campos["error"], error_ia = _error(campos["error"])
+            campos["error_ia"] = error_ia
+        with self._lock:
+            i = self.item(ruta)
+            if i is None:
+                i = {"ruta": ruta}
+                self.x["items"].append(i)
+            if "error" not in campos and campos.get("estado") in ("escribiendo", "listo", "cola"):
+                i.pop("error", None)
+                i.pop("error_ia", None)
+            i.update(campos)
+            if not i.get("error_ia"):
+                i.pop("error_ia", None)
+            self.guardar()
+
+    def leyo(self, ruta):
+        """La IA está leyendo `ruta` (relativa al código): cuenta, recuerda y avisa, sin guardar todo el estado cada vez."""
+        with self._lock:
+            vistos = self.x.setdefault("vistos", [])
+            nuevo = ruta not in vistos
+            if nuevo and len(vistos) < 5000:
+                vistos.append(ruta)
+            self.x["leidos"] = len(vistos)
+            self.x["leyendo"] = ruta
+        emitir({"t": "lee", "id": self.id, "ruta": ruta, "n": self.x["leidos"]})
+
+    def busco(self, patron):
+        emitir({"t": "busca", "id": self.id, "patron": patron[:200]})
+
+    # ── detener y latido ──
+    def ruta_detener(self):
+        return os.path.join(carpeta(), self.id + ".detener")
+
+    def detenido(self):
+        return os.path.exists(self.ruta_detener())
+
+    def latir(self):
+        """Un hilo que actualiza el latido (y guarda lo leído) mientras el trabajo corre."""
+        self._latiendo = True
+
+        def latido():
+            while self._latiendo:
+                with self._lock:
+                    self.x["latido"] = time.time()
+                    self.guardar(emitir_estado=False)
+                time.sleep(LATIDO)
+        threading.Thread(target=latido, daemon=True).start()
+
+    # ── lo que ve la interfaz (sin rutas absolutas) ──
+    def vista(self):
+        x = self.x
+        return {"id": x["id"], "tipo": x["tipo"], "carpeta": x["proyecto"], "estado": estado_real(x), "etapa": x["etapa"], "etapas": x["etapas"], "hechas": x["hechas"],
+                "inicio": x["inicio"], "fin": x.get("fin"), "items": [dict(i) for i in x["items"]], "leidos": x.get("leidos", 0),
+                "leyendo": x.get("leyendo", ""), "error": x.get("error", ""), **({"error_ia": x["error_ia"]} if x.get("error_ia") else {}), **{k: v for k, v in (x.get("publico") or {}).items()}}
+
+
+def _error(error):
+    """(texto en español, error_ia o None): un error de la IA llega como {codigo, plantilla, valores} (pieza «ia» / ia_vivo)."""
+    if isinstance(error, dict):
+        ia_ = {"codigo": str(error.get("codigo", "")), "plantilla": str(error.get("plantilla", "")),
+               "valores": {str(k): str(v)[:300] for k, v in (error.get("valores") or {}).items()}}
+        return ia_vivo.frase(error)[:600], ia_
+    return str(error or "")[:600], None
+
+
+def estado_real(x):
+    """«corriendo» con un latido viejo es un trabajo interrumpido (se cerró la app o se cortó el proceso)."""
+    if x.get("estado") == "corriendo" and time.time() - float(x.get("latido") or 0) > MUERTO:
+        return "interrumpido"
+    return x.get("estado")
+
+
+def _nombres():
+    try:
+        return sorted((n for n in os.listdir(carpeta()) if n.endswith(".json") and id_valido(n[:-5])), reverse=True)
+    except OSError:
+        return []
+
+
+def del_proyecto(proyecto, tipo=None):
+    """El último trabajo de esta carpeta (el más nuevo primero), o None. `tipo`: uno o varios tipos de trabajo."""
+    tipos = (tipo,) if isinstance(tipo, str) else tipo
+    for n in _nombres()[:MAX_GUARDADOS * 3]:
+        x = comun.leer_json(os.path.join(carpeta(), n), None)
+        if isinstance(x, dict) and x.get("proyecto") == proyecto and (tipos is None or x.get("tipo") in tipos):
+            return Trabajo(x)
+    return None
+
+
+def esperando(proyecto):
+    """Los trabajos de esta carpeta que esperan respuestas de la persona (el más nuevo primero)."""
+    r = []
+    for n in _nombres()[:MAX_GUARDADOS * 3]:
+        x = comun.leer_json(os.path.join(carpeta(), n), None)
+        if isinstance(x, dict) and x.get("proyecto") == proyecto and x.get("estado") == "esperando":
+            r.append(Trabajo(x))
+    return r
+
+
+def limpiar_viejos():
+    nombres = _nombres()
+    # Los que esperan respuestas no se borran: son de la persona hasta que responda o los descarte.
+    viejos = [n for n in nombres[MAX_GUARDADOS:] if (comun.leer_json(os.path.join(carpeta(), n), {}) or {}).get("estado") != "esperando"]
+    for n in viejos:
+        for ext in (".json", ".antes.json", ".detener"):
+            try:
+                os.unlink(os.path.join(carpeta(), n[:-5] + ext))
+            except OSError:
+                pass
+
+
+def limpiar_preguntas(lista, prefijo, maximo=5):
+    """Las preguntas para la persona, validadas: [{id, pregunta, porque, opciones}] (de la IA o fijas). Lo que no sirve se descarta."""
+    r = []
+    for p in lista if isinstance(lista, list) else []:
+        if not isinstance(p, dict) or not isinstance(p.get("pregunta"), str) or not p["pregunta"].strip():
+            continue
+        opciones = [re.sub(r"\s+", " ", o).strip()[:100] for o in (p.get("opciones") or []) if isinstance(o, str) and o.strip()][:5]
+        r.append({"id": f"{prefijo}-{len(r) + 1}", "pregunta": re.sub(r"\s+", " ", p["pregunta"]).strip()[:300],
+                  "porque": re.sub(r"\s+", " ", str(p.get("porque") or "")).strip()[:200], "opciones": list(dict.fromkeys(opciones))})
+        if len(r) >= maximo:
+            break
+    return r
+
+
+def limpiar_respuestas(respuestas, preguntas):
+    """Lo que respondió la persona, contra las preguntas que se le hicieron: {id: {respuesta, nose, saltada}}. Lo desconocido se ignora."""
+    ids = {p["id"] for p in preguntas}
+    r = {}
+    for x in respuestas if isinstance(respuestas, list) else []:
+        if not isinstance(x, dict) or x.get("id") not in ids:
+            continue
+        texto = re.sub(r"\s+", " ", str(x.get("respuesta") or "")).strip()[:1000]
+        r[x["id"]] = {"respuesta": texto, "nose": bool(x.get("nose")) and not texto, "saltada": not texto and not x.get("nose")}
+    for i in ids - set(r):
+        r[i] = {"respuesta": "", "nose": False, "saltada": True}
+    return r

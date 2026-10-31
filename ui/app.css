@@ -290,6 +290,9 @@ button { cursor: pointer; }
 .cambio-ia .meta { color: var(--gris); font-size: 12.5px; }
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--texto); color: var(--fondo); padding: 9px 16px; border-radius: 10px; opacity: 0; pointer-events: none; transition: .18s; z-index: 80; max-width: calc(100% - 32px); }
 #toast.visible { opacity: 1; transform: translate(-50%, 0); }
+/* Con un diálogo abierto (que en el celular sale desde abajo), una pregunta o una barra de guardar abajo, el aviso va arriba para no tapar sus botones. */
+body:has(.capa) #toast, body:has(.p-pie) #toast, body:has(.pregunta) #toast { top: calc(16px + env(safe-area-inset-top, 0px)); bottom: auto; transform: translate(-50%, -20px); }
+body:has(.capa) #toast.visible, body:has(.p-pie) #toast.visible, body:has(.pregunta) #toast.visible { transform: translate(-50%, 0); }
 
 /* ───── Celular (y ventanas angostas) ───── */
 @media (max-width: 760px) {
@@ -366,6 +369,17 @@ button { cursor: pointer; }
 .p-prop-cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .p-prop-cab .p-txt { min-width: 160px; }
 .p-prop-acc { display: flex; gap: 6px; flex-wrap: wrap; }
+/* «Agregar información»: el plan agrupado (Nuevo / Se completa / Se modifica), con el porqué y la cita de cada cambio. */
+.p-grupo { margin: 18px 0 6px; }
+.p-grupo > h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--gris); margin: 0 0 2px; display: flex; align-items: center; gap: 8px; }
+.p-grupo > .p-ayuda { margin: 0 0 8px; }
+.p-n { font-size: 12px; font-weight: 600; background: var(--suave); color: var(--texto); border-radius: 999px; padding: 0 7px; letter-spacing: 0; }
+.p-porque { margin: 8px 0 0; font-size: 14px; }
+.p-cita { margin: 6px 0 0; padding: 4px 10px; border-left: 3px solid var(--borde); color: var(--gris); font-size: 13px; overflow-wrap: anywhere; }
+.p-cita small { font-style: italic; }
+.p-prop.p-modifica { border-color: var(--acento); }
+.p-prop.p-modifica.quitada { border-color: var(--borde); opacity: .8; }
+.p-prop.p-modifica.quitada .p-txt b { text-decoration: none; }
 .p-previa { border-top: 1px solid var(--borde); margin-top: 10px; padding: 12px 4px 4px; max-height: 60vh; overflow: auto; }
 .p-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .p-chip { border: 1px solid var(--borde); border-radius: 999px; padding: 3px 10px; font-size: 13px; }
@@ -443,3 +457,164 @@ button { cursor: pointer; }
 .p-estado.ok { background: var(--acento-suave); color: var(--acento); }
 .p-estado.aviso { color: var(--texto); }
 .p-estado.mal { background: var(--rojo-suave); color: var(--rojo); }
+
+/* ── Trabajos largos (documentar por etapas) ── */
+.giro.chico { width: 12px; height: 12px; border-width: 2px; display: inline-block; vertical-align: -2px; }
+.p-trabajo { border-left: 3px solid var(--acento); }
+.p-trabajo.listo { border-left-color: var(--verde); }
+.p-trabajo.error, .p-trabajo.con-fallas { border-left-color: var(--rojo); }
+.p-trabajo.detenido, .p-trabajo.interrumpido { border-left-color: var(--gris); }
+.t-cab { display: flex; align-items: baseline; gap: 12px; }
+.p-tarjeta .t-titulo { flex: 1; margin: 0; font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--texto); min-width: 0; }
+.t-tiempo { font: 13px var(--mono); color: var(--gris); font-variant-numeric: tabular-nums; }
+.t-etapas { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 0; margin: 12px 0 6px; color: var(--gris); font-size: 13px; }
+.t-etapas li { display: flex; align-items: center; gap: 6px; }
+.t-etapas li.hecha { color: var(--texto); }
+.t-etapas li.hecha .ic { color: var(--verde); }
+.t-etapas li.actual { color: var(--texto); font-weight: 600; }
+.t-etapas .punto { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--borde); margin: 0 2px; }
+.t-lee { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 6px 0; font-size: 13px; color: var(--gris); min-width: 0; }
+.t-lee-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-lee code { font: 12px var(--mono); color: var(--texto); }
+.t-docs { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 2px; }
+.t-doc { display: flex; gap: 10px; align-items: center; padding: 6px 4px; border-top: 1px solid var(--borde); min-width: 0; }
+.t-doc:first-child { border-top: 0; }
+.t-doc .p-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.t-doc .p-txt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.t-doc .p-txt small { color: var(--gris); font-size: 12px; overflow-wrap: anywhere; }
+.t-doc .t-ic { flex: none; width: 20px; display: grid; place-items: center; color: var(--gris); }
+.t-doc.listo .t-ic { color: var(--verde); }
+.t-doc.fallo .t-ic { color: var(--rojo); }
+.t-doc.cola { opacity: .75; }
+.t-doc.quitado b { text-decoration: line-through; color: var(--gris); }
+.t-acc { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.t-sigue { margin: 0; align-self: center; }
+.p-nuevo { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--acento); background: var(--acento-suave); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+/* El lateral: «Documentación» con un punto que late mientras la IA escribe. */
+.trabajando-punto { width: 7px; height: 7px; border-radius: 50%; background: var(--acento); margin-left: auto; flex: none; animation: latido 1.4s ease-in-out infinite; }
+.trabajando-punto + small { margin-left: 6px; }
+@keyframes latido { 50% { opacity: .25; } }
+
+/* ── «Código»: todos los archivos, con lo que leyó la IA ── */
+.c-resumen { margin: 2px 0 4px; padding-left: calc(8px + var(--n, 0) * 14px); font-size: 11.5px; color: var(--gris); }
+.c-archivo .ic { opacity: .8; }
+.c-archivo span { color: var(--gris); }
+.c-archivo[data-abrir] span { color: var(--texto); }
+.c-marca { margin-left: auto; flex: none; width: 6px; height: 6px; border-radius: 50%; }
+.c-archivo.leido .c-marca { background: var(--verde); opacity: .7; }
+.c-archivo.cambio .c-marca { background: transparent; border: 1.5px solid #c98a12; }
+.c-archivo.leyendo { background: var(--acento-suave); }
+.c-archivo.leyendo .c-marca { background: var(--acento); opacity: 1; animation: latido 1s ease-in-out infinite; }
+.c-carpeta.leyendo > .ic:nth-child(2) { color: var(--acento); }
+@media (prefers-reduced-motion: reduce) { .trabajando-punto, .c-archivo.leyendo .c-marca { animation: none; } }
+@media (max-width: 760px) {
+  .t-doc { flex-wrap: wrap; }
+  .t-acc { width: 100%; justify-content: flex-start; padding-left: 30px; }
+  .t-acc .boton { min-height: 40px; }
+}
+.p-chip { background: var(--panel); color: var(--texto); display: inline-flex; gap: 4px; align-items: center; }
+.t-abrir { border: 0; background: transparent; padding: 0; text-align: left; font-weight: 600; color: var(--texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.t-abrir:hover { color: var(--acento); text-decoration: underline; }
+
+/* ── Lateral: lo global arriba («Proyectos» + Agregar), lo del proyecto adentro de su carpeta («Nuevo en …») ── */
+.lat-cab { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 12px 0 4px; padding-right: 2px; }
+.lat-cab h3 { margin: 0 8px; }
+.boton.chico { min-height: 28px; padding: 3px 8px; font-size: 12.5px; gap: 4px; }
+.lat-cab .boton.chico { color: var(--gris); }
+.lat-cab .boton.chico:hover { color: var(--texto); }
+.lat-agregar { margin: 10px 8px; width: calc(100% - 16px); }
+.archivo.nuevo-en { color: var(--acento); font-weight: 600; }
+.archivo.nuevo-en .ic { color: var(--acento); }
+.espera-punto { margin-left: auto; flex: none; width: 17px; height: 17px; border-radius: 50%; background: var(--acento); color: var(--sobre-acento); font: 700 11px/17px system-ui, sans-serif; text-align: center; }
+/* Estado de una historia de usuario: un punto de color (gris por entender, azul lista, ámbar en desarrollo, verde terminada). */
+.hu-punto { flex: none; width: 8px; height: 8px; border-radius: 50%; display: inline-block; border: 1.5px solid var(--gris); background: transparent; }
+.hu-punto[data-estado="lista"] { background: var(--acento); border-color: var(--acento); }
+.hu-punto[data-estado="en-desarrollo"] { background: #c98a12; border-color: #c98a12; }
+.hu-punto[data-estado="terminada"] { background: var(--verde); border-color: var(--verde); }
+.archivo .hu-punto { margin-left: auto; }
+.archivo .hu-punto.espera { box-shadow: 0 0 0 3px var(--acento-suave); }
+.hu-estado { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gris); white-space: nowrap; flex: none; }
+.p-doc.fijo { cursor: default; }
+.p-doc.fijo:hover { background: transparent; }
+.p-seccion h3 { display: flex; align-items: center; gap: 8px; }
+.p-seccion h3 small { margin-left: auto; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.p-espera { border-left-color: var(--acento); }
+.p-espera > span:first-child { display: flex; align-items: center; gap: 8px; }
+/* La barra de una historia de usuario, arriba de su documento. */
+.con-barra-doc { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; min-width: 0; }
+.hu-barra { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--borde); background: var(--panel); min-width: 0; }
+.hu-barra .espacio { flex: 1; }
+.hu-id { font: 600 12.5px var(--mono); color: var(--gris); }
+.hu-estados button { display: inline-flex; align-items: center; gap: 6px; }
+.hu-commits { color: var(--gris); font-size: 12px; }
+/* «Agregar»: soltar o elegir archivos, o pegar texto. */
+.dialogo.agregar { width: min(640px, 100%); }
+.soltar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border: 1.5px dashed var(--borde); border-radius: 12px; padding: 14px 16px; margin: 12px 0; background: var(--fondo); }
+.soltar.encima { border-color: var(--acento); background: var(--acento-suave); }
+.soltar-ic { color: var(--acento); display: grid; place-items: center; }
+.soltar-ic .ic { width: 22px; height: 22px; }
+.soltar-txt { flex: 1; min-width: 180px; display: grid; }
+.soltar-txt small { color: var(--gris); }
+.p-archivos { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
+.p-archivos li { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 10px; border: 1px solid var(--borde); border-radius: 8px; min-width: 0; }
+.p-archivos li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-archivos li small { color: var(--gris); white-space: nowrap; }
+.p-pegar { width: 100%; min-height: 120px; resize: vertical; border: 1px solid var(--borde); border-radius: 10px; background: var(--fondo); padding: 10px 12px; font: 13px/1.5 var(--mono); }
+.p-input { width: 100%; border: 1px solid var(--borde); border-radius: 8px; background: var(--fondo); padding: 9px 11px; }
+.dialogo label { display: block; font-weight: 600; margin: 12px 0 6px; }
+.dialogo .marcar { margin: 12px 0 0; }
+.tipos-contenido { flex-wrap: wrap; }
+.razones { margin-top: 6px; }
+.tipos-proyecto { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 8px 0 12px; }
+.tipo-proyecto { display: flex; gap: 12px; align-items: flex-start; text-align: left; padding: 14px; border: 1px solid var(--borde); border-radius: 12px; background: var(--panel); color: var(--texto); }
+.tipo-proyecto:hover { border-color: var(--acento); }
+.tipo-proyecto[aria-checked="true"] { border-color: var(--acento); background: var(--acento-suave); box-shadow: inset 0 0 0 1px var(--acento); }
+.tipo-proyecto .ti-txt { display: grid; gap: 2px; min-width: 0; }
+.tipo-proyecto small { color: var(--gris); }
+.nuevo-ia { margin-bottom: 4px; }
+.nuevo-sub { margin: 16px 0 8px; font-size: 12px; letter-spacing: .6px; text-transform: uppercase; color: var(--gris); }
+.nuevo-fuente { margin-bottom: 10px; }
+/* Preguntas: una a la vez, grande y simple. */
+.pregunta { max-width: 640px !important; background: var(--panel); border: 1px solid var(--borde); border-radius: 16px; padding: 22px 24px; margin-top: 8px; }
+.preg-de { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0; color: var(--gris); font-size: 13px; }
+.preg-de span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.preg-avance { display: flex; gap: 4px; margin: 10px 0 18px; }
+.preg-avance i { flex: 1; height: 3px; border-radius: 3px; background: var(--borde); }
+.preg-avance i.hecha, .preg-avance i.actual { background: var(--acento); }
+.preg-avance i.actual { opacity: .55; }
+.preg-txt { font-size: 22px; line-height: 1.3; margin: 0 0 6px; overflow-wrap: anywhere; }
+.preg-porque { color: var(--gris); margin: 0 0 16px; }
+.preg-opciones { display: grid; gap: 8px; margin-bottom: 8px; }
+.preg-opcion { display: flex; align-items: center; gap: 12px; text-align: left; min-height: 46px; padding: 10px 14px; border: 1px solid var(--borde); border-radius: 10px; background: var(--fondo); color: var(--texto); }
+.preg-opcion:hover { border-color: var(--acento); }
+.preg-opcion[aria-pressed="true"] { border-color: var(--acento); background: var(--acento-suave); font-weight: 600; }
+.preg-opcion kbd { flex: none; width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--borde); background: var(--panel); display: grid; place-items: center; font: 12px var(--mono); color: var(--gris); }
+.pregunta label { display: block; font-weight: 600; margin: 14px 0 6px; }
+.pregunta textarea { width: 100%; border: 1px solid var(--borde); border-radius: 10px; background: var(--fondo); padding: 10px 12px; resize: vertical; }
+.preg-pie { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
+.preg-pie .espacio { flex: 1; }
+/* Avisos con acción («Deshacer») y menús. */
+#toast.con-accion { pointer-events: auto; display: flex; align-items: center; gap: 12px; }
+.toast-accion { border: 0; background: transparent; color: inherit; font-weight: 700; text-decoration: underline; padding: 2px 4px; cursor: pointer; }
+.boton.peligro-lleno { background: var(--rojo); border-color: var(--rojo); color: #fff; }
+:root[data-tema="oscuro"] .boton.peligro-lleno { color: #1b0c0c; }
+@media (prefers-color-scheme: dark) { :root:not([data-tema="claro"]) .boton.peligro-lleno { color: #1b0c0c; } }
+.menu .peligro { color: var(--rojo); }
+.menu-nota { margin: 4px 10px 6px; font-size: 12px; color: var(--gris); max-width: 220px; }
+@media (max-width: 760px) {
+  .hu-estados button:not([aria-pressed="true"]) .hu-etq { display: none; }
+  .hu-barra .boton { min-height: 40px; }
+  .pregunta { padding: 18px 16px; border-radius: 12px; }
+  .preg-txt { font-size: 19px; }
+  .preg-pie .boton { min-height: 44px; }
+  .tipos-proyecto { grid-template-columns: minmax(0, 1fr); }
+  .soltar .boton { width: 100%; }
+}
+.nuevo-ia { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 6px 0 4px; }
+.tarjeta-inicio.compacta { min-height: 0; padding: 12px; }
+.tarjeta-inicio.compacta small { font-size: 12.5px; }
+.agregar-ayuda { margin-top: 12px; }
+.p-falta li { align-items: center; }
+.p-falta li > span { flex: 1; min-width: 0; }
+.preg-pie .boton.principal { margin-left: auto; }
+@media (max-width: 760px) { .preg-pie .espacio { display: none; } .preg-pie .boton.principal { flex: 1 0 100%; order: 9; } }

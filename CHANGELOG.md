@@ -5,6 +5,60 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Agregar información:** pega notas, un correo o lo que salió de una reunión y tu IA lo ordena en la documentación: crea lo
+  nuevo, completa lo que ya existe y corrige lo que cambió. Antes de guardar ves cada cambio agrupado (Nuevo, Se completa, Se
+  modifica), con el porqué y la frase de donde salió; lo que cambia algo que ya estaba solo se guarda si lo confirmas. Si tu IA no
+  sabe dónde va algo, te pregunta, y lo que no calza en ningún lado queda en Notas en vez de perderse. «Agregar archivo o texto»
+  ahora se llama «Agregar un documento»: es para guardar un texto entero, con su resumen. · *Add information: paste notes, an email
+  or what came out of a meeting and your AI sorts it into the documentation: it creates what's new, completes what exists and fixes
+  what changed. Before saving you see each change grouped (New, Gets completed, Gets changed), with the reason and the sentence it
+  came from; anything that changes what was already there is only saved if you confirm it. If your AI doesn't know where something
+  goes, it asks, and what fits nowhere goes to Notes instead of getting lost. «Add a file or text» is now «Add a document»: it's
+  for keeping a whole text, with its summary.*
+- **Agrega lo que tengas:** «Agregar» recibe una historia de usuario, un acta, una especificación o un libro (pegado, un archivo
+  o soltándolo). Esquema adivina qué es, te dice por qué y puedes cambiarlo antes de que entre. El original queda guardado tal cual.
+  · *Add what you have: «Add» takes a user story, minutes, a spec or a book (pasted, a file or dropped). Esquema guesses what it is,
+  tells you why and lets you change it before it goes in. The original is kept as is.*
+- **Historias de usuario que se entienden:** tu IA la lee con tu documentación, te pregunta lo que falta (una pregunta a la vez; puedes
+  responder después, aunque cierres Esquema) y la deja documentada con criterios, partes que toca y un diagrama. Tu IA no programa.
+  Cada historia pasa por Por entender → Lista → En desarrollo → Terminada, y «Terminé el desarrollo» cuenta cómo quedó según los
+  commits y propone poner al día los demás documentos. · *User stories you understand: your AI reads it with your docs, asks what's
+  missing (one question at a time; answer later, even after closing Esquema) and documents it with criteria, affected parts and a
+  diagram. Your AI doesn't code. Each story goes To understand → Ready → In development → Done, and «I finished the development»
+  tells how it turned out from the commits and proposes updates to the other documents.*
+- **Proyectos de tipo Libro:** «Agregar proyecto» pregunta qué es: Software o Libro. Un libro se parte en capítulos, con un resumen
+  por capítulo, el mapa de ideas, personajes y conceptos, la línea de tiempo, material de estudio (esquema, preguntas y tarjetas) y
+  «Revisar incongruencias», con la cita y dónde está. · *Book projects: «Add project» asks what it is: Software or Book. A book is
+  split into chapters, with a summary per chapter, the map of ideas, characters and concepts, the timeline, study material (outline,
+  questions and flashcards) and «Check inconsistencies», with the quote and where it is.*
+- **Borrar sin miedo:** borra un documento, un diagrama, una historia o un capítulo desde la lista (clic derecho o Supr) o desde el
+  documento abierto. Los enlaces a él quedan como texto, se guarda una versión y tienes «Deshacer». Lo de tu carpeta de código nunca
+  se borra así: va a la papelera del sistema. · *Delete without fear: from the list (right click or Delete) or from the open
+  document. Links to it become plain text, a version is saved and you get «Undo». Files in your code folder are never deleted this
+  way: they go to the system Trash.*
+- **Publícala en la wiki de GitHub:** Esquema te muestra qué páginas son nuevas, cuáles cambian y cuáles quedan igual, y las sube con
+  tu git. Nunca toca las páginas que escribiste a mano. · *Publish it to the GitHub wiki: Esquema shows which pages are new, which
+  change and which stay the same, and pushes them with your git. It never touches pages you wrote by hand.*
+- **Más claro:** «Agregar proyecto» arriba de la lista de proyectos y «Nuevo en <proyecto>» dentro de cada uno, para que se entienda
+  dónde va lo nuevo. · *Clearer: «Add project» above the project list and «New in <project>» inside each one, so it's clear where new
+  things go.*
+- **Documentar ya no se pierde ni te deja esperando a ciegas:** tu IA trabaja por etapas (revisa los archivos, lee el código y arma
+  un plan, escribe cada documento y guarda una versión) y ves en vivo qué archivo está leyendo, cuántos lleva, cuánto tiempo va y
+  cómo va cada documento. Cada documento queda guardado apenas está listo, aunque cierres la ventana; puedes seguir usando Esquema
+  mientras tanto, y si algo falla se reintenta solo ese documento. Escape ya no cancela nada: para eso está «Detener», y después
+  «Seguir donde quedó». · *Documenting no longer gets lost or leaves you waiting blind: your AI works in stages and you see live which
+  file it's reading, how many so far, the time and how each document is going. Each document is saved as soon as it's ready, even
+  if you close the window; you can keep working meanwhile, and a failed document is retried on its own. Escape no longer cancels
+  anything: use «Stop», then «Pick up where it left off».*
+- **«Código» muestra todo tu código:** todos los archivos del proyecto, ordenados y con su ícono (código, configuración, imágenes,
+  datos…), con una marca en lo que tu IA leyó, lo que está leyendo ahora y lo que cambió desde que lo leyó. Los archivos de código no
+  se abren: tocarlos muestra cuándo los leyó tu IA y en qué documentos y elementos aparecen. · *«Code» shows all your code: every
+  file, sorted and with its icon, marking what your AI read, what it's reading now and what changed since. Code files don't open:
+  tapping one shows when your AI read it and where it appears.*
+- **Ordenada según tu proyecto:** Esquema detecta si es una app, una biblioteca, un sitio, un proyecto con varias partes o
+  documentos y escritos, y la documentación y «Lo que falta» se ajustan a eso (visión, arquitectura, una página por parte, flujos…).
+  · *Organized for your project: Esquema detects whether it's an app, a library, a site, a project with several parts or writing,
+  and the documentation and «What's missing» adapt to it.*
 - **Primer uso con teclado:** en la pantalla del idioma ahora eliges con 1 o 2 (o con las flechas), y los dos idiomas se ven lado a
   lado. Las actualizaciones usan la pieza compartida de la familia: siguen bajando solo de nuestros Releases, con su huella, y sus
   avisos se ven en tu idioma. · *First run with the keyboard: on the language screen you can now pick with 1 or 2 (or the arrow

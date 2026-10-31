@@ -22,7 +22,9 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
    archivos (respetando `.gitignore`, sin secretos). Corre sin herramientas y **sin la memoria de la persona** (Claude Code con
    `--safe-mode` si lo conoce, `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` y `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`; todos los prompts dicen
    `asistente.SOLO_ESTO`): sin eso rellenaba con otros proyectos suyos. Su respuesta se valida con el motor y **nunca se aplica
-   sola de forma definitiva**: queda como un cambio con «Quitar este cambio». Para documentar un proyecto ve el README, las guías
+   sola de forma definitiva**: queda como un cambio con «Quitar este cambio» (un documento que escribe un trabajo de «Documentar»
+   queda en el disco al tiro, pero con «Quitar este cambio», que lo vuelve a como estaba en la versión anterior o lo borra si era
+   nuevo, y guarda otra versión; ver «Trabajos»). Para documentar un proyecto ve el README, las guías
    (AGENTS/CONTRIBUTING…), la lista de archivos, los manifiestos y los mensajes de git (sin autores), y solo los archivos de código
    que la persona aprueba; antes de cada envío se muestra exactamente lo que va («Ver lo que se envía»), y lo que parece un secreto
    se oculta (`proyecto.ocultar_secretos`). **Revisión a fondo** (`a_fondo`, casilla del diálogo de envío, marcada de partida en
@@ -31,7 +33,10 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
    `--disallowedTools` de todo lo que escribe, ejecuta o sale a internet, más `Read(**/<patrón>)` de `proyecto.NO_LEER` (`.env*`,
    llaves, credenciales, `.git/`); Codex `-s read-only`; Gemini solo con Antigravity (`ia.puede_leer`). La IA siempre corre en una carpeta temporal
    (nunca dentro del código: su CLI cargaría la configuración y los hooks de ese repo) y el pedido le dice dónde leer. El diálogo dice
-   qué carpeta y qué no abre. Nunca escribe en la carpeta del código.
+   qué carpeta y qué no abre. Nunca escribe en la carpeta del código. «Documentar» (y «Completar lo que falta») son un **trabajo por
+   etapas** (`bin/documentar.py`): explorar usa esta lectura a fondo y pide **solo un plan**; cada documento después va en su propia
+   llamada **sin herramientas**, con sus archivos clave adentro (solo si la revisión a fondo está marcada). Los trabajos largos usan
+   `bin/ia_vivo.py` (propio de Esquema, sobre la pieza «ia»: mismas protecciones, más el avance en vivo y «Detener»).
 4. **Plantillas = solo datos.** Todo lo que viene de afuera (plantillas, traducciones, respuestas de la IA, el texto de un diagrama)
    se valida antes de usarse y se escapa antes de mostrarse.
 5. **Rápido y liviano.** El motor y la interfaz no tienen dependencias (ni npm ni CDN); Python solo con biblioteca estándar.
@@ -43,12 +48,13 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
 | Ruta | Qué es |
 |---|---|
 | `ui/motor/` | El motor, JS sin dependencias; cada archivo se suma a `globalThis.EsquemaMotor` (igual en el navegador y en Node). `texto.js` (medir con caché, partir etiquetas, escapar, errores con marcadores, línea `%% esquema:`), `flujo.js` (leer/escribir/editar flowchart conservando el texto), `secuencia.js` (leer/acomodar/dibujar/editar sequenceDiagram), `capas.js` (acomodo por capas), `formas.js` (formas e íconos propios), `dibujo.js` (elige el tipo, acomoda con caché, SVG por partes con clave, SVG independiente para exportar), `markdown.js` (bloques de un `.md` y Markdown → HTML seguro). |
-| `ui/` | Interfaz única (`index.html` con CSP, `app.js`, `i18n.js` (pieza «i18n»: `T`, `Tp`, `tr`, `traducirDOM`, paquetes de idioma validados), `proyectos.js` (proyectos: paneles, diálogos y su simulación), `app.css`, `favicon.svg`), `demo.json` (ficticio, sale de `herramientas/generar_demo.py`) e `idiomas/en.json`. `motor/proyecto.js`: lógica pura de proyectos (validar `esquema.json`, refs, usos, cambiar en todas partes, glosario, comparar, documentos afectados). |
-| `bin/` | Python **solo biblioteca estándar**, lo que corren las apps: `nucleo.py` (pieza «nucleo»: `app.json`, carpeta de datos, config validada, escritura atómica, contrato de scripts), `comun.py` (lo propio de Esquema sobre `nucleo`: versión, `ruta_en` de documentos con sus mensajes, `.gitignore`, secretos, `recorrer`), `carpeta.py` (listar, leer, guardar, estructura para el README), `ia.py` (pieza «ia»: la IA del usuario, sin herramientas, siempre en una carpeta temporal, revisión a fondo de solo lectura; `probar`; errores como `{codigo, valores}` que `ia.frase()` pasa a texto), `asistente.py` (README y Dibújame: prompts y limpieza de la respuesta), `plantilla_formato.py` (formato de una plantilla y del índice del catálogo: `validar`, `indice`, `validar_indice`; el MISMO archivo que `herramientas/plantilla_formato.py` del catálogo), `plantillas.py` (incluidas + descargadas, validar, índice, `catalogo` e `instalar` para lo que baja la app), `estado.py` (lo que pide la interfaz al abrir; guardar config), `proyecto.py` (proyectos: abrir, leer el repo sin IA, lo que va a la IA, generar, `esquema.json`, versiones con git o copias, ver y restaurar; recientes en la carpeta de Esquema). El último argumento siempre es el JSON de salida; lo de la persona llega en un JSON de entrada. |
+| `ui/` | Interfaz única (`index.html` con CSP, `app.js`, `i18n.js` (pieza «i18n»: `T`, `Tp`, `tr`, `traducirDOM`, paquetes de idioma validados), `proyectos.js` (proyectos: paneles, diálogos, el trabajo «Documentar», el árbol «Código» y su simulación), `app.css`, `favicon.svg`), `demo.json` (ficticio, sale de `herramientas/generar_demo.py`) e `idiomas/en.json`. `motor/proyecto.js`: lógica pura de proyectos (validar `esquema.json`, refs, usos, cambiar en todas partes, glosario, comparar, documentos afectados). |
+| `bin/` | Python **solo biblioteca estándar**, lo que corren las apps: `nucleo.py` (pieza «nucleo»: `app.json`, carpeta de datos, config validada, escritura atómica, contrato de scripts), `comun.py` (lo propio de Esquema sobre `nucleo`: versión, `ruta_en` de documentos con sus mensajes, `.gitignore`, secretos, `recorrer`), `carpeta.py` (listar, leer, guardar, estructura para el README), `ia.py` (pieza «ia»: la IA del usuario, sin herramientas, siempre en una carpeta temporal, revisión a fondo de solo lectura; `probar`; errores como `{codigo, valores}` que `ia.frase()` pasa a texto), `asistente.py` (README y Dibújame: prompts y limpieza de la respuesta), `plantilla_formato.py` (formato de una plantilla y del índice del catálogo: `validar`, `indice`, `validar_indice`; el MISMO archivo que `herramientas/plantilla_formato.py` del catálogo), `plantillas.py` (incluidas + descargadas, validar, índice, `catalogo` e `instalar` para lo que baja la app), `estado.py` (lo que pide la interfaz al abrir; guardar config), `proyecto.py` (proyectos: abrir, leer el repo sin IA, lo que va a la IA, generar, `esquema.json`, versiones con git o copias, ver y restaurar; recientes en la carpeta de Esquema), `ia_vivo.py` (propio de Esquema, sobre la pieza «ia»: `preguntar_vivo` cuenta lo que la IA lee mientras trabaja —stream-json en Claude, `--json` en Codex— y se puede detener; mismas protecciones y errores `{codigo, plantilla, valores}`), `inventario.py` (todo el código sin IA: clase de cada archivo, lenguajes, partes con manifiesto, tipo de proyecto; lo que leyó la IA en `lecturas.json`), `trabajos.py` (el motor de trabajos largos: estado en disco, eventos de progreso, latido, detener, esperar respuestas), `documentar.py` (el trabajo «Documentar»: inventario → explorar → escribir → cerrar), `tipos.py` (tipos de proyecto: validar y leer `tipos/`), `contenido.py` (leer lo que se agrega: md, txt, pdf, docx, odt, epub, html; adivinar qué es; partir en capítulos), `agregar.py` (Agregar, crear un proyecto Libro, responder, seguir, borrar y recuperar), `historias.py` (historias de usuario y «Terminé el desarrollo»), `incorporar.py` («Agregar información»: un plan de cambios que la persona revisa), `libros.py` (libros, material de estudio, incongruencias y documentos), `wiki.py` (publicar en la wiki de GitHub). El último argumento siempre es el JSON de salida; lo de la persona llega en un JSON de entrada. |
+| `tipos/` | Tipos de proyecto incluidos (`software.json`, `libro.json`; ver «Tipos de proyecto»). |
 | `app.json`, `piezas.json` | **Pieza** (ver «Piezas» abajo): `app.json` describe la app para las piezas (id, nombre, datos, plataformas, claves de config); `piezas.json` lo escribe `pieza.py` (versión y huella de cada archivo copiado). |
 | `plantillas/` | Plantillas incluidas (`<categoria>/<id>.json`) y `README.md` con el formato. |
-| `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo, con un poco de «código» para «Documentar un proyecto»), `ia-simulada/` (lo que responde la IA en la vista previa del navegador), `catalogo-ejemplo/` (copia de las plantillas del catálogo de la comunidad: «Comunidad» en la demo y las pruebas) y scripts para construir encima del formato (`listar_diagramas.py`). |
-| `pruebas/` | `correr.sh` (todo), `motor.mjs` (motor en Node), `interfaz.mjs` (Playwright), `test_python.py`, `contrato.py` + `puente.json` (contrato del puente), `casos.json` (casos compartidos), `compat/` (ejemplos Mermaid que se leen y se escriben igual; `variantes/`: formas no canónicas), `ia_falsa.py`. |
+| `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo, con un poco de «código» para «Documentar un proyecto»), `ia-simulada/` (lo que responde la IA en la vista previa del navegador), `agregar/` (una historia de usuario, un libro y unas notas de reunión ficticios, en es y en, para probar «Agregar» y los proyectos Libro), `catalogo-ejemplo/` (copia de las plantillas del catálogo de la comunidad: «Comunidad» en la demo y las pruebas) y scripts para construir encima del formato (`listar_diagramas.py`). |
+| `pruebas/` | `correr.sh` (todo), `motor.mjs` (motor en Node), `interfaz.mjs` (Playwright; `window._simVelocidad` y `window._simFallar` aceleran el trabajo simulado o hacen fallar un documento), `test_python.py`, `contrato.py` + `puente.json` (contrato del puente), `casos.json` (casos compartidos), `compat/` (ejemplos Mermaid que se leen y se escriben igual; `variantes/`: formas no canónicas), `ia_falsa.py` (responde planes y documentos, con stream-json si se lo piden; `IA_FALSA_FALLA_DOC`, `IA_FALSA_LENTO`, `IA_FALSA_MODO=plan-basura`; también rondas de preguntas de una HU, su cierre, capítulos, estudio e incongruencias). |
 | `herramientas/` | `revisar_privacidad.sh`, `generar_demo.py`, `comparar_mermaid.mjs` (rendimiento y compatibilidad contra Mermaid real, instalado aparte), `empaquetar.sh` (arma `dist/Esquema.app` + zip + `.sha256`, en un Mac), `generar_icono.mjs` (íconos de las apps desde `ui/favicon.svg`), `pagina_capturas.mjs` (sirve la página como en GitHub Pages, arma `compartir.png` y `apple-touch-icon.png` y revisa la página en los dos idiomas). |
 | `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (arranque, menús), `Ventana.swift` (WKWebView + puente: un `case` por acción), `Carpeta.swift` (elegir la carpeta con marcador, rutas, `Vigilante` con FSEvents), `Servicios.swift` (rutas, config, idioma, `Procesador`, `EnOrden`), `Catalogo.swift` (plantillas de la comunidad); `Sources/PiezaActualizaciones/` (pieza «actualizaciones», su propio target); `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
 | `escritorio/` | App de Windows y Linux (Electron): `src/main.js` (ventana, puente `ACCIONES`, menú, protocolo `esquema://ui/`), `src/preload.js`, `src/rutas.js`, `src/servicios.js`, `src/vigilante.js` (`fs.watch`), `src/catalogo.js` (plantillas de la comunidad), `src/actualizaciones.js` (pieza «actualizaciones»); `herramientas/` (Python portátil, instalador NSIS), `pruebas/` (`arranque.mjs` con Xvfb, `vigilante.mjs`, `catalogo.mjs`), `iconos/`. Ver «Windows y Linux». |
@@ -86,7 +92,9 @@ Esquema usa piezas de Pieza, la base de la familia de apps: código probado que 
   persona pide). La config de la app va en la carpeta de Esquema del sistema (`comun.carpeta_app()`: `~/Library/Application
   Support/Esquema`, `%APPDATA%\Esquema` o `~/.config/esquema`, 0700; las apps se la pasan a los scripts en `ESQUEMA_DATOS`):
   `config.json` (`idioma_ui`, `ia`, `tema`, `bienvenida`, `carpeta`) y `proyectos.json` (`{"recientes": [{ruta, nombre, docs,
-  codigo?}]}`, hasta 30; lo escribe `bin/proyecto.py`). La documentación de los proyectos va en `~/Esquema/<proyecto>/` (abajo).
+  codigo?, sola?, tipo?, wiki?}]}`, hasta 30; lo escribe `bin/proyecto.py`), `trabajos/<id>.json` (+ `.antes.json`, `.detener`, `.reintentar`: ver
+  «Trabajos»), `entradas/<token>/` (lo que se va a agregar, hasta confirmar; se borra a los 2 días), `wikis/<id>/` (el clon de la wiki) y `proyectos/<id>/` (`lecturas.json`: qué archivos del código leyó la IA y cuándo, con huella; `perfil.json`: el tipo de
+  proyecto y sus partes; `capitulos.json` y `preferencias.json` de un libro; `borrados/` para «Deshacer» un borrado; `<id>` = sha1 de la carpeta abierta, 16 hex). La documentación de los proyectos va en `~/Esquema/<proyecto>/` (abajo).
 
 ### Proyectos: la documentación aparte, en `~/Esquema/<proyecto>/`
 - **Aparte del código:** cada proyecto tiene su documentación en `~/Esquema/<proyecto>/` (`proyecto.biblioteca()`), con **su propio
@@ -100,9 +108,14 @@ Esquema usa piezas de Pieza, la base de la familia de apps: código probado que 
   carpeta del código, sin carpetas ocultas; lo que existe solo con `reemplazar`). En la interfaz: «Agregar proyecto» (`p-agregar`),
   la lista de proyectos en el lateral, «Moverla aparte» (`p-mover`) y el diálogo `pasar` (casilla, destino `docs/<ruta>`, estado
   Nuevo/Igual/Ya existe, «Ver diferencia» con `difHTML`, «Reemplazar»). `docsDir()` es `""` en un proyecto vinculado.
-  Cambios del código desde la última versión: por fecha (`cambios_vinculado`), porque son dos repos. Los `.md`/`.mmd` del repo del
-  código se ven y se editan en el lateral (órdenes `codigo`, `codigo_leer`, `codigo_guardar`; en la interfaz, con el prefijo
-  `@codigo/`, que `abrir`/`guardar` mandan por `proyecto` en vez de `abrirArchivo`/`guardarArchivo`).
+  Cambios del código desde la última versión: por fecha (`cambios_vinculado`), porque son dos repos. **«Código» en el lateral
+  muestra TODOS los archivos del código** (orden `arbol`: `[[ruta, tamaño, clase]]` con clase `c` código, `f` configuración, `d`
+  documento, `i` imagen, `t` datos, `m` audio o video, `s` secreto, `o` otro; más `perfil` y `lecturas`), carpetas primero, con ícono
+  por clase, una marca para «leído», otra para «cambió desde que la IA lo leyó» y una animación para «leyendo ahora». Solo los
+  `.md`/`.mmd` se abren (con el prefijo `@codigo/` en uno vinculado, por `codigo_leer`/`codigo_guardar`); los demás muestran una
+  **ficha** (panel `ficha`: ruta, tipo, tamaño, si la IA lo leyó y cuándo, qué elementos lo usan por `elementos[].codigo` y qué
+  documentos lo nombran), **nunca su contenido**. El árbol se arma una vez por `arbol` (y cuando cambia `E.archivos`) y solo pinta
+  carpetas abiertas (`#c:<ruta>` en `E.abiertas`); un evento de progreso solo toca la fila que cambió (`marcarLectura`).
 - **Los de antes (`docs/esquema/` dentro del repo)** siguen funcionando igual y muestran «Moverla aparte».
 - **Carpeta (los de antes):** `docs/esquema/` por defecto (se elige al documentar: relativa, sin `..` ni carpetas ocultas, hasta 4 niveles). Adentro,
   Markdown y diagramas que GitHub muestra tal cual: `README.md` (visión general; GitHub lo muestra al abrir la carpeta),
@@ -110,12 +123,13 @@ Esquema usa piezas de Pieza, la base de la familia de apps: código probado que 
   - `esquema.json` (formato abierto, versionado con la documentación; claves en este orden para diffs chicos):
     ```json
     {"formato": 1, "nombre": "Minuta", "descripcion": "…",
-     "documentos": [{"ruta": "flujos/grabar.md", "titulo": "Grabar una reunión", "tipo": "vision|arquitectura|flujo|glosario|otro"}],
-     "elementos": [{"id": "boton-grabar", "tipo": "pantalla|boton|accion|servicio|modulo|dato|actor|otro", "nombre": "Grabar",
+     "tipo": "software",
+     "documentos": [{"ruta": "flujos/grabar.md", "titulo": "Grabar una reunión", "tipo": "vision|arquitectura|flujo|glosario|historia|libro|capitulo|documento|fuente|estudio|revision|otro"}],
+     "elementos": [{"id": "boton-grabar", "tipo": "pantalla|boton|accion|servicio|modulo|dato|actor|personaje|concepto|lugar|otro", "nombre": "Grabar",
                     "descripcion": "…", "codigo": ["Sources/Grabar.swift"]}],
      "fuentes": {"leido": "2026-10-28", "archivos": ["README.md", "AGENTS.md"]}}
     ```
-    `documentos[].ruta` es relativa a la carpeta de docs (`.md`/`.mmd`, hasta dos subcarpetas); `id` de un elemento: minúsculas,
+    `tipo` es el id de un tipo de proyecto (sin él, `software`). `documentos[].ruta` es relativa a la carpeta de docs (`.md`/`.mmd`, hasta dos subcarpetas; en `fuentes/` también el original: `.pdf`, `.docx`, `.odt`, `.epub`, `.txt`, `.html`); `id` de un elemento: minúsculas,
     números y guiones (`M.ID_ELEMENTO`), estable; `codigo`: rutas del repo (relativas, sin `..`). Se valida igual en
     `bin/proyecto.py` (`validar_esquema`) y en `ui/motor/proyecto.js` (`M.validarEsquema`), con los casos `proyecto_esquema` y
     `proyecto_elemento` de `pruebas/casos.json`. Lo desconocido no se guarda.
@@ -137,6 +151,176 @@ Esquema usa piezas de Pieza, la base de la familia de apps: código probado que 
   estaba queda y se avisa) y guarda una versión nueva «Restauré la versión del …».
 - **Cambios del código:** al abrir un proyecto con git, los commits que tocaron algo fuera de `<docs>` desde el último commit de
   `<docs>` (`cambios_codigo`). `M.docsAfectados` cruza sus archivos con `codigo` de cada elemento y sus mensajes con los nombres.
+
+## Trabajos (lo largo, en segundo plano y sin perder nada)
+Lo que tarda minutos (documentar un proyecto entero) **no** es una llamada gigante con un diálogo de espera: es un **trabajo**
+(`bin/trabajos.py`) que corre por etapas, deja todo en disco a medida que avanza y cuenta cómo va. Encima corren
+«Documentar», las historias de usuario, los libros, el material de estudio y la revisión de incongruencias.
+- **Estado** en `<carpeta de Esquema>/trabajos/<id>.json` (id `AAAAMMDDTHHMMSS-xxxxxx`; hasta 40): `{formato, id, tipo, proyecto
+  (la carpeta abierta, absoluta), estado, etapa, etapas, hechas, inicio, fin, latido, datos (lo propio del tipo), items: [{ruta,
+  titulo, tipo, estado: cola | escribiendo | listo | fallo | quitado, error?, nuevo}], leidos, leyendo, vistos, publico}`. Se
+  escribe de una vez en cada cambio. `vista()` es lo que ve la interfaz (sin `datos`, con `publico` aplanado: `ia`, `tipo_proyecto`,
+  `archivos`, `partes`, `resumen`, `aviso`, `version`, `visto`).
+- **Estados:** `corriendo` → `listo` | `con-fallas` (alguno falló: «Reintentar») | `detenido` | `error` | `esperando` (preguntó algo
+  a la persona: ver «Trabajos que preguntan»). Un `corriendo` sin
+  **latido** (cada 5 s) por más de 45 s es `interrumpido` (se cerró la app): «Seguir donde quedó» (`documentar {seguir: id}`)
+  retoma; lo hecho no se repite y lo que quedó «escribiendo» vuelve a la cola.
+- **Progreso:** la app corre la orden con `ESQUEMA_PROGRESO=<archivo temporal>`; el script agrega líneas JSON (`trabajos.emitir`):
+  `{t: "estado", trabajo: vista}` en cada cambio, `{t: "lee", id, ruta, n}` por cada archivo que lee la IA (relativo al código) y
+  `{t: "busca", id, patron}`. Mac (`LectorProgreso` en `Servicios.swift`) y Windows/Linux (`lectorProgreso` en `servicios.js`) leen
+  las líneas nuevas cada 0,5 s y llaman `window.Esquema.proyectoProgreso({eventos})`. Solo las órdenes de `ordenesConProgreso`
+  (Swift) / `ORDENES_CON_PROGRESO` (main.js) lo reciben. La respuesta final llega como siempre (`proyectoRespuesta {trabajo}`).
+  Si la ventana se cerró y se vuelve a abrir, la interfaz pide `trabajo` (el último del proyecto) y, mientras corra sin eventos,
+  vuelve a preguntar cada 6 s.
+- **La IA en vivo** (`ia_vivo.preguntar_vivo`, en `bin/ia_vivo.py`, propio de Esquema sobre la pieza «ia»: arma el comando con las
+  mismas protecciones que `ia.ejecutar` —carpeta temporal, sin MCP ni memoria, solo leer, `--tools`, `--setting-sources user`, pide
+  actualizar si falta una protección— y usa sus funciones; `bin/ia.py` no se toca): Claude con `--output-format stream-json
+  --verbose` (`_evento_claude`: `tool_use` Read → `lee`, Glob/Grep → `busca`; la línea `{"type": "result"}` trae la respuesta y
+  `is_error`); Codex con `exec --json` si `codex exec --help` lo conoce (`_evento_codex`: de un comando de lectura se deduce el
+  archivo); Gemini/agy, solo etapas. `detener()` corta el proceso. Los errores tienen la forma de la pieza (`{codigo, plantilla,
+  valores}`; `demora`, `sin_respuesta`… y el propio `detenido`, que no es una falla: `ia_vivo.detenido(error)`); `t.terminar` y
+  `t.poner_item` guardan su frase en `error` y el error entero en `error_ia`, y la interfaz lo traduce con su plantilla
+  (`errorTrabajo` en `proyectos.js`). `ia.preguntar` sigue para todo lo demás.
+- **Detener:** `detener {id}` deja `trabajos/<id>.detener`; el trabajo lo ve, corta la IA y queda `detenido` (con una versión de
+  lo que alcanzó). En la interfaz, «Detener» con confirmación; **Escape o tocar fuera nunca cancelan un trabajo**.
+- **Documentar** (`bin/documentar.py`, órdenes `documentar`, `trabajo`, `detener`, `quitar` de `proyecto.py`):
+  1. `inventario` (sin IA): `inventario.inventario` → `perfil` (tipo `app | biblioteca | sitio | monorepo | escritos | mezcla`, partes).
+  2. `explorar`: la IA lee (como la revisión a fondo, con un tope orientativo de archivos según el tamaño) y devuelve **solo un plan**
+     en JSON (`FORMATO_PLAN`: tipo, resumen, componentes, elementos, documentos con `ruta, titulo, tipo, que, archivos`).
+     `validar_plan` lo limpia y **ordena**: nombres en minúsculas con guiones, `README.md` para la visión, `arquitectura.md`, los
+     flujos en `flujos/`, cada parte en `componentes/`, nunca `elementos.md`; `orden_doc` (visión, arquitectura, raíz, componentes,
+     flujos, secciones, diagramas; igual que `ordenDocs` en la interfaz). Si no sirve, `plan_por_defecto` con el inventario.
+  3. `escribir`: un documento por llamada (`prompt_documento`, sin herramientas, con sus archivos clave), **2 a la vez**. Cada uno se
+     escribe al tiro en la carpeta de la documentación (antes, lo que había queda en `trabajos/<id>.antes.json`) y `esquema.json` y
+     `elementos.md` se ponen al día. Uno que falla queda `fallo` con «Reintentar» (`documentar {reintentar: id, ruta}`; si el
+     trabajo sigue corriendo, va a `trabajos/<id>.reintentar` y entra a la cola).
+  4. `cerrar`: `esquema.json`, el glosario y **una** versión «Documentación hecha con <IA>».
+  `quitar {id, ruta}` («Quitar este cambio» de un documento listo): lo vuelve a como estaba antes del trabajo, o lo borra (y lo saca
+  de `esquema.json`) si era nuevo, y guarda otra versión. Tiempos: explorar 20 min, cada documento 8 min.
+- **Agregar un tipo de trabajo nuevo** (p. ej. «Historias de usuario»): (1) un módulo en `bin/` con sus `ETAPAS` y una función
+  `correr(e, t)` que avanza con `t.etapa(nombre)`, `t.poner_item(ruta, titulo=…, estado=…)`, `t.leyo(ruta)`, `t.detenido()` y
+  termina con `t.terminar(estado, error)` (escribe en disco en cada paso; lo que la persona puede deshacer, como `.antes.json`);
+  (2) sus órdenes en `ORDENES` de `proyecto.py` (y en `Ventana.ordenesProyecto` y `ORDENES_PROYECTO`; las que corren largo, también
+  en `ordenesConProgreso` / `ORDENES_CON_PROGRESO`); (3) en la interfaz, el mismo `trabajoHTML` muestra etapas e ítems: agrega el
+  nombre de sus etapas a `NOMBRE_ETAPA` y, si el trabajo **pregunta algo** a la persona, usa
+  `t.esperar(preguntas)` (ver «Trabajos que preguntan»);
+  (4) su simulación en `simularTrabajo` y pruebas en `test_python.py` (clase `Documentar` como modelo) e `interfaz.mjs`.
+
+### Trabajos que preguntan (`esperando`)
+- `t.esperar(preguntas, **publico)` deja el trabajo `esperando` con `publico.preguntas` (`trabajos.limpiar_preguntas`: hasta 5, cada
+  una `{id, texto, por_que?, opciones?: [hasta 5]}`) y **termina el proceso**: todo queda en disco y nada corre mientras se espera. La
+  persona responde cuando quiera, aunque cierre la app: orden `responder {id, respuestas}` (`limpiar_respuestas`; cada respuesta es
+  un texto, «No sé todavía» o «Saltar») → `t.seguir()` y el trabajo vuelve a correr desde donde quedó. `continuar {id, descartar}`
+  deja de esperar. `abrir` devuelve `esperan` (los trabajos `esperando` del proyecto: un punto en el lateral y una fila «espera N
+  respuestas» en el panel). `limpiar_viejos` nunca borra uno que espera.
+- En la interfaz, **una pregunta a la vez** (`E.panel = "preguntas"`): opciones con número (teclas 1–5), «Otra respuesta» (Enter
+  para seguir), «No sé todavía», «Saltar», «Responder después» (vuelve al panel; las preguntas siguen ahí).
+
+## Tipos de proyecto (`tipos/`)
+Un proyecto es de un tipo: **Software** (el código en una carpeta aparte, que se lee y nunca se toca) o **Libro** (un texto largo,
+sin carpeta de código). El tipo va en `esquema.json` (`tipo`) y en `proyectos.json`; sin él, `software`.
+- **Formato** (`tipos/<id>.json`, validado igual en `bin/tipos.py` (`validar`) y en `ui/motor/proyecto.js` (`M.validarTipo`), con los
+  casos `tipos` de `pruebas/casos.json`):
+  ```json
+  {"formato": 1, "id": "libro", "icono": "libro", "nombre": {"es": "Libro", "en": "Book"}, "descripcion": {"es": "…", "en": "…"},
+   "fuente": "carpeta | texto", "elementos": ["personaje", "concepto", "lugar", "otro"],
+   "secciones": [{"id": "capitulos", "nombre": {"es": "Capítulos", "en": "Chapters"}, "icono": "doc", "carpetas": ["capitulos"], "tipos": ["capitulo"]},
+                 {"id": "elementos", "nombre": {…}}, {"id": "versiones", "nombre": {…}}],
+   "falta": ["capitulos", "resumenes", …], "acciones": ["estudiar", …], "nuevo": ["incorporar", "documento", "diagrama", "agregar"], "agregar": ["incorporar", "documento"]}
+  ```
+  `fuente`: de dónde sale lo que se documenta (`carpeta`: una carpeta de código, con «Código» en el lateral; `texto`: lo que se
+  agrega). `secciones`: cómo se agrupan los documentos en el panel (por carpeta y/o por tipo de documento; la primera que calza gana;
+  `elementos` y `versiones` son especiales). `icono`, de `tipos.ICONOS`. `falta`, `acciones`, `nuevo` y `agregar` solo aceptan ids
+  que Esquema sabe hacer (`tipos.FALTA`, `ACCIONES`, `NUEVO`, `AGREGAR`): un tipo **ordena y elige**, no agrega código.
+- **Agregar un tipo:** (1) `tipos/<id>.json` con ese formato (`python3 bin/tipos.py validar` lo revisa); (2) `nombre` y
+  `descripcion` ya vienen en los dos idiomas; (3) si necesita algo nuevo (una acción, un «Lo que falta», un tipo de elemento),
+  primero se agrega a Esquema (`tipos.py`, `M.validarTipo`, `loQueFalta`/`accionesHTML` en `proyectos.js`) con sus pruebas; (4) un
+  caso en `pruebas/casos.json → tipos`. `estado.py` manda la lista a la interfaz (`E.tipos`); la demo, `demo.json → tipos`
+  (`herramientas/generar_demo.py`). Las apps empaquetan `tipos/` junto a `bin/`, `ui/` y `plantillas/`.
+- **«Agregar proyecto»** (global, en la cabecera «Proyectos» del lateral) pregunta primero el tipo: Software elige la carpeta del
+  código; Libro pide el archivo o el texto (o, si la carpeta abierta tiene escritos, `crear {desde_carpeta}` la toma).
+  **«Nuevo en <proyecto>»** (en la fila del proyecto y arriba del panel) es lo del proyecto abierto.
+
+## Agregar al proyecto (`bin/agregar.py`, `bin/contenido.py`)
+- «Agregar» (pegar texto, un enlace, elegir o soltar archivos) → `detectar` (lee y adivina; guarda aparte en `entradas/<token>/`,
+  **nada en el proyecto**) → la persona ve el tipo propuesto con sus razones y puede cambiarlo → `agregar {token, tipo}`. El
+  original queda en `fuentes/` tal cual (y su texto en `fuentes/<nombre>.md`); el tipo decide el trabajo: **Historia de usuario**
+  (`historia`), **Documento** (`documento`) o, en un proyecto Software, un **libro** grande: se sugiere «Crear un proyecto Libro»
+  y, si se agrega igual, queda como documento de referencia en `documentos/`.
+- `contenido.extraer` lee solo con la biblioteca estándar (PDF: texto de flujos sin comprimir o Flate; uno escaneado no se puede y
+  se dice); `detectar` da `{tipo, razones, titulo}` por señales (Como/Quiero/Para, criterios, ids HU/Jira/#n, capítulos, tamaño).
+  Un enlace solo (`solo_enlace`) se guarda como enlace del ticket: **Esquema no lo abre**. La vista previa del diálogo lee solo
+  `.md`/`.txt` en la interfaz; lo demás lo lee Python.
+
+## Agregar información (`bin/incorporar.py`, trabajo `incorporar`)
+- **Qué es:** notas, un correo, lo que salió de una reunión… sin clasificar. Tu IA lo **reparte** en la documentación. Se distingue
+  de «Agregar un documento» (`p-agregar-algo`, que guarda el texto entero como un documento propio, con su resumen): en el panel
+  está «Agregar información» (`p-incorporar`, ícono `bandeja`) y en «Nuevo en <proyecto>» las dos. Entra por la misma orden
+  `agregar {token, tipo: "incorporar"}` (sin orden nueva en el puente ni en las apps); en el diálogo no hay paso «¿Qué es?».
+- **Etapas:** `leer` (sin IA: índice, elementos, las `secciones` del tipo de proyecto y hasta 8 documentos que se parecen a la
+  información, por palabras en común) → `ordenar` (la IA responde `PLAN` (JSON: `accion` crear | completar | modificar, `ruta`,
+  `titulo`, `tipo`, `porque`, `cita`), un `ARCHIVO` completo por cambio, `ELEMENTOS`, `SIN_LUGAR`, `PREGUNTAS`, `NOTA`) →
+  `preguntas` (si no sabe dónde va algo, pregunta y no manda plan: `t.esperar`, hasta 2 rondas; `responder` → `seguir`) → `plan`.
+- **Lo que revisa Esquema** (`plan()`): nada en `fuentes/` ni `elementos.md`; `crear` sobre algo que existe y `completar` se
+  recalculan con `solo_agrega` (si quita o reordena una línea, es `modificar`); un documento que existe conserva su título y tipo;
+  una historia conserva su encabezado (solo cambia `actualizada`) y una HU nueva no se crea aquí; la cita se busca en la
+  información (`cita_exacta`); `SIN_LUGAR` (o, si no salió nada, la información entera) va a `notas/<fecha>.md` (se completa si
+  ya existe). **Nada se escribe**: el plan queda en `datos.propuestas` (`{tarea: "incorporar", propuestas, elementos, nota,
+  descartados}`) y vuelve con la respuesta de `agregar`/`responder` (y con `trabajo {id, propuestas: true}`). El original va a
+  `fuentes/` y a `esquema.json` al empezar, como en «Agregar».
+- **Revisión** (`incorporarHTML` en `proyectos.js`, panel `propuestas`): se abre sola si la persona está en el panel del proyecto
+  (si no, un aviso con «Revisar»). Agrupada: **Nuevo** / **Se completa** / **Se modifica**, cada cambio con su porqué y su cita
+  (marcada si no está tal cual). Lo que se modifica se muestra abierto con antes y después y **no se guarda hasta «Aplicar este
+  cambio»** (`confirmar`/`confirmada`); lo demás tiene «Quitar este cambio». Guardar es `aplicarPropuestas`: una versión
+  «Información incorporada con <IA>» y cada documento que existía queda en `cambiosIA` con «Quitar este cambio».
+- Pruebas: `test_python.py → Incorporar` (`IA_FALSA_MODO=incorporar-pregunta`), `interfaz.mjs` sección 17; demo:
+  `ejemplos/agregar/<idioma>/informacion.md` y `ia-simulada/<idioma>/agregar.json → incorporar` (`planSim`).
+
+## Historias de usuario (`bin/historias.py`)
+- `historias/<id>-<nombre>.md` con encabezado YAML (`estado`, `id`, `creada`, `actualizada`, `rama?`, `desde?`, `commit?`,
+  `enlace?`). Estados: **Por entender** (`por-entender`) → **Lista para desarrollar** (`lista`) → **En desarrollo**
+  (`en-desarrollo`: guarda `desde` y el `commit` del código en ese momento) → **Terminada** (`terminada`). Se cambian en la barra
+  del documento (`barraDocHTML`, orden `historia_estado`) y se ven como un punto en el lateral (`hu-punto[data-estado]`). La rama
+  solo se escribe a mano en el encabezado.
+- El trabajo `historia`: la IA lee la HU y el contexto (nunca programa: `asistente.NO_PROGRAMAR`) y responde en bloques
+  (`TIPO`/`TITULO`/`DOCUMENTO`/`PREGUNTAS`); si pregunta, el trabajo espera (hasta 3 rondas). «Preguntas abiertas», «Decisiones»
+  (cada respuesta con su fecha) y «Cómo quedó» las escribe Esquema.
+- **«Terminé el desarrollo»** (`historia_cierre`): los commits desde `desde` (su diferencia, acotada a 60 KB y 12 archivos), «Cómo
+  quedó» en la HU, estado `terminada` y **propuestas** para los demás documentos (el flujo de propuestas de siempre; nunca sobre
+  `historias/`). El panel avisa cuántos commits tiene una HU en desarrollo.
+
+## Libros (`bin/libros.py`)
+Un proyecto Libro vive en `~/Esquema/<titulo>/` sin carpeta de código (`sola` en `proyectos.json`; `lugares` da `codigo: None` y
+todo lo que lee código se salta). `crear` importa el original, lo parte en capítulos (`contenido.partir_capitulos`: «Capítulo N» /
+«Chapter N», títulos Markdown o por tamaño; el índice se salta) y **pregunta sin IA** para qué es y qué tan a fondo (preguntas
+fijas, `PREGUNTAS_LIBRO`); con eso resume cada capítulo (2 a la vez, cada uno al disco al terminar) y cierra con `README.md`,
+`mapa.md` y `linea-de-tiempo.md`. Personajes, conceptos y lugares son elementos (glosario). Acciones: **Material de estudio**
+(`estudiar`: esquema, preguntas con respuesta y tarjetas por capítulo) y **Revisar incongruencias** (`incongruencias`: hechos por
+capítulo → comparar → `incongruencias.md` con cada hallazgo, la cita y dónde está; cada cita se busca en el texto y se marca si no
+está tal cual).
+
+## Borrar (`borrar`, `recuperar`, `papelera`)
+- Lo que creó Esquema (documentos, diagramas, HU, capítulos, originales de `fuentes/`) se borra desde el lateral (clic derecho o
+  tecla Supr) o desde la barra del documento abierto (ícono de papelera), con una confirmación que dice qué pasa. `borrar {ruta}`
+  guarda una copia en `<carpeta de Esquema>/proyectos/<id>/borrados/` (hasta 30), lo saca de `esquema.json`, deja como texto los
+  enlaces que apuntaban ahí, descarta las preguntas de una HU que esperaba y guarda una versión. El aviso trae **«Deshacer»**
+  (`recuperar {id}`: vuelven el archivo, su entrada y los enlaces, con otra versión). `esquema.json` y `elementos.md` no se borran.
+- **Con `borrar` nunca se toca la carpeta del código.** Un `.md`/`.mmd` de la carpeta abierta que no es de una documentación de
+  Esquema (un proyecto «de antes» o una carpeta suelta) va a la **papelera del sistema** con la acción del puente `papelera {ruta}`
+  (`FileManager.trashItem` en el Mac, `shell.trashItem` en Windows/Linux) → `enPapelera`, y se recupera desde ahí. En un proyecto
+  vinculado, «Código» nunca ofrece borrar.
+
+## Wiki de GitHub (`bin/wiki.py`)
+- `wiki_preparar`: la URL sale del `origin` del código (o la que escribe la persona, guardada como `wiki` en `proyectos.json`; solo
+  `https://github.com/…` o `git@github.com:…`) → `derivar` → `<repo>.wiki.git`; clona o pone al día en `<carpeta de
+  Esquema>/wikis/<id>/` y devuelve cada página `nueva | cambia | igual` y las **de la persona**. Si la wiki no existe, `NO_EXISTE`
+  explica cómo crearla en GitHub.
+- Transformación: `README.md` → `Home.md`, cada documento → una página con nombre plano por su título, enlaces sin `.md`, los
+  elementos a la página «Elementos», el encabezado de una HU como una línea legible, Mermaid tal cual, `_Sidebar.md` con el orden
+  del proyecto; `fuentes/` no se publica. Cada página lleva `MARCA` (un comentario HTML): **una página sin la marca es de la persona
+  y nunca se pisa ni se borra**; una con la marca que ya no corresponde se quita.
+- `wiki_publicar`: commit y `push` con el git y las credenciales de la persona (sin preguntar por la terminal). Se ofrece en el panel
+  y después de guardar una versión. Pruebas: `test_python.py → Wiki`, con una wiki falsa en un repo git local.
 
 ## Subconjunto de Mermaid
 Lo que Esquema lee, dibuja y escribe (probado en `pruebas/compat/` contra Mermaid real con `herramientas/comparar_mermaid.mjs`):
@@ -214,7 +398,9 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
   abierto trae **Código** (los `.md`/`.mmd` del repo: `E.codigoDocs` en uno vinculado, o lo que queda fuera de `docsDir()` en uno de
   antes; todo, si aún no tiene documentación) y **Documentación** (Elementos, Versiones y sus documentos). Tocar «Documentación»
   (`data-p-docs`) abre su panel: vacía (`P.sinDocumentacion()`), el inicio de la carpeta con «Hacer la documentación completa»; con algo, **Lo que falta** (`loQueFalta`: visión, arquitectura, flujos,
-  elementos, elementos que ningún documento nombra y commits nuevos) con «Completar lo que falta» (tarea `completar`, con el pedido
+  elementos, elementos que ningún documento nombra y commits nuevos, según el **tipo de proyecto** del inventario: escritos →
+  «Cómo se organiza» sin arquitectura ni flujos; biblioteca → «Cómo se usa»; sitio → «Páginas y publicación»; monorepo → «Cada
+  parte», un `componentes/<nombre>.md` por parte) con «Completar lo que falta» (tarea `completar`, con el pedido
   armado por `pedidoCompletar`: la IA escribe solo lo que falta). Claves de `E.abiertas`: `#p`, `#codigo`, `#docs`.
 - **Lateral e inicio:** la carpeta como árbol (`arbolDe`/`arbolHTML`; `E.abiertas` guarda lo que la persona abrió o cerró y, si no
   tocó nada, `arbolAbierta` abre todo con ≤ 20 archivos, la carpeta del archivo abierto y la de la documentación). Una carpeta recién
@@ -253,14 +439,21 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
 - **Actualizaciones** (Ajustes → Actualizaciones, `filaActualizacion`): buscar, «Hay una versión nueva» con sus notas, «Actualizar
   ahora» (guarda todo antes) y el avance por pasos. Lo de la app llega como `{texto, valores}` (pieza «actualizaciones») y se
   traduce al pintar con `frasePieza`; las notas del Release van tal cual. Un aviso corto la primera vez que el estado trae una versión nueva.
-- **Proyectos** (`ui/proyectos.js`, `E.proyecto`, `E.panel`, `E.pj`): «Nuevo» → «Documentar un proyecto» (o el vacío «Elige una
-  carpeta») elige la carpeta del repo (`elegirCarpeta {proyecto: true}`) → `proyecto {orden: "abrir"}`; si no hay documentación,
-  «Lo que encontré» (`leer`, sin IA: README, guías, lenguajes, carpetas, manifiestos, workflows, git) y la carpeta de docs. Todo
+- **Lateral:** cabecera «Proyectos» con «Agregar» (un proyecto nuevo, global); en cada proyecto, «Nuevo en <proyecto>» (lo del
+  proyecto; también arriba del panel), «Código» solo si el tipo tiene `fuente: "carpeta"`, ícono por tipo y un punto en lo que
+  espera respuestas y en cada HU. El panel agrupa los documentos por las `secciones` del tipo y muestra hasta 4 tarjetas de acciones.
+  No hay un «Nuevo» global.
+- **Proyectos** (`ui/proyectos.js`, `E.proyecto`, `E.panel`, `E.pj`): «Agregar proyecto» → Software (o el vacío «Agregar
+  proyecto») elige la carpeta del repo (`elegirCarpeta {proyecto: true}`) → `proyecto {orden: "abrir"}`; si no hay documentación,
+  «Lo que encontré» (`leer`, sin IA: README, guías, lenguajes, carpetas, manifiestos, workflows, git, y el `perfil` del inventario) y la carpeta de docs. Todo
   pedido a la IA pasa primero por **lo que se envía** (`preparar`: la lista exacta de piezas con su texto y tamaño, y lo que no se
-  manda y por qué) → `generar` → **propuestas**: una tarjeta por documento (vista previa o antes/después) con «Quitar este cambio»,
+  manda y por qué). **Documentar todo** (`inicial`) y **Completar lo que falta** (`completar`) van por el trabajo «Documentar»
+  (`TAREAS_TRABAJO`, ver «Trabajos»): una tarjeta en el panel (`trabajoHTML`), sin diálogo que bloquee. Lo demás → `generar` → **propuestas**: una tarjeta por documento (vista previa o antes/después) con «Quitar este cambio»,
   los elementos aparte; cada diagrama se valida con el motor (con errores no se agrega) y los enlaces/refs a elementos que no
   existen se quitan (`M.limpiarRefs`). «Guardar N cambios» escribe los documentos (los que ya existían quedan además en
-  `E.cambiosIA`), `esquema.json` y el glosario, espera a que todo se guarde (`pj.espera`) y guarda **una** versión. «Documentar un
+  `E.cambiosIA`), `esquema.json` y el glosario, espera a que todo se guarde (`pj.espera`) y guarda **una** versión. Mientras
+  `generar` espera, el diálogo dice que puede tardar varios minutos y tiene «Seguir usando Esquema»: Escape o tocar fuera solo lo
+  esconden (`pj.generando.oculto`, un aviso en el panel), **nunca descartan la respuesta**; solo «Cancelar» lo hace. «Documentar un
   flujo»: la IA puede pedir archivos (`PIDE`); la persona elige cuáles y vuelve a ver lo que se envía. **Elementos**: lista por tipo
   con búsqueda, ficha con «Dónde se usa» (`M.usosElemento`), Renombrar / Cambiar descripción / Quitar con vista previa por archivo
   (`M.cambiarElemento`: nodos y participantes renombrados, enlaces, menciones sin enlace opcionales, al quitar «unir lo de antes con
@@ -269,7 +462,8 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
   elemento en la barra y uno sin enlace se puede «Enlazar» (o crear el elemento con su nombre). **Versiones**: línea de tiempo,
   comparar con «Ahora» u otra versión (`M.difVersiones`, `M.difLineas` y `M.difDiagrama`: nodos nuevos, quitados y con otro texto
   marcados en los dos dibujos) y restaurar. Al abrir: «Cambió el proyecto desde tu última versión: N commits» → «Revisar qué
-  documentos afecta» → la IA los pone al día (tarea `revisar`). En el navegador, `P.simular` usa `demo.json → proyecto` (git
+  documentos afecta» → la IA los pone al día (tarea `revisar`). En el navegador, `P.simular` usa `demo.json → proyecto` (el trabajo
+  «Documentar» con `simularTrabajo`: lee los archivos del ejemplo y escribe de a 2; el árbol con `proyecto.arbol`; git
   ficticio, IA simulada desde `ejemplos/ia-simulada/`, versiones en memoria).
 - **Primer uso** (pieza «bienvenida», `bv` en `app.js`): lo primero es el idioma (título bilingüe fijo, el del sistema sugerido y
   enfocado, teclas 1/2; nada más se muestra ni se pide antes y los avisos esperan); al elegir se guarda por `config` igual que en
@@ -279,12 +473,13 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
 La UI llama `host.enviar(accion, datos)` y la app responde con `window.Esquema.<funcion>(json)`. En el navegador responde `simular()`
 con `ui/demo.json` (la carpeta vive en memoria). Acciones: `listo, config, elegirCarpeta, abrirProyecto, abrirArchivo, guardarArchivo,
 probarIA, estructura, crearReadme, dibujar, proyecto, exportar, copiar, abrirEnlace, catalogoPlantillas, descargarPlantilla,
-buscarActualizacion, actualizar`. Respuestas: `estado, carpetaElegida, archivoAbierto, archivoGuardado, archivoCambiado, archivos,
+buscarActualizacion, actualizar, papelera`. Respuestas: `estado, carpetaElegida, archivoAbierto, archivoGuardado, archivoCambiado, archivos,
 iaProbada, estructuraLista, readmeListo, dibujoListo, proyectoRespuesta, exportado, copiado, catalogoListo, plantillaDescargada,
-actualizacionRevisada, actualizacionProgreso` y `menu` (los menús nativos).
+actualizacionRevisada, actualizacionProgreso, enPapelera`, `proyectoProgreso` (ver «Trabajos») y `menu` (los menús nativos).
 `proyecto {orden, …}` es una sola acción para todo lo de `bin/proyecto.py`: la app solo acepta las órdenes de `ORDENES` (la misma
-lista en `Ventana.ordenesProyecto` y en `ORDENES_PROYECTO` de `main.js`; el contrato lo revisa), le agrega la carpeta actual y
-responde `proyectoRespuesta {orden, …}`. `abrirProyecto {indice}` abre un reciente por su posición en `proyectos.json`: la ruta la
+lista en `Ventana.ordenesProyecto` y en `ORDENES_PROYECTO` de `main.js`; el contrato lo revisa), le agrega la carpeta actual (salvo las de `ordenesSinCarpeta` / `ORDENES_SIN_CARPETA`: `detectar` y `crear`, que no dependen de
+ella) y responde `proyectoRespuesta {orden, …}`. Para elegir archivos en «Agregar», la interfaz usa un `<input type=file>`: el Mac lo
+atiende con `WKUIDelegate.runOpenPanelWith` (solo el marco principal y `file://`). `abrirProyecto {indice}` abre un reciente por su posición en `proyectos.json`: la ruta la
 lee la app, nunca la manda la interfaz. `puente.json` dice qué script corre
 cada acción. `pruebas/contrato.py` revisa que interfaz, contrato y simulación coincidan, que existan los scripts, que
 `app/Sources/Esquema/Ventana.swift` (un `case` por acción) y `escritorio/src/main.js` (objeto `ACCIONES`) atiendan todo, manden
@@ -425,7 +620,8 @@ explorador; varias carpetas recientes; firma y notarización si algún día hay 
   `?bienvenida`, `?vacio`, `window.Esquema._probar(E => …)`), también a 390 px y en claro y oscuro.
 - Seguridad (detalle en `SECURITY.md`): CSP de `ui/index.html` sin scripts ni manejadores en línea; todo dato externo validado y
   escapado; los scripts solo tocan `.md`/`.mmd` dentro de la carpeta (`comun.ruta_en`; `bin/proyecto.py` además escribe
-  `esquema.json` y `.versiones/` dentro de la carpeta de docs, y llama a git con argumentos fijos); la IA sin herramientas ni MCP
+  `esquema.json` y `.versiones/` dentro de la carpeta de docs, y llama a git con argumentos fijos; los trabajos escriben solo en la
+  carpeta de la documentación y en la de Esquema); la IA sin herramientas ni MCP
   (`claude --disallowedTools "*" --strict-mcp-config`, `codex -s read-only`) ni variables `ESQUEMA_*`. Workflows: actions fijadas
   por SHA con su versión en un comentario (Dependabot con `cooldown`), `permissions` mínimos, `persist-credentials: false`, nunca
   `pull_request_target` ni `${{ github.event.* }}` dentro de `run:`.

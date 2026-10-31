@@ -32,7 +32,9 @@
     abiertas: {},           // árbol de la carpeta: ruta de una subcarpeta → abierta (true) o cerrada (false); sin valor, decide arbolAbierta()
     sugerencias: [],
     // Proyectos (ui/proyectos.js): la documentación de un repo en docs/esquema/, con elementos conectados y versiones.
-    proyecto: null,         // {docs, esquema, git, cambios} si la carpeta tiene docs/esquema/esquema.json
+    proyecto: null,         // {docs, esquema, git, cambios, tipo, historias} si la carpeta tiene documentación de Esquema
+    tipos: [],              // tipos de proyecto (tipos/<id>.json, validados con M.validarTipo): Software, Libro…
+    tipoProyecto: null,     // el tipo del proyecto abierto aunque todavía no tenga documentación
     recientes: [],          // [{nombre, ruta}] proyectos abiertos antes (los guarda bin/proyecto.py en la carpeta de Esquema)
     panel: null,            // null (editor) | "proyecto" | "elementos" | "versiones" | "propuestas"
   };
@@ -91,7 +93,8 @@
   // ───────────── Íconos de la interfaz (trazos de 16×16) ─────────────
   const IC = {
     mas: "M8 3v10M3 8h10", menos: "M3 8h10", deshacer: "M5.5 4 2.5 7l3 3M2.5 7H10a3.5 3.5 0 0 1 0 7H8", rehacer: "M10.5 4l3 3-3 3M13.5 7H6a3.5 3.5 0 0 0 0 7h2",
-    listo: "M3 8.5l3 3 7-7", menu: "M2.5 4h11M2.5 8h11M2.5 12h11", carpeta: "M1.5 4.5v8h13v-7H8L6.5 3.5h-5z", doc: "M4 1.5h5.5L12.5 4.5v10h-8.5zM9.5 1.5v3h3M6 8h4.5M6 11h4.5",
+    listo: "M3 8.5l3 3 7-7", tarjetas: "M2.5 5h8.5v8.5H2.5zM5 2.5h8.5V11M5 8h3.5M5 10.5h3.5", bandeja: "M1.5 9l2-5.5h9l2 5.5v4.5h-13zM1.5 9h4l1 1.5h3l1-1.5h4", libro: "M2 3h4a2 2 0 0 1 2 2v9a1.5 1.5 0 0 0-1.5-1.5H2zM14 3h-4a2 2 0 0 0-2 2v9a1.5 1.5 0 0 1 1.5-1.5H14z",
+    pregunta: "M8 14.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM6.2 6.3a1.9 1.9 0 1 1 2.7 1.7c-.6.3-.9.8-.9 1.4v.3M8 11.4v.3", menu: "M2.5 4h11M2.5 8h11M2.5 12h11", carpeta: "M1.5 4.5v8h13v-7H8L6.5 3.5h-5z", doc: "M4 1.5h5.5L12.5 4.5v10h-8.5zM9.5 1.5v3h3M6 8h4.5M6 11h4.5",
     diagrama: "M5.5 1.5h5v4h-5zM1.5 10.5h5v4h-5zM9.5 10.5h5v4h-5zM8 5.5v2.5M4 10.5V8h8v2.5", chispa: "M8 1.5l1.6 4.9 4.9 1.6-4.9 1.6L8 14.5l-1.6-4.9L1.5 8l4.9-1.6z",
     exportar: "M8 10V2M5 5l3-3 3 3M2.5 9.5v4h11v-4", ajustar: "M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4", mapa: "M1.5 3.5l4-1.5 5 2 4-1.5v10l-4 1.5-5-2-4 1.5zM5.5 2v10M10.5 4v10",
     borrar: "M2.5 4.5h11M6 4.5V2.5h4v2M4 4.5l.7 9.5h6.6l.7-9.5", cerrar: "M3.5 3.5l9 9M12.5 3.5l-9 9", lapiz: "M10.5 2.5l3 3-8 8H2.5v-3z",
@@ -100,15 +103,21 @@
     volver: "M10 3 5 8l5 5", ajustes: "M8 10.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4",
     persona: "M8 7.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 14.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5", github: "M5.5 2.5 1.5 8l4 5.5M10.5 2.5l4 5.5-4 5.5",
     proyecto: "M2 4.5 8 1.5l6 3v7l-6 3-6-3zM2 4.5l6 3 6-3M8 7.5v7", elemento: "M8 1.5 14.5 8 8 14.5 1.5 8z", historia: "M8 14.5a6.5 6.5 0 1 0-6.2-8.5M1.5 2.5v3.5H5M8 4.5V8l2.5 2",
-    flecha: "M3 8h10M9 4l4 4-4 4", inicio: "M2 7.5 8 2.5l6 5M3.5 6.5v7.5h9V6.5M6.5 14v-4h3v4", abajo: "M4 6l4 4 4-4", derecha: "M6 4l4 4-4 4",
+    flecha: "M3 8h10M9 4l4 4-4 4", codigo: "M5.5 4.5 2 8l3.5 3.5M10.5 4.5 14 8l-3.5 3.5M9 3l-2 10", config: "M2.5 4.5h11M2.5 11.5h11M5.5 3v3M10.5 10v3",
+    imagen: "M2 2.5h12v11H2zM2 11l3.5-3.5 3 3 2-2L14 12M10.5 6a1 1 0 1 0 0-.01", datos: "M2.5 2.5h11v11h-11zM2.5 6.5h11M2.5 10h11M6.5 2.5v11",
+    archivo: "M4 1.5h5.5L12.5 4.5v10h-8.5zM9.5 1.5v3h3", candado: "M4 7.5h8v6.5H4zM5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5", detener: "M4.5 4.5h7v7h-7z", inicio: "M2 7.5 8 2.5l6 5M3.5 6.5v7.5h9V6.5M6.5 14v-4h3v4", abajo: "M4 6l4 4 4-4", derecha: "M6 4l4 4-4 4",
   };
   const ic = (n) => `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
 
   // ───────────── Avisos ─────────────
-  function toast(texto, traducido = false) {
+  /** Un aviso corto abajo. Con `accion` ({texto, f}) lleva un botón (p. ej. «Deshacer») y dura más. */
+  function toast(texto, traducido = false, accion = null) {
     if (bv.retener(texto, traducido)) return;  // mientras se elige el idioma, los avisos esperan
     const t = $("#toast"); t.textContent = traducido ? texto : tr(texto); t.classList.add("visible");
-    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("visible"), 2400);
+    toast._accion = accion;
+    t.classList.toggle("con-accion", !!accion);
+    if (accion) { const b = document.createElement("button"); b.className = "toast-accion"; b.dataset.accion = "toast-accion"; b.textContent = accion.texto; t.appendChild(b); }
+    clearTimeout(toast._t); toast._t = setTimeout(() => { t.classList.remove("visible", "con-accion"); toast._accion = null; }, accion ? 8000 : 2400);
   }
 
   // ───────────── Archivos y documentos ─────────────
@@ -194,11 +203,11 @@
 
   // ───────────── Proyectos (ui/proyectos.js) ─────────────
   const P = window.EsquemaProyectos({
-    E, M, host, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA,
+    E, M, host, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA, enBienvenida: () => bv.activa,
     pintar: () => pintar(), abrir: (r) => abrir(r), cambiarTextoDe: (r, t, op) => cambiarTextoDe(r, t, op), guardarTodo: () => guardarTodo(),
-    textoLienzo: () => textoLienzo(), ponerTextoLienzo: (t, op) => ponerTextoLienzo(t, op), resultadoBloque: (t, p) => resultadoBloque(t, p),
+    textoLienzo: () => textoLienzo(), traducirDOM: (r) => traducirDOM(r), nombreDe: (r) => nombreDe(r), ponerTextoLienzo: (t, op) => ponerTextoLienzo(t, op), resultadoBloque: (t, p) => resultadoBloque(t, p),
     abrirMenu: (tipo, b) => abrirMenu(tipo, b), pintarMenu: () => pintarMenu(), esDiagrama: (r) => esDiagrama(r), porRuta,
-    registrarCambioIA: (c) => { E.cambiosIA.push(c); }, accionesInicioHTML: () => accionesInicioHTML(), tipoDelPedido: (x) => tipoDelPedido(x),
+    registrarCambioIA: (c) => { E.cambiosIA.push(c); }, tipoDelPedido: (x) => tipoDelPedido(x),
   });
 
   // ───────────── Pintar ─────────────
@@ -257,13 +266,14 @@
     if (ruta in E.abiertas) return E.abiertas[ruta];
     // Las carpetas del proyecto en el lateral: el proyecto y su documentación abiertos; el código, cerrado salvo que tenga lo abierto.
     if (ruta === "#p" || ruta === "#docs") return true;
-    if (ruta === "#codigo") return P.esDeCodigo(E.sel);
+    if (ruta === "#codigo") return P.esDeCodigo(E.sel) || E.panel === "ficha" || P.leyendoCodigo();
+    if (ruta.startsWith("#c:")) return P.codigoAbierta(ruta.slice(3));
     if (P.esCodigo(ruta)) return !!E.sel && E.sel.startsWith(ruta + "/");
     const dentro = (r) => r && (r === ruta || r.startsWith(ruta + "/"));
     return E.archivos.length <= 20 || (E.sel && dentro(carpetaDe(E.sel))) || (E.proyecto && dentro(E.proyecto.docs));
   }
   function arbolHTML(n, nivel) {
-    const archivo = (a) => `<button class="archivo" style="--n:${nivel}" data-abrir="${esc(a.ruta)}" aria-current="${a.ruta === E.sel && !E.panel}" title="${esc(a.ruta)}" data-sin-traducir>${ic(esDiagrama(a.ruta) ? "diagrama" : "doc")}<span>${esc(nombreDe(a.ruta))}</span></button>`;
+    const archivo = (a) => `<button class="archivo" style="--n:${nivel}" data-abrir="${esc(a.ruta)}" aria-current="${a.ruta === E.sel && !E.panel}" title="${esc(a.ruta)}" data-sin-traducir>${ic(esDiagrama(a.ruta) ? "diagrama" : "doc")}<span>${esc(nombreDe(a.ruta))}</span>${P.marcaArchivo(a.ruta)}</button>`;
     const carpeta = (c, nombre) => {
       const ab = arbolAbierta(c.ruta), docs = E.proyecto && c.ruta === E.proyecto.docs;
       return `<button class="archivo carpeta-arbol" style="--n:${nivel}" data-arbol="${esc(c.ruta)}" aria-expanded="${ab}" title="${esc(c.ruta)}" data-sin-traducir>${ic(ab ? "abajo" : "derecha")}${ic("carpeta")}<span>${esc(nombre)}</span><small>${docs ? esc(tr("Documentación")) : c.total}</small></button>${ab ? `<div role="group">${arbolHTML(c, nivel + 1)}</div>` : ""}`;
@@ -274,8 +284,7 @@
     const inicio = E.carpeta && !E.proyecto ? `<button class="archivo" data-accion="inicio" aria-current="${!E.sel && !E.panel}">${ic("inicio")}<span>Inicio</span></button>` : "";
     return `<aside class="lateral${E.lateral ? " abierto" : ""}" aria-label="Archivos">
       <div class="marca"><img src="favicon.svg" alt=""><b>Esquema</b></div>
-      ${/* El proyecto abierto ya está en «Proyectos»: otra carpeta se abre con «Agregar proyecto» (o ⌘O). */ ""}
-      <button class="boton principal nuevo" data-accion="nuevo">${ic("mas")} Nuevo</button>
+      ${/* Crear es siempre dentro de un proyecto («Nuevo en <proyecto>», en su carpeta del lateral); arriba solo lo global. */ ""}
       <nav class="lista">
         ${P.esProyecto() ? P.lateralHTML({ arbolDe, arbolHTML, arbolAbierta }) : `${inicio}
         ${E.archivos.length ? `<h3>Archivos</h3><div class="arbol">${arbolHTML(arbolDe(E.archivos), 0)}</div>` : ""}
@@ -298,7 +307,8 @@
       ${d ? `<span id="historial" class="solo-escritorio">${botonesHistorial()}</span>
         <div class="seg" role="group" aria-label="Vista">${vistas.map(([v, n]) => `<button data-vista="${v}" aria-pressed="${vista === v}">${n}</button>`).join("")}</div>
         <button class="boton" data-accion="dibujame" title="Pídele un diagrama a tu IA">${ic("chispa")}<span class="solo-escritorio">Dibújame</span></button>
-        ${tieneDibujo ? `<button class="boton icono" data-accion="menu-exportar" aria-label="Exportar" title="Exportar">${ic("exportar")}</button>` : ""}` : ""}
+        ${tieneDibujo ? `<button class="boton icono" data-accion="menu-exportar" aria-label="Exportar" title="Exportar">${ic("exportar")}</button>` : ""}
+        ${P.puedeBorrar(E.sel) ? `<button class="boton plano icono" data-p-borrar="${esc(E.sel)}" aria-label="Borrar" title="Borrar">${ic("borrar")}</button>` : ""}` : ""}
     </header>`;
   }
   const botonesHistorial = () => { const d = doc(); return `<button class="boton plano icono" data-accion="deshacer" aria-label="Deshacer" title="Deshacer (⌘Z)" ${d?.pila.length ? "" : "disabled"}>${ic("deshacer")}</button><button class="boton plano icono" data-accion="rehacer" aria-label="Rehacer" title="Rehacer (⇧⌘Z)" ${d?.futuro.length ? "" : "disabled"}>${ic("rehacer")}</button>`; };
@@ -311,7 +321,7 @@
   function pintarEstadoGuardado() { const el = $("#estado-guardado"); if (el) el.textContent = tr(estadoGuardado()); }
 
   function area() {
-    if (!E.carpeta) return `<div class="vacio"><div><h2>Elige una carpeta</h2><p>Tus documentos y diagramas viven en una carpeta de tu computador, en archivos .md y .mmd que GitHub muestra tal cual.</p><div class="acciones"><button class="boton principal" data-accion="elegir-carpeta">${ic("carpeta")} Elegir carpeta</button><button class="boton" data-accion="p-nuevo">${ic("proyecto")} Documentar un proyecto</button></div></div></div>`;
+    if (!E.carpeta) return `<div class="vacio"><div><h2>Elige una carpeta</h2><p>Tus documentos y diagramas viven en una carpeta de tu computador, en archivos .md y .mmd que GitHub muestra tal cual.</p><div class="acciones"><button class="boton principal" data-accion="p-agregar">${ic("mas")} Agregar proyecto</button><button class="boton" data-accion="elegir-carpeta">${ic("carpeta")} Abrir una carpeta</button></div></div></div>`;
     if (E.panel) return P.areaHTML();
     const d = doc();
     if (!E.sel || !d) return inicioHTML();
@@ -320,29 +330,21 @@
     const derecha = esDiagrama(E.sel) ? `<section class="panel-dibujo">${lienzoHTML()}</section>`
       : E.bloque != null ? `<section class="panel-dibujo con-cab"><div class="cab-bloque"><button class="boton plano" data-accion="volver-doc">${ic("volver")} Listo</button><span data-sin-traducir>${T("Diagrama {n} de {x}", { n: E.bloque + 1, x: nombreDe(E.sel) })}</span></div>${lienzoHTML()}</section>`
       : `<section class="panel-dibujo vista-doc" aria-label="Vista del documento"><article class="md" id="vista-md" data-sin-traducir></article></section>`;
-    return `<div class="area" data-vista="${vista}">
+    const barraDoc = P.barraDocHTML();
+    return `${barraDoc ? `<div class="con-barra-doc">${barraDoc}` : ""}<div class="area" data-vista="${vista}">
       <section class="panel-texto" aria-label="Texto">
         <div class="editor"><div class="margen" id="margen" aria-hidden="true"></div><textarea id="texto" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Texto del ${esDiagrama(E.sel) ? "diagrama" : "documento"}"></textarea></div>
         <div class="problemas" id="problemas"></div>
         <div class="sugerencias" id="sugerencias" aria-label="Sugerencias"></div>
-      </section>${derecha}</div>`;
+      </section>${derecha}</div>${barraDoc ? "</div>" : ""}`;
   }
 
   /** Inicio de una carpeta: lo que se puede hacer, en palabras de quien la usa. Los proyectos lo muestran en su panel. */
   function inicioHTML() {
     return `<div class="inicio"><div class="inicio-cab"><span class="p-icono">${ic("carpeta")}</span><div><h2 data-sin-traducir>${esc(E.carpeta.nombre)}</h2><p>¿Qué quieres hacer?</p></div></div>
       ${P.sinDocumentacion() ? `<div class="p-aviso inicio-docs"><span>Este proyecto todavía no tiene documentación. Tu IA puede leerlo entero y escribir la visión general, la arquitectura y los flujos principales, aparte de tu código.</span><button class="boton principal" data-accion="p-documentar">${ic("chispa")} Hacer la documentación completa</button></div>` : ""}
-      ${accionesInicioHTML()}
+      ${P.accionesInicio()}
       <p class="inicio-mas"><button class="boton plano" data-accion="readme">${ic("github")} README para GitHub</button></p></div>`;
-  }
-  function accionesInicioHTML() {
-    const tarjeta = (accion, icono, titulo, texto) => `<button class="tarjeta-inicio" data-accion="${accion}"><span class="ti-icono">${ic(icono)}</span><span class="ti-txt"><b>${titulo}</b><small>${texto}</small></span></button>`;
-    return `<div class="acciones-inicio">
-      ${tarjeta("crear-diagrama", "chispa", "Crear diagrama", "Pídele a tu IA «el flujo de…», «la secuencia de…» o «la arquitectura de…». Puede leer tu código.")}
-      ${tarjeta("p-documentar", "proyecto", "Documentación completa", E.proyecto ? "Tu IA la vuelve a escribir desde el código. Revisas cada cambio antes de guardarlo." : "Tu IA lee el proyecto y escribe la visión general, la arquitectura y los flujos principales.")}
-      ${tarjeta("p-flujo", "diagrama", "Documentar un flujo", "Un flujo explicado paso a paso, con su diagrama. Tú apruebas qué archivos lee.")}
-      ${tarjeta("nuevo", "doc", "Escribir un documento", "Desde una plantilla o en blanco: README, decisión, guía…")}
-    </div>`;
   }
   /** «el flujo de…» → flujo, «la secuencia de…» → secuencia, «la arquitectura de…» → arquitectura; si no se nota, «auto». */
   function tipoDelPedido(texto) {
@@ -818,6 +820,8 @@
       h = [["curva", "Curvas"], ["recta", "Rectas"], ["ortogonal", "En ángulo recto"]].map(([v, n]) => `<button data-flechas="${v}" aria-pressed="${actual === v}"><span aria-hidden="true" style="width:12px">${actual === v ? "✓" : ""}</span>${n}</button>`).join("");
     } else if (m.tipo === "elementos") {
       h = P.menuElementosHTML();
+    } else if (m.tipo === "archivo") {
+      h = `<button data-abrir="${esc(m.ruta)}">${ic("doc")} Abrir</button>${P.puedeBorrar(m.ruta) ? `<button data-p-borrar="${esc(m.ruta)}" class="peligro">${ic("borrar")} ${P.puedeBorrar(m.ruta) === "papelera" ? "Mandar a la Papelera…" : "Borrar…"}</button>` : `<p class="menu-nota">Esquema no borra archivos del código</p>`}`;
     } else if (m.tipo === "exportar") {
       h = `<button data-exportar="svg">${ic("exportar")} SVG</button><button data-exportar="png">${ic("exportar")} PNG</button><button data-exportar="md">${ic("doc")} Markdown con Mermaid</button><button data-exportar="github">${ic("copiar")} Copiar para GitHub</button>`;
     }
@@ -885,7 +889,7 @@
     if (bv.activa) return capa("t-bv", bv.html(), "bienvenida");
     // titulo y texto llegan como HTML ya escapado (frase() o esc() del texto en español; traducirDOM lo traduce); los botones, como texto.
     const dp = P.dialogoHTML(capa); if (dp && !E.confirmar) return dp;
-    if (E.confirmar) return capa("t-conf", `<h2 id="t-conf">${E.confirmar.titulo}</h2><p>${E.confirmar.texto}</p><div class="pie-dialogo"><button class="boton" data-accion="confirmar-no">${esc(E.confirmar.no)}</button><button class="boton principal" data-accion="confirmar-si" data-autofoco>${esc(E.confirmar.si)}</button></div>`);
+    if (E.confirmar) return capa("t-conf", `<h2 id="t-conf" ${E.confirmar.traducido ? "data-sin-traducir" : ""}>${E.confirmar.titulo}</h2><p ${E.confirmar.traducido ? "data-sin-traducir" : ""}>${E.confirmar.texto}</p><div class="pie-dialogo" ${E.confirmar.traducido ? "data-sin-traducir" : ""}><button class="boton" data-accion="confirmar-no">${esc(E.confirmar.no)}</button><button class="boton principal${E.confirmar.peligro ? " peligro-lleno" : ""}" data-accion="confirmar-si" data-autofoco>${esc(E.confirmar.si)}</button></div>`);
     if (E.ajustes) return capa("t-aj", dialogoAjustes(), "ajustes");
     if (E.readme) return capa("t-rm", dialogoReadme(), "ancho");
     if (E.dibujar) return capa("t-dj", dialogoDibujar());
@@ -947,11 +951,14 @@
     const n = E.nuevo, comunidad = n.fuente === "comunidad", lista = plantillasFiltradas(), el = E.plantillas.find((p) => p.id === n.elegida);
     const blancos = [["blanco-flujo", "Diagrama de flujo", "flowchart TD\n    A[Inicio] --> B[Siguiente paso]\n", "diagrama.mmd"], ["blanco-secuencia", "Diagrama de secuencia", "sequenceDiagram\n    participant A as Cliente\n    participant B as Servidor\n    A->>B: Pedido\n    B-->>A: Respuesta\n", "secuencia.mmd"], ["blanco-doc", "Documento", "# Título\n\nEscribe aquí.\n", "documento.md"]];
     const q = (n.busqueda || "").trim();
-    return `<div class="titulo-nuevo"><h2 id="t-nv">Nuevo</h2><div class="seg" role="group" aria-label="Plantillas"><button data-fuente="app" aria-pressed="${!comunidad}">Plantillas</button><button data-fuente="comunidad" aria-pressed="${comunidad}">Comunidad</button></div></div>
+    const cab = P.nuevoCabHTML();
+    return `<div class="titulo-nuevo"><h2 id="t-nv">${cab.titulo}</h2></div>
+      ${cab.tarjetas && !q ? `<div class="nuevo-ia">${cab.tarjetas}</div><h3 class="nuevo-sub">Desde una plantilla</h3>` : ""}
+      <div class="seg nuevo-fuente" role="group" aria-label="Plantillas"><button data-fuente="app" aria-pressed="${!comunidad}">Plantillas</button><button data-fuente="comunidad" aria-pressed="${comunidad}">Comunidad</button></div>
       <div class="buscar-fila"><input type="search" id="buscar-plantilla" placeholder="Buscar plantillas" value="${esc(n.busqueda || "")}" aria-label="Buscar plantillas" data-sin-traducir data-autofoco></div>
       <div class="chips" style="margin-top:10px">${["todas", ...CATEGORIAS].map((c) => `<button class="chip" data-categoria="${c}" aria-pressed="${n.categoria === c}">${NOMBRE_CAT[c]}</button>`).join("")}</div>
       ${comunidad ? catalogoHTML(q) : `<div class="plantillas">
-        ${n.categoria === "todas" && !q ? `<button class="plantilla ia" data-accion="p-nuevo"><span class="previa">${ic("proyecto")}</span><span class="info"><b>${E.proyecto ? "Documentar un flujo" : "Documentar un proyecto"}</b><small>${E.proyecto ? "Tu IA lo documenta con diagramas, conectado a los elementos del proyecto." : "Elige un repositorio: Esquema lo lee y tu IA escribe la documentación conectada."}</small></span></button><button class="plantilla ia" data-accion="readme"><span class="previa">${ic("github")}</span><span class="info"><b>README para GitHub</b><small>Tu IA lo escribe desde lo que cuentas y la lista de archivos.</small></span></button>
+        ${n.categoria === "todas" && !q ? `${cab.readme ? `<button class="plantilla ia" data-accion="readme"><span class="previa">${ic("github")}</span><span class="info"><b>README para GitHub</b><small>Tu IA lo escribe desde lo que cuentas y la lista de archivos.</small></span></button>` : ""}
           ${blancos.map(([id, nom, , ]) => `<button class="plantilla" data-plantilla="${id}" aria-pressed="${n.elegida === id}"><span class="previa">${ic(id === "blanco-doc" ? "doc" : "diagrama")}</span><span class="info"><b>${nom}</b><small>En blanco</small></span></button>`).join("")}` : ""}
         ${lista.map((p) => `<button class="plantilla" data-plantilla="${esc(p.id)}" aria-pressed="${n.elegida === p.id}" data-sin-traducir><span class="previa">${previaPlantilla(p)}</span><span class="info"><b>${esc(textoDe(p.nombre))}</b><small>${esc(textoDe(p.descripcion))}</small></span></button>`).join("")}
       </div>`}
@@ -999,7 +1006,8 @@
   function elegirPlantilla(id) {
     E.nuevo.elegida = id; E.nuevo.errorNombre = null;
     const pl = E.plantillas.find((p) => p.id === id);
-    E.nuevo.nombre = nombreLibre(pl ? textoDe(pl.archivo) : contenidoBlanco(id)[1]);
+    const base = pl ? textoDe(pl.archivo) : contenidoBlanco(id)[1];
+    E.nuevo.nombre = nombreLibre(P.prefijoNuevo(esDiagrama(base)) + base);
     pintar(); $("#nombre-nuevo")?.focus();
   }
   function pedirCatalogo() { E.catalogo = { estado: "cargando", plantillas: [], bajando: {} }; host.enviar("catalogoPlantillas"); }
@@ -1239,6 +1247,7 @@
     const a = d.accion;
     if (!a) return;
     switch (a) {
+      case "toast-accion": { const a = toast._accion; toast._accion = null; $("#toast").classList.remove("visible", "con-accion"); a?.f(); return; }
       case "abrir-lateral": E.lateral = true; return pintar();
       case "cerrar-lateral": E.lateral = false; return pintar();
       case "elegir-carpeta": return host.enviar("elegirCarpeta");
@@ -1339,6 +1348,14 @@
   document.addEventListener("pointerup", (e) => { if (punteros.has(e.pointerId)) alSoltar(e); });
   document.addEventListener("pointercancel", (e) => { punteros.delete(e.pointerId); gesto = null; arrastre = null; });
   document.addEventListener("dblclick", alDobleClic);
+  // En el lateral: clic derecho (o Supr) sobre un documento ofrece borrarlo.
+  document.addEventListener("contextmenu", (e) => {
+    const b = e.target.closest?.(".lateral [data-abrir]");
+    if (!b) return;
+    e.preventDefault();
+    E.menu = { tipo: "archivo", ruta: b.dataset.abrir, x: Math.min(e.clientX, window.innerWidth - 248), y: Math.min(e.clientY, window.innerHeight - 110) };
+    pintarMenu();
+  });
   document.addEventListener("wheel", (e) => {
     if (!e.target.closest?.("#lienzo") || e.target.closest(".lz-herr, .lz-mini")) return;
     e.preventDefault();
@@ -1364,6 +1381,7 @@
       if (E.elegido) { E.elegido = null; return pintarSeleccion(); }
       if (E.bloque != null) { E.bloque = null; return pintar(); }
     }
+    if ((e.key === "Delete" || (e.key === "Backspace" && cmd)) && e.target.closest?.(".lateral [data-abrir]")) { e.preventDefault(); return P.pedirBorrar(e.target.closest(".lateral [data-abrir]").dataset.abrir); }
     if (e.target.id === "texto" && e.key === "Tab" && !e.shiftKey && E.sugerencias.length) { e.preventDefault(); return usarSugerencia(0); }
     if (e.target.id === "texto" && e.key === "Tab" && !e.shiftKey) { e.preventDefault(); const t = e.target, c = t.selectionStart; t.setRangeText("    ", c, t.selectionEnd, "end"); cambiarTexto(t.value, { origen: "texto", agrupar: true }); return; }
     if (cmd && e.key.toLowerCase() === "z" && !e.target.closest(".dialogo, .lz-editar")) { e.preventDefault(); return e.shiftKey ? rehacer() : deshacer(); }
@@ -1389,7 +1407,7 @@
         E.actualizacion = versionNueva(e.actualizacion);
         if (E.actualizacion.hay && !E.avisoVersion) { E.avisoVersion = true; toast("Hay una versión nueva de Esquema: está en Ajustes"); }
       }
-      Object.assign(E, { config: e.config || {}, ias: e.ias || [], version: e.version || "", plantillas: (e.plantillas || []).filter((p) => !validarPlantilla(p).length), carpeta: e.carpeta || null, archivos: (e.archivos || []).slice().sort(porRuta), recientes: Array.isArray(e.proyectos) ? e.proyectos : [] });
+      Object.assign(E, { config: e.config || {}, ias: e.ias || [], version: e.version || "", plantillas: (e.plantillas || []).filter((p) => !validarPlantilla(p).length), tipos: (Array.isArray(e.tipos) ? e.tipos : []).filter((t) => !M.validarTipo(t).length), carpeta: e.carpeta || null, archivos: (e.archivos || []).slice().sort(porRuta), recientes: Array.isArray(e.proyectos) ? e.proyectos : [] });
       const parametros = new URLSearchParams(location.search);
       if (parametros.has("vacio")) { E.carpeta = null; E.archivos = []; }
       await cargarIdioma();
@@ -1456,7 +1474,8 @@
         if (r.ruta === E.sel) { E.elegido = null; refrescar("disco"); }
         pintarEstadoGuardado();
       };
-      if (d.texto === d.guardado && d.estado !== "guardando") { usarDisco(); return toast(Tp("«{x}» cambió en el disco: lo actualicé", { x: nombreDe(r.ruta) }), true); }
+      // Se avisa solo si es lo que la persona tiene abierto (un trabajo de la IA escribe muchos documentos: no es ruido).
+      if (d.texto === d.guardado && d.estado !== "guardando") { usarDisco(); if (r.ruta === E.sel) toast(Tp("«{x}» cambió en el disco: lo actualicé", { x: nombreDe(r.ruta) }), true); return; }
       E.confirmar = {
         titulo: frase("«{x}» cambió en el disco", { x: nombreDe(r.ruta) }),
         texto: esc("Otro programa lo cambió mientras tenías cambios sin guardar aquí. ¿Con cuál versión te quedas?"),
@@ -1467,8 +1486,12 @@
       pintar();
     },
     archivos(r) { E.archivos = (r.archivos || []).slice().sort(porRuta); P.alCambiarArchivos(); pintar(); },
+    /** Respuesta a `papelera`: el archivo (de una carpeta sin documentación de Esquema) está en la Papelera del sistema. */
+    enPapelera(r) { P.alPapelera(r || {}); },
     /** Proyectos: la respuesta de bin/proyecto.py (r.orden dice cuál: abrir, leer, preparar, generar, guardar, version…). */
     proyectoRespuesta(r) { P.respuesta(r || {}); },
+    /** Proyectos: cómo va un trabajo largo (documentar), mientras corre: {eventos: [{t: "estado", trabajo} | {t: "lee", ruta, n} | {t: "busca", patron}]}. */
+    proyectoProgreso(r) { P.progreso(r || {}); },
     iaProbada(r) { delete E.probando[r.ia]; E.resultadoIA[r.ia] = r; if (r.ok) toast("Lista para usar"); pintar(); },
     estructuraLista(r) { if (E.readme?.envio) { E.readme.envio = r.ok ? r : { archivos: [], error: r.error }; pintar(); } },
     readmeListo(r) {
@@ -1566,9 +1589,10 @@
           return A.estado({ ...demo, config, archivos: demo.archivos.map((a) => ({ ruta: a.ruta })) });
         });
       case "config": try { const c = JSON.parse(localStorage.getItem("esquema.config") || "{}"); localStorage.setItem("esquema.config", JSON.stringify({ ...c, ...d })); } catch { /* sin almacenamiento */ } return;
-      case "elegirCarpeta": return luego(150, () => A.carpetaElegida({ ok: true, carpeta: DEMO.carpeta, archivos: Object.keys(memoria).map((ruta) => ({ ruta })), ...(d.proyecto ? { proyecto: true } : {}) }));
-      case "abrirProyecto": return luego(150, () => A.carpetaElegida(d.indice === 0 && DEMO.proyecto ? { ok: true, carpeta: DEMO.carpeta, archivos: Object.keys(memoria).map((ruta) => ({ ruta })), proyecto: true } : { ok: false, error: tr("No encontré ese proyecto.") }));
+      case "elegirCarpeta": { P.simAbrir(DEMO.carpeta.ruta, memoria, DEMO); return luego(150, () => A.carpetaElegida({ ok: true, carpeta: DEMO.carpeta, archivos: Object.keys(memoria).map((ruta) => ({ ruta })), ...(d.proyecto ? { proyecto: true } : {}) })); }
+      case "abrirProyecto": { const x = P.simAbrir(Number(d.indice), memoria, DEMO); return luego(150, () => A.carpetaElegida(x ? { ok: true, ...x, proyecto: true } : { ok: false, error: tr("No encontré ese proyecto.") })); }
       case "proyecto": return P.simular(d, memoria, DEMO, luego);
+      case "papelera": { const ok = d.ruta in memoria && !String(d.ruta).includes(".."); if (ok) delete memoria[d.ruta]; return luego(80, () => A.enPapelera(ok ? { ok: true, ruta: d.ruta } : { ok: false, ruta: d.ruta, error: tr("Ese archivo no se puede borrar.") })); }
       case "abrirArchivo": return luego(20, () => A.archivoAbierto(d.ruta in memoria ? { ok: true, ruta: d.ruta, texto: memoria[d.ruta] } : { ok: false, ruta: d.ruta, error: tr("No encontré el archivo") }));
       case "guardarArchivo": memoria[d.ruta] = d.texto; return luego(60, () => A.archivoGuardado({ ok: true, ruta: d.ruta }));
       case "probarIA": return luego(500, () => A.iaProbada({ ia: d.ia, ok: true }));

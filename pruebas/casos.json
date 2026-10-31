@@ -1442,6 +1442,93 @@
     }
    },
    "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Faro",
+    "documentos": [
+     {
+      "ruta": "fuentes/el-faro.pdf",
+      "titulo": "Original",
+      "tipo": "fuente"
+     },
+     {
+      "ruta": "capitulos/01-uno.md",
+      "titulo": "1. Uno",
+      "tipo": "capitulo"
+     },
+     {
+      "ruta": "historias/hu-1-x.md",
+      "titulo": "HU-1",
+      "tipo": "historia"
+     }
+    ],
+    "elementos": [
+     {
+      "id": "marta",
+      "tipo": "personaje",
+      "nombre": "Marta"
+     }
+    ],
+    "tipo": "libro"
+   },
+   "valido": true
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Faro",
+    "documentos": [],
+    "elementos": [],
+    "tipo": "Libro Malo"
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Faro",
+    "documentos": [
+     {
+      "ruta": "fuentes/a.exe",
+      "titulo": "x",
+      "tipo": "fuente"
+     }
+    ],
+    "elementos": []
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Faro",
+    "documentos": [
+     {
+      "ruta": "fuentes/sub/a.pdf",
+      "titulo": "x",
+      "tipo": "fuente"
+     }
+    ],
+    "elementos": []
+   },
+   "valido": false
+  },
+  {
+   "esquema": {
+    "formato": 1,
+    "nombre": "Faro",
+    "documentos": [
+     {
+      "ruta": "capitulos/a.pdf",
+      "titulo": "x",
+      "tipo": "capitulo"
+     }
+    ],
+    "elementos": []
+   },
+   "valido": false
   }
  ],
  "proyecto_elemento": [
@@ -1534,6 +1621,1995 @@
     "id": "a",
     "tipo": "boton",
     "nombre": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "valido": false
+  }
+ ],
+ "tipos": [
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": true
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "libro",
+    "icono": "libro",
+    "nombre": {
+     "es": "Libro",
+     "en": "Book"
+    },
+    "descripcion": {
+     "es": "Un libro o un texto largo, partido en capítulos para estudiarlo, resumirlo y revisarlo.",
+     "en": "A book or a long text, split into chapters to study it, summarize it and review it."
+    },
+    "fuente": "texto",
+    "elementos": [
+     "personaje",
+     "concepto",
+     "lugar",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "libro",
+      "nombre": {
+       "es": "El libro",
+       "en": "The book"
+      },
+      "icono": "libro",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "libro",
+       "vision",
+       "otro"
+      ]
+     },
+     {
+      "id": "capitulos",
+      "nombre": {
+       "es": "Capítulos",
+       "en": "Chapters"
+      },
+      "icono": "doc",
+      "carpetas": [
+       "capitulos"
+      ]
+     },
+     {
+      "id": "estudio",
+      "nombre": {
+       "es": "Para estudiar",
+       "en": "Study material"
+      },
+      "icono": "listo",
+      "carpetas": [
+       "estudio"
+      ]
+     },
+     {
+      "id": "revision",
+      "nombre": {
+       "es": "Revisión",
+       "en": "Review"
+      },
+      "icono": "chispa",
+      "tipos": [
+       "revision"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Notas",
+       "en": "Notes"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Original",
+       "en": "Original"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Personajes y conceptos",
+       "en": "Characters and concepts"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "capitulos",
+     "resumenes",
+     "libro-readme",
+     "estudio",
+     "incongruencias",
+     "elementos"
+    ],
+    "acciones": [
+     "estudiar",
+     "incongruencias",
+     "diagrama",
+     "agregar",
+     "wiki"
+    ],
+    "nuevo": [
+     "documento",
+     "diagrama",
+     "agregar"
+    ],
+    "agregar": [
+     "documento"
+    ]
+   },
+   "valido": true
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki",
+     "programar"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "url",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "Libro Malo",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ],
+    "extra": 1
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     },
+     {
+      "id": "x",
+      "nombre": {
+       "es": "X"
+      },
+      "icono": "doc",
+      "tipos": [
+       "inventado"
+      ]
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     },
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Otra"
+      },
+      "icono": "doc"
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      },
+      "carpetas": [
+       "x"
+      ]
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       "../x"
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "codigo",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "diagrama"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
+   },
+   "valido": false
+  },
+  {
+   "tipo": {
+    "formato": 1,
+    "id": "software",
+    "icono": "<svg>",
+    "nombre": {
+     "es": "Software",
+     "en": "Software"
+    },
+    "descripcion": {
+     "es": "Una app, un servicio o una biblioteca: el código y su documentación, aparte.",
+     "en": "An app, a service or a library: the code and its documentation, kept apart."
+    },
+    "fuente": "carpeta",
+    "elementos": [
+     "pantalla",
+     "boton",
+     "accion",
+     "servicio",
+     "modulo",
+     "dato",
+     "actor",
+     "otro"
+    ],
+    "secciones": [
+     {
+      "id": "vision",
+      "nombre": {
+       "es": "Visión y arquitectura",
+       "en": "Overview and architecture"
+      },
+      "icono": "proyecto",
+      "carpetas": [
+       ""
+      ],
+      "tipos": [
+       "vision",
+       "arquitectura"
+      ]
+     },
+     {
+      "id": "componentes",
+      "nombre": {
+       "es": "Componentes",
+       "en": "Components"
+      },
+      "icono": "diagrama",
+      "carpetas": [
+       "componentes"
+      ]
+     },
+     {
+      "id": "flujos",
+      "nombre": {
+       "es": "Flujos",
+       "en": "Flows"
+      },
+      "icono": "flecha",
+      "carpetas": [
+       "flujos",
+       "diagramas"
+      ]
+     },
+     {
+      "id": "historias",
+      "nombre": {
+       "es": "Historias de usuario",
+       "en": "User stories"
+      },
+      "icono": "persona",
+      "carpetas": [
+       "historias"
+      ]
+     },
+     {
+      "id": "documentos",
+      "nombre": {
+       "es": "Documentos",
+       "en": "Documents"
+      },
+      "icono": "doc",
+      "carpetas": []
+     },
+     {
+      "id": "fuentes",
+      "nombre": {
+       "es": "Originales",
+       "en": "Originals"
+      },
+      "icono": "archivo",
+      "carpetas": [
+       "fuentes"
+      ]
+     },
+     {
+      "id": "elementos",
+      "nombre": {
+       "es": "Elementos",
+       "en": "Elements"
+      }
+     },
+     {
+      "id": "versiones",
+      "nombre": {
+       "es": "Versiones",
+       "en": "Versions"
+      }
+     }
+    ],
+    "falta": [
+     "vision",
+     "arquitectura",
+     "segun-codigo",
+     "flujos",
+     "elementos",
+     "elementos-usados",
+     "al-dia"
+    ],
+    "acciones": [
+     "documentar",
+     "completar",
+     "flujo",
+     "diagrama",
+     "historia",
+     "agregar",
+     "readme",
+     "wiki"
+    ],
+    "nuevo": [
+     "diagrama",
+     "documento",
+     "historia",
+     "agregar"
+    ],
+    "agregar": [
+     "historia",
+     "documento",
+     "libro"
+    ]
    },
    "valido": false
   }

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Arma dist/Esquema.app (autosuficiente) y dist/Esquema-macOS.zip + .sha256, sin instalar nada. Solo en un Mac (Apple Silicon).
 # Lo usan build.sh (en tu Mac) y la acción de GitHub que publica cada versión (publicar.yml).
-# Dentro van: la app, Python portátil y el código (bin/, ui/, plantillas/) en Contents/Resources/esquema. Los documentos de la
+# Dentro van: la app, Python portátil y el código (bin/, ui/, plantillas/, tipos/) en Contents/Resources/esquema. Los documentos de la
 # persona quedan en su carpeta y la configuración en ~/Library/Application Support/Esquema.
 # Todo lo que se descarga tiene su huella SHA-256 fija aquí: si no coincide, no se usa y el armado se detiene.
 set -euo pipefail
@@ -40,7 +40,7 @@ tar -xzf "$CACHE/python-3.13.16.tar.gz" -C "$APP/Contents/Resources"   # → Res
 for d in lib/python3.13/test lib/python3.13/idlelib lib/python3.13/tkinter lib/python3.13/turtledemo lib/python3.13/ensurepip lib/tcl9.0 lib/tk9.0 include share; do
   rm -rf "$APP/Contents/Resources/python/$d"
 done
-for d in bin ui plantillas; do ditto "$RAIZ/$d" "$APP/Contents/Resources/esquema/$d"; done
+for d in bin ui plantillas tipos; do ditto "$RAIZ/$d" "$APP/Contents/Resources/esquema/$d"; done
 # app.json: la descripción de la app que leen las piezas (bin/nucleo.py la busca junto a bin/).
 cp "$RAIZ/app.json" "$APP/Contents/Resources/esquema/app.json"
 # La app usa la carpeta de la persona, nunca la demo.

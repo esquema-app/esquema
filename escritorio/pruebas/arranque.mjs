@@ -77,7 +77,7 @@ if (await v.evaluate(() => { let a; window.Esquema._probar((E) => { a = E.ajuste
 // Respuestas de la app que la prueba quiere esperar.
 await v.evaluate(() => {
   window._r = {};
-  for (const f of ["estado", "carpetaElegida", "archivoAbierto", "archivoGuardado", "archivoCambiado", "archivos", "iaProbada", "dibujoListo", "estructuraLista", "copiado", "proyectoRespuesta"]) {
+  for (const f of ["estado", "carpetaElegida", "archivoAbierto", "archivoGuardado", "archivoCambiado", "archivos", "iaProbada", "dibujoListo", "estructuraLista", "copiado", "proyectoRespuesta", "proyectoProgreso"]) {
     const antes = window.Esquema[f];
     window.Esquema[f] = (x) => { (window._r[f] ||= []).push(x); return antes.call(window.Esquema, x); };
   }
@@ -247,23 +247,27 @@ const headCodigo = gitR("rev-parse", "HEAD").trim();
   if (!vinculo || vinculo.ruta !== DOCS || vinculo.docs !== "" || !fs.existsSync(path.join(DOCS, ".git"))) falla("vincular no dejó la documentación aparte en ~/Esquema/repo-git con su git: " + JSON.stringify(vinculo));
   const gitD = gitEn(DOCS);
   await v.click('[data-accion="p-generar-inicial"]'); await v.waitForSelector(".p-envio details", { timeout: 15000 });
-  await v.click('[data-accion="p-enviar"]'); await v.waitForSelector(".p-prop", { timeout: 30000 });
-  await v.click('[data-accion="p-aplicar"]');
+  // Documentar es un trabajo por etapas: el progreso llega en vivo (proyectoProgreso) y cada documento queda en el disco.
+  await v.evaluate(() => { const antes = window.Esquema.proyectoProgreso; window._progreso = []; window.Esquema.proyectoProgreso = (x) => { window._progreso.push(...(x.eventos || [])); return antes.call(window.Esquema, x); }; });
+  await v.click('[data-accion="p-enviar"]'); await v.waitForSelector(".p-trabajo", { timeout: 30000 });
+  await v.waitForSelector(".p-trabajo.listo", { timeout: 60000 });
   const log = () => { try { return gitD("log", "--format=%s"); } catch { return ""; } };
-  for (let i = 0; i < 100 && !log().includes("Documentación inicial"); i++) await espera(150);
-  if (!log().includes("Documentación inicial") || !["README.md", "elementos.md", "esquema.json", path.join("flujos", "grabar.md")].every((r) => fs.existsSync(path.join(DOCS, r)))) falla("documentar el proyecto no dejó los archivos y la versión en la carpeta aparte: " + log());
-  const inicial = gitD("show", "--name-only", "--format=", "HEAD").trim().split("\n");
-  if (!["README.md", "elementos.md", "esquema.json", "flujos/grabar.md"].every((r) => inicial.includes(r))) falla("la versión inicial no tiene todos los documentos: " + inicial.join(", "));
+  for (let i = 0; i < 100 && !log().includes("Documentación hecha con"); i++) await espera(150);
+  if (!log().includes("Documentación hecha con") || !["README.md", "elementos.md", "esquema.json", path.join("flujos", "grabar-reunion.md")].every((r) => fs.existsSync(path.join(DOCS, r)))) falla("documentar el proyecto no dejó los archivos y la versión en la carpeta aparte: " + log());
   const codigoIntacto = () => gitR("rev-parse", "HEAD").trim() === headCodigo && !gitR("status", "--porcelain").trim() && !fs.existsSync(path.join(REPO, "docs"));
   if (!codigoIntacto()) falla("documentar tocó el repo del código: " + gitR("log", "--format=%s") + gitR("status", "--porcelain"));
+  const prog = await v.evaluate(() => window._progreso);
+  if (!prog.some((x) => x.t === "lee" && x.ruta === "src/grabar.py") || !prog.some((x) => x.t === "estado" && x.trabajo.etapa === "escribir")) falla("el progreso no llegó en vivo: " + JSON.stringify(prog).slice(0, 300));
+  else bien("documentar por etapas: el progreso llega en vivo (proyectoProgreso) y cada documento queda en el disco");
+  await v.click('[data-accion="p-trabajo-visto"]');
   await v.click('.lateral [data-p="elementos"]'); await v.click('[data-p-elemento="boton-grabar"]');
   await v.click('[data-accion="p-renombrar"]'); await v.fill("#p-valor", "Empezar a grabar"); await v.click('[data-accion="p-ver-cambio"]');
   await v.waitForSelector(".p-cambio-lista .p-prop"); await v.screenshot({ path: path.join(salida, "5-proyecto-renombrar.png") });
   await v.click('[data-accion="p-aplicar-cambio"]');
   for (let i = 0; i < 100 && !log().includes("Renombré"); i++) await espera(150);
   const archivosCommit = gitD("show", "--name-only", "--format=", "HEAD").trim().split("\n").sort();
-  if (!fs.readFileSync(path.join(DOCS, "README.md"), "utf8").includes("[Empezar a grabar](elementos.md#el-boton-grabar)") || !fs.readFileSync(path.join(DOCS, "flujos", "grabar.md"), "utf8").includes("G[Empezar a grabar]")) falla("renombrar no cambió los archivos en el disco");
-  if (!log().includes("Renombré") || !archivosCommit.includes("README.md") || !archivosCommit.includes("flujos/grabar.md")) falla("renombrar no guardó una versión con los archivos cambiados: " + log() + " | " + archivosCommit.join(", "));
+  if (!fs.readFileSync(path.join(DOCS, "README.md"), "utf8").includes("[Empezar a grabar](elementos.md#el-boton-grabar)") || !fs.readFileSync(path.join(DOCS, "flujos", "grabar-reunion.md"), "utf8").includes("G[Empezar a grabar]")) falla("renombrar no cambió los archivos en el disco");
+  if (!log().includes("Renombré") || !archivosCommit.length || archivosCommit.some((r) => !/\.(md|mmd|json)$/.test(r))) falla("renombrar no guardó una versión solo con documentación: " + log() + " | " + archivosCommit.join(", "));
   if (!codigoIntacto()) falla("renombrar tocó el repo del código: " + gitR("log", "--format=%s"));
   await v.click('.lateral [data-p="versiones"]'); await v.waitForSelector("[data-p-version]");
   await v.click("[data-p-version] >> nth=-1"); await v.waitForSelector("[data-p-dif]", { timeout: 15000 });

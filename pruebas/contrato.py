@@ -44,7 +44,7 @@ for a, d in puente["acciones"].items():
         if not os.path.exists(os.path.join(RAIZ, "bin", s)):
             problemas.append(f'"{a}" usa bin/{s}, que no existe')
 # Las respuestas que cada app tiene que mandar: lo que responde cada acción + los avisos de la carpeta vigilada + el menú.
-respuestas_app = {d["responde"] for d in puente["acciones"].values() if d["responde"]} | {"archivoCambiado", "archivos", "menu"}
+respuestas_app = {d["responde"] for d in puente["acciones"].values() if d["responde"]} | {"archivoCambiado", "archivos", "menu", "proyectoProgreso"}
 
 
 def tiene(texto, *patrones):
@@ -116,13 +116,38 @@ if escritorio:
         problemas.append("La versión de escritorio/package.json y la de app/Info.plist tienen que ser iguales (publicar.yml)")
 # Proyectos: las apps solo pasan a bin/proyecto.py las órdenes que el script conoce (la misma lista en los tres lados), y un
 # reciente se abre por su posición en proyectos.json (la ruta nunca viene de la interfaz).
-ordenes_py = set(re.findall(r'"(\w+)": \w+', re.search(r"ORDENES = \{([^}]+)\}", leer("bin/proyecto.py")).group(1)))
+py = leer("bin/proyecto.py")
+ordenes_py = set(re.findall(r'"(\w+)": \w+', re.search(r"ORDENES = \{([^}]+)\}", py).group(1)))
+progreso_py = set(re.findall(r'"(\w+)"', re.search(r"CON_PROGRESO = \(([^)]+)\)", py).group(1)))
+sin_carpeta_py = set(re.findall(r'"(\w+)"', re.search(r"SIN_CARPETA = \(([^)]+)\)", py).group(1)))
+
+
+def lista_de(texto, patron):
+    m = re.search(patron, texto)
+    return set(re.findall(r'"(\w+)"', m.group(1))) if m else None
 if mac is not None:
     om = re.search(r"ordenesProyecto: Set<String> = \[([^\]]+)\]", mac)
     if not om or set(re.findall(r'"(\w+)"', om.group(1))) != ordenes_py:
         problemas.append("Mac: Ventana.ordenesProyecto tiene que ser igual a ORDENES de bin/proyecto.py")
     if not tiene(mac, r'case "proyecto":.*?ordenesProyecto\.contains\(orden\)', r'proyectos\.json'):
         problemas.append("Mac: la acción proyecto revisa la orden y abrirProyecto lee la ruta de proyectos.json")
+# Trabajos largos: las dos apps pasan ESQUEMA_PROGRESO al script, leen sus líneas nuevas y avisan con proyectoProgreso.
+if mac is not None:
+    servicios = leer("app/Sources/Esquema/Servicios.swift") or ""
+    if not tiene(servicios, r'env\["ESQUEMA_PROGRESO"\]', r"class LectorProgreso", r"withTimeInterval: 0\.5") or lista_de(mac, r"ordenesConProgreso: Set<String> = \[([^\]]+)\]") != progreso_py or not tiene(mac, r'llamar\("proyectoProgreso"'):
+        problemas.append("Mac: las órdenes largas (CON_PROGRESO de bin/proyecto.py) pasan ESQUEMA_PROGRESO y avisan con proyectoProgreso cada 0,5 s (Servicios.swift, Ventana.swift)")
+    if lista_de(mac, r"ordenesSinCarpeta: Set<String> = \[([^\]]+)\]") != sin_carpeta_py or not tiene(mac, r'e\.removeValue\(forKey: "carpeta"\)\s*\n\s*if let base \{ e\["carpeta"\] = base\.path \}'):
+        problemas.append("Mac: solo SIN_CARPETA de bin/proyecto.py corre sin carpeta, y la carpeta la pone siempre la app (Ventana.swift)")
+    if not tiene(mac, r'case "papelera":.*?Carpeta\.absoluta\(ruta, en: base\).*?trashItem', r"runOpenPanelWith.*?marco\.isMainFrame, marco\.securityOrigin\.protocol == \"file\""):
+        problemas.append("Mac: «papelera» solo con rutas de la carpeta (a la Papelera, nunca borrar) y el panel de archivos solo para la interfaz local (Ventana.swift)")
+if escritorio:
+    servicios = leer("escritorio/src/servicios.js") or ""
+    if not tiene(servicios, r"env\.ESQUEMA_PROGRESO = ", r"function lectorProgreso", r"setInterval\(leer, 500\)") or lista_de(escritorio, r"ORDENES_CON_PROGRESO = \[([^\]]+)\]") != progreso_py or not tiene(escritorio, r'llamar\("proyectoProgreso"'):
+        problemas.append("Windows/Linux: las órdenes largas (CON_PROGRESO de bin/proyecto.py) pasan ESQUEMA_PROGRESO y avisan con proyectoProgreso cada 0,5 s (servicios.js, main.js)")
+    if lista_de(escritorio, r"ORDENES_SIN_CARPETA = \[([^\]]+)\]") != sin_carpeta_py or not tiene(escritorio, r"delete e\.orden; delete e\.carpeta;\s*\n\s*if \(base\) e\.carpeta = base;"):
+        problemas.append("Windows/Linux: solo SIN_CARPETA de bin/proyecto.py corre sin carpeta, y la carpeta la pone siempre la app (main.js)")
+    if not tiene(escritorio, r"async papelera\(d\).*?absoluta\(ruta, base\).*?shell\.trashItem\(abs\)"):
+        problemas.append("Windows/Linux: «papelera» solo con rutas de la carpeta y a la Papelera del sistema (main.js)")
 if escritorio:
     oe = re.search(r"ORDENES_PROYECTO = \[([^\]]+)\]", escritorio)
     if not oe or set(re.findall(r'"(\w+)"', oe.group(1))) != ordenes_py:
