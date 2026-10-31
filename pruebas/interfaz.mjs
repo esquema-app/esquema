@@ -628,7 +628,8 @@ async function recorridoTrabajo({ idioma, ancho, oscuro = false }) {
   const etapa = async (nombre) => { await espera(p, 120); if (idioma === "en") await sinTraducir(p, "trabajo " + nombre + " " + ancho); if (ancho < 500) await desborde(p, "trabajo " + nombre + ` (${idioma})`); await captura(p, `trabajo-${nombre}-${idioma}-${ancho}${oscuro ? "-oscuro" : ""}`); };
   const estado = (f) => p.evaluate((src) => { let x; window.Esquema._probar((E) => { x = new Function("E", src)(E); }); return x; }, f);
   const lateral = async () => { if (ancho < 500 && !(await p.$(".lateral.abierto"))) { await p.click('[data-accion="abrir-lateral"]'); await espera(p, 150); } };
-  await p.evaluate(() => { window._simVelocidad = 0.25; window._simFallar = "arquitectura.md"; });
+  // Mientras la IA lee va a velocidad normal (si no, en una máquina lenta el trabajo termina antes de mirar el árbol); después, rápido.
+  await p.evaluate(() => { window._simVelocidad = 1; window._simFallar = "arquitectura.md"; });
   await lateral();
   await p.click('.lateral [data-accion="p-documentar"]');
   await p.waitForSelector('[data-accion="p-generar-inicial"]'); await p.click('[data-accion="p-generar-inicial"]');
@@ -649,6 +650,7 @@ async function recorridoTrabajo({ idioma, ancho, oscuro = false }) {
   if (orden.indexOf("/src") > orden.indexOf("package.json")) falla("El árbol «Código» no pone las carpetas primero: " + orden.join(" "));
   await p.waitForSelector(".lateral .c-archivo.leido", { timeout: 8000 });
   await etapa("arbol-leyendo");
+  await p.evaluate(() => { window._simVelocidad = 0.25; });
   if (ancho < 500) await p.keyboard.press("Escape");
   // Mientras escribe, cada documento listo ya está en la documentación (antes de terminar el trabajo).
   await p.waitForFunction(() => document.querySelectorAll(".t-doc.listo").length >= 1, null, { timeout: 15000 });
@@ -774,8 +776,8 @@ async function recorridoAgregar({ idioma, ancho, oscuro = false }) {
   await etapa("borrar");
   await p.click('[data-pz-confirmar="si"]');
   await p.waitForFunction((r) => { let x; window.Esquema._probar((E) => { x = !E.archivos.some((a) => a.ruta === r); }); return x; }, D + hu.ruta, { timeout: 4000 });
-  await p.waitForSelector("#toast .toast-accion");
-  await p.click("#toast .toast-accion");
+  await p.waitForSelector("#toast .pz-toast-accion");
+  await p.click("#toast .pz-toast-accion");
   await p.waitForFunction((r) => { let x; window.Esquema._probar((E) => { x = E.archivos.some((a) => a.ruta === r); }); return x; }, D + hu.ruta, { timeout: 4000 });
   if (await estado(`return !!window.Esquema._pruebas.proyectos().puedeBorrar("README.md")`)) falla("Un archivo del código de un proyecto vinculado se ofrece borrar");
   // 3) La wiki: qué páginas son nuevas, las escritas a mano no se tocan.

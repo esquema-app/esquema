@@ -4,10 +4,7 @@
    diagramas (--lienzo, --punto, --d-*), con light-dark() para que sigan solos al modo. El SVG que se exporta no usa estas
    variables: lleva sus colores adentro (M.COLORES en motor/dibujo.js). */
 :root { --texto-suave-claro: #596377; --rojo-claro: #c02b2b; --rojo-oscuro: #ff8080; --verde-claro: #1d7444; --linea-claro: #e2e6ec; --linea-oscuro: #273041; }
-/* La pieza define --sombra con light-dark(), que solo acepta colores: en Chromium la sombra quedaba en «none». Aquí, la misma
-   sombra con el color elegido por modo (la geometría es una sola). */
 :root {
-  --sombra: 0 8px 28px light-dark(rgba(20, 30, 50, .14), rgba(0, 0, 0, .5));
   --lienzo: light-dark(#fbfcfd, #12171f); --punto: light-dark(#dce1e9, #252d3b);
   --d-nodo: light-dark(#ffffff, #1b212c); --d-borde: light-dark(#3d4a5c, #9aa6ba); --d-texto: light-dark(#1b2230, #e8ecf3);
   --d-linea: light-dark(#56627a, #9aa6ba); --d-grupo: light-dark(#f1f4f8, #171d27); --d-grupo-borde: light-dark(#c5ccd8, #364053);
@@ -208,7 +205,7 @@ button { cursor: pointer; }
 .panel-dibujo.con-cab { grid-template-rows: auto minmax(0, 1fr); }
 
 /* ───── Diálogos ───── */
-.capa-idioma { background: var(--fondo); }
+.pz-capa:has(> .idioma-solo) { background: var(--fondo); }
 .pz-dialogo label { display: block; font-weight: 600; margin: 12px 0 6px; }
 .pz-dialogo textarea, .pz-dialogo input[type="text"], .pz-dialogo input[type="search"] { width: 100%; border: 1px solid var(--linea); border-radius: 8px; background: var(--fondo); padding: 9px 11px; }
 .pz-dialogo textarea { min-height: 96px; resize: vertical; }
@@ -251,17 +248,17 @@ body:has(.pz-capa) #toast.visible, body:has(.p-pie) #toast.visible, body:has(.pr
   .barra { padding: 6px 8px; gap: 4px; }
   .barra .solo-movil { display: inline-flex; }
   .barra .solo-escritorio { display: none; }
-  .barra .pz-boton { min-height: 44px; min-width: 44px; }
+  .barra .pz-boton { min-width: var(--pz-tactil); }
   .area, .area[data-vista="ambos"] { grid-template-columns: minmax(0, 1fr); }
   .area[data-vista="ambos"] .panel-texto { display: none; }
   .panel-texto { border-right: 0; }
   .lz-herr { bottom: max(10px, env(safe-area-inset-bottom)); }
-  .lz-herr .pz-boton { min-height: 44px; min-width: 44px; }
+  .lz-herr .pz-boton { min-width: var(--pz-tactil); }
   .lz-herr .no-movil { display: none; }
   .lz-mini { display: none; }
   .tarjeta-ia { bottom: 76px; }
-  .capa-idioma { place-items: center; padding: 16px; }
-  .capa-idioma .pz-dialogo { border-radius: 14px; }
+  .pz-capa:has(> .idioma-solo) { place-items: center; padding: 16px; }
+  .idioma-solo { border-radius: 14px; }
   .md { padding: 18px 16px 60px; }
   .archivo { min-height: 44px; }
 }
@@ -387,7 +384,6 @@ body:has(.pz-capa) #toast.visible, body:has(.p-pie) #toast.visible, body:has(.pr
   .p-fila { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .p-el, .p-versiones, .p-dif-par { grid-template-columns: minmax(0, 1fr); }
   .p-pie { bottom: -40px; }
-  .p-acciones .pz-boton { min-height: 44px; }
 }
 /* Pasar al proyecto: una fila por documento, con su casilla, adónde va y si ya existe en el repo. */
 .p-pasar { display: flex; flex-direction: column; gap: 6px; max-height: min(52vh, 460px); overflow: auto; margin: 10px 0; }
@@ -538,8 +534,6 @@ body:has(.pz-capa) #toast.visible, body:has(.p-pie) #toast.visible, body:has(.pr
 .preg-pie { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
 .preg-pie .espacio { flex: 1; }
 /* Avisos con acción («Deshacer») y menús. */
-#toast.con-accion { pointer-events: auto; display: flex; align-items: center; gap: 12px; }
-.toast-accion { border: 0; background: transparent; color: inherit; font-weight: 700; text-decoration: underline; padding: 2px 4px; cursor: pointer; }
 .menu .peligro { color: var(--rojo); }
 .menu-nota { margin: 4px 10px 6px; font-size: 12px; color: var(--texto-suave); max-width: 220px; }
 @media (max-width: 760px) {
@@ -547,7 +541,6 @@ body:has(.pz-capa) #toast.visible, body:has(.p-pie) #toast.visible, body:has(.pr
   .hu-barra .pz-boton { min-height: 40px; }
   .pregunta { padding: 18px 16px; border-radius: 12px; }
   .preg-txt { font-size: 19px; }
-  .preg-pie .pz-boton { min-height: 44px; }
   .tipos-proyecto { grid-template-columns: minmax(0, 1fr); }
   .soltar .pz-boton { width: 100%; }
 }
@@ -559,18 +552,3 @@ body:has(.pz-capa) #toast.visible, body:has(.p-pie) #toast.visible, body:has(.pr
 .p-falta li > span { flex: 1; min-width: 0; }
 .preg-pie .pz-boton.pz-principal { margin-left: auto; }
 @media (max-width: 760px) { .preg-pie .espacio { display: none; } .preg-pie .pz-boton.pz-principal { flex: 1 0 100%; order: 9; } }
-
-/* ───── Pieza «bienvenida» (0.2.0): sus botones todavía usan .boton/.pie-dialogo, no los de «componentes». Mientras Pieza no
-   la pase a pz-, se ven igual que .pz-boton/.pz-pie (mismos valores que ui/componentes.css). ───── */
-.pieza-bv .pie-dialogo { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-.pieza-bv .pie-dialogo .izq { margin-right: auto; }
-.pieza-bv .boton { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 6px 14px;
-  border: 1px solid var(--linea); border-radius: var(--radio-chico); background: var(--panel); color: var(--texto); white-space: nowrap; }
-.pieza-bv .boton:hover { background: var(--hover); }
-.pieza-bv .boton.principal { background: var(--acento); border-color: var(--acento); color: var(--sobre-acento); font-weight: 600; }
-.pieza-bv .boton[disabled] { opacity: .5; cursor: default; }
-@media (pointer: coarse), (max-width: 760px) { .pieza-bv .boton { min-height: 44px; } }
-@media (max-width: 760px) { .pieza-bv .pie-dialogo .boton { flex: 1 1 auto; } }
-
-/* El selector Texto | Dibujo de la barra va en una línea (la pieza deja que .pz-seg se parta). */
-.barra .pz-seg { flex-wrap: nowrap; }

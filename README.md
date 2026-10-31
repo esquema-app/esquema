@@ -163,6 +163,8 @@ Lo planificado (BPMN, estados, ER, gantt, mapa mental) está en [AGENTS.md](AGEN
 - **Comparte una plantilla** sin programar: descríbela con palabras en
   [«Proponer una plantilla»](https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml) y la armamos (CC0).
 - **Conversa** en [Discussions](https://github.com/esquema-app/esquema/discussions): dudas, ideas y lo que documentaste.
+- **Cuéntanos algo desde la app:** Ajustes → Acerca de → «Enviar comentarios» abre GitHub con tu mensaje listo (algo falla, una
+  idea u otro); lo revisas y lo publicas tú. Nunca se incluye nada tuyo.
 - **Aporta:** prueba en Windows o Linux, traduce o toma una
   [tarea de bienvenida](https://github.com/esquema-app/esquema/labels/good%20first%20issue). Detalle en [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -245,7 +247,8 @@ Your files stay yours: plain `.md`/`.mmd` in the folder you choose. Esquema-only
 **Website, downloads and live demo:** [esquema-app.github.io/esquema](https://esquema-app.github.io/esquema/?lang=en). **Community
 templates** (CC0) come from [esquema-catalogo](https://github.com/esquema-app/esquema-catalogo) under “New” → “Community”; propose one in
 plain words with the [template form](https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml). Questions and
-ideas: [Discussions](https://github.com/esquema-app/esquema/discussions); good first issues are labeled
+ideas: [Discussions](https://github.com/esquema-app/esquema/discussions), or from the app: Settings → About → “Send feedback” opens GitHub
+with your message ready for you to review and post (nothing of yours is included); good first issues are labeled
 [`good first issue`](https://github.com/esquema-app/esquema/labels/good%20first%20issue).
 
 **Install** (free, no account; each installer downloads the latest GitHub Release, checks its SHA-256 and installs for your user only):

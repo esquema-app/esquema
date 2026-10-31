@@ -10,6 +10,7 @@
 //   bv.sumarPaso({ id: "hola", titulo: "Hola, esto es Ana", cuerpo: () => "<p>…</p>" });
 //   bv.abrir({ config: E.config });            // decide si se muestra y desde qué paso
 //   if (bv.soloIdioma) pintarSolo(bv.html());       // en el paso del idioma no se pinta nada más
+//   else pintarTodo(app() + ui.envolver(bv.html(), { id: "t-bv", sinEsc: true }));   // con la pieza «componentes»
 (function (raiz, fabrica) {
   const m = fabrica();
   if (typeof module === "object" && module.exports) module.exports = m;
@@ -59,7 +60,7 @@
         return `<button type="button" class="opcion-idioma${es ? " sugerido" : ""}" id="bv-idioma-${x.codigo}" data-bv-idioma="${x.codigo}" lang="${x.codigo}" aria-keyshortcuts="${k + 1}">
           <span class="tecla" aria-hidden="true">${k + 1}</span><b>${esc(x.nombre)}</b>${es ? `<small>${esc(x.sugerido || "")}</small>` : ""}</button>`;
       };
-      return `<div class="pieza-bv pieza-bv-idioma" data-sin-traducir>${marcas()}
+      return `<div class="pieza-bv pieza-bv-idioma" data-pz-clave="bv-idioma" data-sin-traducir>${marcas()}
         <h2 id="t-bv" tabindex="-1"><span lang="es">Elige tu idioma</span> <span class="sep" aria-hidden="true">·</span> <span lang="en">Choose your language</span></h2>
         <div class="opciones-idioma" role="group" aria-labelledby="t-bv">${idiomas.map(opcion).join("")}</div>
         <p class="nota-idioma"><span lang="es">Puedes cambiarlo cuando quieras en Ajustes.</span> <span lang="en">You can change it anytime in Settings.</span></p></div>`;
@@ -102,12 +103,13 @@
         if (paso === null) return "";
         if (paso === 0) return pasoIdioma();
         const p = lista()[paso - 1], ultimo = paso === total() - 1, puede = !!p.puede();
-        return `<div class="pieza-bv" data-paso="${esc(p.id)}">${marcas()}
+        // Clases de la pieza «componentes» (pz-pie, pz-boton, pz-principal, pz-izq); sin ella, bienvenida.css las dibuja igual.
+        return `<div class="pieza-bv" data-paso="${esc(p.id)}" data-pz-clave="bv-${esc(p.id)}">${marcas()}
           <h2 id="t-bv" tabindex="-1" data-sin-traducir>${T(p.titulo)}</h2>
           <div class="cuerpo-bv">${p.cuerpo()}</div>
-          <div class="pie-dialogo" data-sin-traducir><button type="button" class="boton izq" data-bv-ir="${paso - 1}">${T("Atrás")}</button>
-            ${ultimo ? `<button type="button" class="boton principal" data-bv-fin>${T("Empezar")}</button>`
-              : `${p.saltable ? `<button type="button" class="boton" data-bv-fin>${T("Lo hago después")}</button>` : ""}<button type="button" class="boton principal" data-bv-ir="${paso + 1}"${puede ? "" : " disabled"}>${T("Siguiente")}</button>`}</div></div>`;
+          <div class="pz-pie" data-sin-traducir><button type="button" class="pz-boton pz-izq" data-bv-ir="${paso - 1}">${T("Atrás")}</button>
+            ${ultimo ? `<button type="button" class="pz-boton pz-principal" data-bv-fin>${T("Empezar")}</button>`
+              : `${p.saltable ? `<button type="button" class="pz-boton" data-bv-fin>${T("Lo hago después")}</button>` : ""}<button type="button" class="pz-boton pz-principal" data-bv-ir="${paso + 1}"${puede ? "" : " disabled"}>${T("Siguiente")}</button>`}</div></div>`;
       },
 
       /** Guarda el idioma por el mismo camino que Ajustes, lo carga y sigue ya traducida. */

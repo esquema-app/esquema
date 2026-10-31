@@ -39,7 +39,7 @@
   };
   const ENLACES = { sitio: "https://esquema-app.github.io/esquema/", codigo: "https://github.com/esquema-app/esquema",
     comunidad: "https://github.com/esquema-app/esquema/discussions", aportar: "https://github.com/esquema-app/esquema/blob/main/CONTRIBUTING.md",
-    proponer: "https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml" };
+    catalogo: "https://github.com/esquema-app/esquema-catalogo", proponer: "https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml" };
   const CATEGORIAS = ["arquitectura", "secuencia", "flujo-de-usuario", "proceso", "documentacion"];
   const $ = (s, r = document) => r.querySelector(s);
   const esc = M.esc;
@@ -68,7 +68,7 @@
   // velo; confirmar (una promesa); avisos en cola; las filas de «Tu IA» y de actualizaciones; «Acerca de».
   const tema = PiezaTema.crear({ guardar: (v) => { E.config.tema = v; host.enviar("config", { tema: v }); } });
   const ui = PiezaComponentes.crear({
-    i18n, host, app: "Esquema", pintar: () => pintar(), cerrar: () => cerrarDialogo(),
+    i18n, host, app: "Esquema", repo: "esquema-app/esquema", version: () => E.version, pintar: () => pintar(), cerrar: () => cerrarDialogo(),
     retener: (t, o) => bv.retener(t, !!o?.traducido),   // mientras se elige el idioma, los avisos esperan
     elegirIA: (id) => { E.config.ia = id; host.enviar("config", { ia: id }); },   // recién cuando la prueba sale bien
   });
@@ -111,19 +111,8 @@
 
   // ───────────── Avisos ─────────────
   /** Un aviso corto abajo (pieza «componentes»: en cola, sin repetirse). Con `accion` ({texto, f}) lleva un botón (p. ej.
-   *  «Deshacer») y dura más: eso todavía no lo trae la pieza, así que ese aviso lo pinta Esquema en el mismo #toast. */
-  function toast(texto, traducido = false, accion = null) {
-    const t = $("#toast");
-    if (toast._accion) { clearTimeout(toast._t); toast._accion = null; t.classList.remove("con-accion"); }
-    if (!accion) return ui.aviso(texto, { traducido });
-    if (bv.retener(texto, traducido)) return;  // mientras se elige el idioma, los avisos esperan
-    ui.avisos.limpiar();
-    t.classList.add("pz-toast", "visible", "con-accion"); t.classList.remove("pz-error");
-    t.textContent = traducido ? texto : tr(texto);
-    toast._accion = accion;
-    const b = document.createElement("button"); b.className = "toast-accion"; b.dataset.accion = "toast-accion"; b.textContent = accion.texto; t.appendChild(b);
-    toast._t = setTimeout(() => { t.classList.remove("visible", "con-accion"); toast._accion = null; }, 8000);
-  }
+   *  «Deshacer») y dura más. Mientras se elige el idioma, esperan (`retener`). */
+  const toast = (texto, traducido = false, accion = null) => ui.aviso(texto, { traducido, accion: accion || undefined });
 
   // ───────────── Archivos y documentos ─────────────
   const extension = (r) => (/\.(md|mmd|markdown|mermaid)$/i.exec(r || "") || [, ""])[1].toLowerCase();
@@ -887,20 +876,16 @@
   }
 
   // ───────────── Diálogos ─────────────
-  /** Un diálogo de la app con las clases de la pieza «componentes» (foco, Tab, Esc y velo los atiende `ui`). Los de Esquema traen
-   *  su propio <h2 id> y su pie adentro, por eso no pasan por ui.dialogo (que arma el título). `fijo`: ni Esc ni el velo lo cierran
-   *  por la pieza (la bienvenida: Esc la cierra Esquema, un clic fuera no). */
-  function capa(id, html, clase = "", { fijo = false, fondo = "" } = {}) {
-    return `<div class="pz-capa ${fondo}" data-pz-capa><div class="pz-dialogo ${clase}" role="dialog" aria-modal="true" aria-labelledby="${id}" tabindex="-1"${fijo ? " data-pz-sin-esc" : ""}>${html}</div></div>`;
-  }
+  /** Los diálogos de Esquema traen su propio <h2 id> y su pie adentro: `ui.envolver` (pieza «componentes») pone la capa, la caja
+   *  accesible, el foco, Tab, Esc y el velo. La bienvenida no se cierra con Esc ni con un clic fuera (`sinEsc`). */
   function dialogos() {
-    if (bv.soloIdioma) return capa("t-bv", bv.html(), "", { fijo: true, fondo: "capa-idioma" });
-    if (bv.activa) return capa("t-bv", bv.html(), "bienvenida", { fijo: true });
-    const dp = P.dialogoHTML(capa); if (dp) return dp;
-    if (E.ajustes) return capa("t-aj", dialogoAjustes(), "ajustes");
-    if (E.readme) return capa("t-rm", dialogoReadme(), "pz-ancho");
-    if (E.dibujar) return capa("t-dj", dialogoDibujar());
-    if (E.nuevo) return capa("t-nv", dialogoNuevo(), "pz-ancho");
+    if (bv.soloIdioma) return ui.envolver(bv.html(), { id: "t-bv", sinEsc: true, clase: "idioma-solo" });
+    if (bv.activa) return ui.envolver(bv.html(), { id: "t-bv", sinEsc: true, clase: "bienvenida" });
+    const dp = P.dialogoHTML(); if (dp) return dp;
+    if (E.ajustes) return ui.envolver(dialogoAjustes(), { id: "t-aj", clase: "ajustes" });
+    if (E.readme) return ui.envolver(dialogoReadme(), { id: "t-rm", clase: "pz-ancho" });
+    if (E.dibujar) return ui.envolver(dialogoDibujar(), { id: "t-dj" });
+    if (E.nuevo) return ui.envolver(dialogoNuevo(), { id: "t-nv", clase: "pz-ancho" });
     return "";
   }
   function dialogoAjustes() {
@@ -909,8 +894,9 @@
       <h3>Apariencia</h3>${tema.selectorHTML()}
       <h3>Tu IA</h3>${filasIA()}
       <h3>Actualizaciones</h3>${ui.filaActualizacion()}
-      <h3>Acerca de</h3>${ui.acercaDe({ version: E.version, enlaces: { sitio: ENLACES.sitio, codigo: ENLACES.codigo, comunidad: ENLACES.comunidad, aportar: ENLACES.aportar } })}
-      <div class="pz-pie"><button class="pz-boton pz-principal" data-accion="cerrar" data-autofoco>Listo</button></div>`;
+      <h3>Acerca de</h3>${ui.acercaDe({ enlaces: { sitio: ENLACES.sitio, codigo: ENLACES.codigo, comunidad: ENLACES.comunidad, aportar: ENLACES.aportar },
+        extra: [{ texto: "Catálogo de plantillas", url: ENLACES.catalogo }] })}
+      <div class="pz-pie"><button class="pz-boton pz-principal" data-accion="cerrar">Listo</button></div>`;
   }
   const textoDe = (o) => (o && typeof o === "object" ? o[E.idioma] || o.es || o.en || "" : o || "");
   function previaPlantilla(pl) {
@@ -1136,7 +1122,7 @@
         <div class="previa-readme"><article class="md" id="previa-readme" data-sin-traducir></article></div>
         ${malos.length ? `<p class="pz-error-texto" data-sin-traducir>${malos.map(([k, x]) => T("El diagrama {n} tiene un error: {x}", { n: k + 1, x: M.frase(x.errores[0]) })).join("<br>")}</p>` : ""}
         <label for="pedido-readme">¿Quieres cambiar algo?</label><textarea id="pedido-readme" placeholder="Por ejemplo: más corto, agrega cómo instalar con Docker" data-sin-traducir>${esc(r.pedido || "")}</textarea>
-        <div class="pz-pie"><button class="pz-boton pz-izq" data-accion="readme-cambios">${ic("chispa")} Pedir cambios</button><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="readme-guardar" data-autofoco>${hay ? "Reemplazar README.md" : "Guardar como README.md"}</button></div>`;
+        <div class="pz-pie"><button class="pz-boton pz-izq" data-accion="readme-cambios">${ic("chispa")} Pedir cambios</button><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="readme-guardar">${hay ? "Reemplazar README.md" : "Guardar como README.md"}</button></div>`;
     }
     return `<h2 id="t-rm">README para GitHub</h2>
       <p>Cuéntale a tu IA de qué se trata tu proyecto. Escribe un README claro, con un diagrama si ayuda.</p>
@@ -1226,7 +1212,6 @@
     const a = d.accion;
     if (!a) return;
     switch (a) {
-      case "toast-accion": { const a = toast._accion; toast._accion = null; $("#toast").classList.remove("visible", "con-accion"); a?.f(); return; }
       case "abrir-lateral": E.lateral = true; return pintar();
       case "cerrar-lateral": E.lateral = false; return pintar();
       case "elegir-carpeta": return host.enviar("elegirCarpeta");
@@ -1457,8 +1442,9 @@
       if (d.texto === d.guardado && d.estado !== "guardando") { usarDisco(); if (r.ruta === E.sel) toast(Tp("«{x}» cambió en el disco: lo actualicé", { x: nombreDe(r.ruta) }), true); return; }
       ui.confirmar({ titulo: "«{x}» cambió en el disco", valores: { x: nombreDe(r.ruta) },
         texto: "Otro programa lo cambió mientras tenías cambios sin guardar aquí. ¿Con cuál versión te quedas?",
-        si: "Usar la del disco", no: "Quedarme con la mía" })
-        .then((si) => { if (si) usarDisco(); else { d.guardado = r.texto; d.estado = "cambiado"; programarGuardado(r.ruta); } });
+        si: "Usar la del disco", no: "Quedarme con la mía", sinElegir: null })
+        // Esc o un clic fuera no eligen: no se pisa nada (lo tuyo queda sin guardar hasta que vuelvas a escribir o guardar).
+        .then((si) => { if (si === null) { clearTimeout(temporizadores[r.ruta]); return pintarEstadoGuardado(); } if (si) usarDisco(); else { d.guardado = r.texto; d.estado = "cambiado"; programarGuardado(r.ruta); } });
     },
     archivos(r) { E.archivos = (r.archivos || []).slice().sort(porRuta); P.alCambiarArchivos(); pintar(); },
     /** Respuesta a `papelera`: el archivo (de una carpeta sin documentación de Esquema) está en la Papelera del sistema. */

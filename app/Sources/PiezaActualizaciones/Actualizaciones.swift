@@ -102,12 +102,14 @@ public enum Actualizaciones {
         do { try p.run() } catch { fin(false, "") }
     }
 
-    /// Revisa si hay versión nueva: ["hay", "version", "notas", "sinConexion", "texto", "valores"].
+    /// Revisa si hay versión nueva: ["hay", "version", "notas", "sinConexion", "texto", "valores", "desarrollo"].
     public static func revisar(_ fin: @escaping @MainActor ([String: Any]) -> Void) {
         let terminar: @MainActor (Bool, Bool, String, String) -> Void = { hay, sinConexion, v, notas in
             // `disponible` (lo que la app manda en su estado) tiene la misma forma que la respuesta, sin «sinConexion».
+            // `desarrollo`: instalación de desarrollo (sin versión; `notas` son los commits nuevos de origin/main).
             disponible = ["hay": hay, "version": hay ? v : "", "notas": hay ? notas : "",
-                          "texto": hay && !v.isEmpty ? textos["version"]! : "", "valores": ["v": hay ? v : ""]]
+                          "texto": hay && !v.isEmpty ? textos["version"]! : "", "valores": ["v": hay ? v : ""],
+                          "desarrollo": checkout != nil]
             var r = disponible
             r["sinConexion"] = sinConexion
             fin(r)

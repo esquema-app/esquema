@@ -5,6 +5,12 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Enviar comentarios desde la app:** en Ajustes → Acerca de, «Enviar comentarios» abre GitHub con tu mensaje listo (algo falla,
+  una idea u otro); lo revisas y lo publicas tú. «Acerca de» vuelve a tener el enlace al catálogo de plantillas. Los avisos con
+  botón («Deshacer», «Revisar», «Responder») se ven igual que los demás, y si un archivo cambió en el disco, Esc ya no elige por
+  ti. · *Send feedback from the app: in Settings → About, «Send feedback» opens GitHub with your message ready (something's wrong,
+  an idea or other); you review and post it yourself. «About» links to the template catalog again. Notices with a button (Undo,
+  Review, Answer) look like the rest, and if a file changed on disk, Esc no longer chooses for you.*
 - **Diálogos más cómodos con el teclado:** el foco entra al diálogo, Tab no se escapa, Esc o un clic fuera lo cierran y el foco
   vuelve a donde estabas. Los avisos esperan su turno en vez de taparse. En Ajustes, una IA queda elegida recién cuando su prueba
   sale bien, la actualización muestra su avance con una barra y «Acerca de» suma «Cómo aportar». · *Friendlier dialogs from the
