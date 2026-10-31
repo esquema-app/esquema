@@ -5,6 +5,9 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Escribir en documentos largos es más fluido:** mientras escribes, la vista vuelve a armar solo el párrafo que cambió; los
+  diagramas no se redibujan. · *Typing in long documents is smoother: while you type, the preview rebuilds only the paragraph that
+  changed; diagrams aren't redrawn.*
 - **Agregar información:** pega notas, un correo o lo que salió de una reunión y tu IA lo ordena en la documentación: crea lo
   nuevo, completa lo que ya existe y corrige lo que cambió. Antes de guardar ves cada cambio agrupado (Nuevo, Se completa, Se
   modifica), con el porqué y la frase de donde salió; lo que cambia algo que ya estaba solo se guarda si lo confirmas. Si tu IA no
