@@ -638,6 +638,8 @@
   "Versión {v}": "Version {v}",
   "Instalando: {app} se cerrará y volverá a abrirse sola": "Installing: {app} will close and reopen on its own",
   "No pude preparar la versión nueva. {app} sigue igual que antes; intenta de nuevo más tarde.": "I couldn't get the new version ready. {app} is just as it was; try again later.",
-  "Actualiza {ia} para usarla con {app}: tu versión no conoce las protecciones que necesitamos.": "Update {ia} to use it with {app}: your version doesn't know the protections we need."
+  "Actualiza {ia} para usarla con {app}: tu versión no conoce las protecciones que necesitamos.": "Update {ia} to use it with {app}: your version doesn't know the protections we need.",
+  "No encontré {ia} en este computador.": "I couldn't find {ia} on this computer.",
+  "{ia} no respondió.": "{ia} didn't answer."
  }
 }
