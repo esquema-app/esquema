@@ -2,7 +2,7 @@
 """Contrato entre la interfaz (ui/app.js) y las apps, escrito en pruebas/puente.json.
 
 Revisa: 1) cada host.enviar("x") de la interfaz está en puente.json y simulado en simular() (la vista previa del navegador);
-2) cada acción de puente.json la usa la interfaz; 3) cada respuesta de puente.json existe en window.Esquema; 4) los scripts que
+2) cada acción de puente.json la usa la interfaz; 3) cada respuesta de puente.json existe en window.Esquema (host.responder); 4) los scripts que
 nombra el contrato existen en bin/; 5) la app de Mac (Ventana.swift, un `case` por acción) y la de Windows/Linux (escritorio/src/main.js, objeto ACCIONES)
 atienden todas las acciones, mandan todas las respuestas (también archivoCambiado, archivos y menu) y solo llaman funciones que la
 interfaz tiene; 6) la seguridad de las apps (puente solo para el marco principal, navegación solo dentro de ui/, sandbox y
@@ -28,13 +28,15 @@ ui_todo = ui + leer("ui/proyectos.js")  # el módulo de proyectos también llama
 puente = json.loads(leer("pruebas/puente.json"))
 problemas = []
 acciones = set(re.findall(r'host\.enviar\("(\w+)"', ui_todo))
+# La pieza «componentes» manda las suyas (probarIA, buscarActualizacion, actualizar, config, abrirEnlace) con su propio enviar().
+acciones |= set(re.findall(r'\benviar\("(\w+)"', leer("ui/componentes.js") or ""))
 contrato = set(puente["acciones"])
 problemas += [f'La interfaz manda "{a}" y no está en pruebas/puente.json' for a in sorted(acciones - contrato)]
 problemas += [f'puente.json tiene "{a}" y la interfaz no lo usa' for a in sorted(contrato - acciones)]
 simulado = ui.split("function simular(", 1)[1].split("\n  }\n", 1)[0]
 casos_web = set(re.findall(r'case "(\w+)"', simulado))
 problemas += [f'La vista previa (simular) no responde "{a}"' for a in sorted(acciones - casos_web)]
-cuerpo = ui.split("window.Esquema = {", 1)[1].split("\n  };", 1)[0]
+cuerpo = ui.split("host.responder({", 1)[1].split("\n  });", 1)[0]  # pieza «host-ui»: las respuestas quedan en window.Esquema
 funciones_ui = set(re.findall(r"^\s{4}(?:async\s+)?(\w+)\(", cuerpo, re.M))
 problemas += [f'window.Esquema no tiene la respuesta "{r}"' for r in sorted(set(puente["respuestas"]) - funciones_ui)]
 for a, d in puente["acciones"].items():

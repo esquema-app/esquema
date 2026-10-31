@@ -5,8 +5,10 @@
 (() => {
   "use strict";
   const M = window.EsquemaMotor;
-  const HOST = window.ESQUEMA_HOST || "web";
-  document.documentElement.dataset.host = HOST;
+  // ───────────── Puente con la app: pieza «host-ui» (ui/host.js) ─────────────
+  // Mac (WKWebView), Windows y Linux (Electron) o, en el navegador, `simular` (más abajo) con ui/demo.json. Pone <html data-host>.
+  const host = PiezaHost.crearHost({ nombre: "esquema", global: "Esquema", simular: (accion, d, c) => simular(accion, d, c) });
+  const HOST = host.plataforma;
   const E = {
     idioma: "es", config: {}, ias: [], version: "", plantillas: [], cargado: false,
     carpeta: null,          // {nombre, ruta}
@@ -18,16 +20,13 @@
     lz: { z: 1, x: 0, y: 0, ajustar: true, mini: false },
     elegido: null,          // {tipo: "nodo" | "arista" | "participante" | "evento", id}
     menu: null,             // {tipo: "formas" | "exportar" | "flechas", x, y}
-    ajustes: false, probando: {}, resultadoIA: {},
+    ajustes: false,
     nuevo: null,            // {fuente: "app" | "comunidad", categoria, busqueda, elegida, nombre}
     catalogo: null,         // plantillas de la comunidad: {estado: "cargando" | "listo" | "error", plantillas, error, bajando: {id: true}}
     readme: null,           // {paso: "pedir" | "escribiendo" | "listo" | "error", descripcion, estructura, envio, texto, pedido, error}
     dibujar: null,          // {pedido, tipo, cambiar, nuevo, codigo, enviando, error}; nuevo: «Crear diagrama» desde el inicio (archivo nuevo)
     cambiosIA: [],          // [{id, ruta, pedido, resumen, antes, despues, estado}]
     tarjetaIA: null,        // id del último cambio de la IA (la tarjeta del lienzo)
-    confirmar: null,        // {titulo, texto, si, no, accion, alNo?}
-    actualizacion: { hay: false }, // {hay, texto, valores, notas}: versión nueva (pieza «actualizaciones»: la app revisa al abrir y cada 6 horas)
-    revisando: null,        // Ajustes → Actualizaciones: null | "buscando" | "al-dia" | "sin-conexion" | {paso, texto, valores, pct}
     lateral: false,         // en celular: la lista de archivos abierta
     abiertas: {},           // árbol de la carpeta: ruta de una subcarpeta → abierta (true) o cerrada (false); sin valor, decide arbolAbierta()
     sugerencias: [],
@@ -39,22 +38,12 @@
     panel: null,            // null (editor) | "proyecto" | "elementos" | "versiones" | "propuestas"
   };
   const ENLACES = { sitio: "https://esquema-app.github.io/esquema/", codigo: "https://github.com/esquema-app/esquema",
-    comunidad: "https://github.com/esquema-app/esquema/discussions", catalogo: "https://github.com/esquema-app/esquema-catalogo",
-    proponer: "https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml" };
+    comunidad: "https://github.com/esquema-app/esquema/discussions", aportar: "https://github.com/esquema-app/esquema/blob/main/CONTRIBUTING.md",
+    catalogo: "https://github.com/esquema-app/esquema-catalogo", proponer: "https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml" };
   const CATEGORIAS = ["arquitectura", "secuencia", "flujo-de-usuario", "proceso", "documentacion"];
   const $ = (s, r = document) => r.querySelector(s);
   const esc = M.esc;
   const movil = () => window.matchMedia("(max-width: 760px)").matches;
-
-  // ───────────── Puente con la app ─────────────
-  const host = {
-    enviar(accion, datos = {}) {
-      const msg = { accion, datos };
-      if (window.webkit?.messageHandlers?.esquema) return window.webkit.messageHandlers.esquema.postMessage(msg);
-      if (window.esquemaEscritorio) return window.esquemaEscritorio.enviar(msg);
-      return simular(accion, datos);
-    },
-  };
 
   // ───────────── Idiomas: pieza «i18n» (ui/i18n.js; las claves son el texto en español) ─────────────
   // T escapa la frase y los valores; Tp es texto plano; tr y traducirDOM traducen lo ya pintado (nunca [data-sin-traducir],
@@ -74,6 +63,17 @@
   const fraseProblema = (p) => T(p.plantilla, p.valores);
   const nombreIA = () => (E.ias.find((x) => x.id === (E.config.ia || "claude")) || { nombre: "Claude" }).nombre;
 
+  // ───────────── Tema y componentes: piezas «tema» (ui/tema.css, ui/tema.js) y «componentes» (ui/componentes.js) ─────────────
+  // Sistema, claro u oscuro (?tema= gana, para vistas previas y capturas). Los componentes: diálogos con el foco adentro, Esc y el
+  // velo; confirmar (una promesa); avisos en cola; las filas de «Tu IA» y de actualizaciones; «Acerca de».
+  const tema = PiezaTema.crear({ guardar: (v) => { E.config.tema = v; host.enviar("config", { tema: v }); } });
+  const ui = PiezaComponentes.crear({
+    i18n, host, app: "Esquema", repo: "esquema-app/esquema", version: () => E.version, pintar: () => pintar(), cerrar: () => cerrarDialogo(),
+    retener: (t, o) => bv.retener(t, !!o?.traducido),   // mientras se elige el idioma, los avisos esperan
+    elegirIA: (id) => { E.config.ia = id; host.enviar("config", { ia: id }); },   // recién cuando la prueba sale bien
+  });
+  const filasIA = () => ui.filasIA({ ias: E.ias, elegida: E.config.ia || "claude" });
+
   // ───────────── Bienvenida: pieza «bienvenida» (ui/bienvenida.js) ─────────────
   // El idioma va primero (paso 0: hasta elegirlo no se pinta nada más y los avisos esperan); después los pasos de Esquema:
   // hola → carpeta → IA. Elegir el idioma lo guarda por el mismo camino que Ajustes (`config`).
@@ -86,7 +86,7 @@
   bv.sumarPaso({ id: "hola", titulo: "Hola, esto es Esquema", orden: 10, saltable: false,
     cuerpo: () => `<p>Diagramas y documentación en tu computador, en el mismo formato que GitHub ya muestra.</p><ul><li>Escribe en texto (Mermaid) o dibuja en el lienzo: los dos se mantienen al día.</li><li>Flujos, secuencias y arquitectura, con plantillas listas.</li><li>Tu propia IA te dibuja diagramas y te escribe el README.</li></ul><p>Gratis, abierto y sin cuentas. Nada sale de tu computador.</p>` });
   bv.sumarPaso({ id: "carpeta", titulo: "Elige tu carpeta", orden: 20, saltable: false, puede: () => !!E.carpeta,
-    cuerpo: () => `<p>Esquema trabaja con los archivos .md y .mmd de una carpeta: la de tu proyecto, por ejemplo. No los mueve ni los copia.</p><div class="fila"><span class="txt">${E.carpeta ? `<b data-sin-traducir>${esc(E.carpeta.nombre)}</b><small data-sin-traducir>${esc(E.carpeta.ruta || "")}</small>` : "Todavía no eliges una carpeta."}</span><button class="boton ${E.carpeta ? "" : "principal"}" data-accion="elegir-carpeta">${ic("carpeta")} ${E.carpeta ? "Cambiar" : HOST === "web" ? "Usar la carpeta de ejemplo" : "Elegir carpeta"}</button></div>` });
+    cuerpo: () => `<p>Esquema trabaja con los archivos .md y .mmd de una carpeta: la de tu proyecto, por ejemplo. No los mueve ni los copia.</p><div class="pz-fila"><span class="pz-txt">${E.carpeta ? `<b data-sin-traducir>${esc(E.carpeta.nombre)}</b><small data-sin-traducir>${esc(E.carpeta.ruta || "")}</small>` : "Todavía no eliges una carpeta."}</span><button class="pz-boton ${E.carpeta ? "" : "pz-principal"}" data-accion="elegir-carpeta">${ic("carpeta")} ${E.carpeta ? "Cambiar" : HOST === "web" ? "Usar la carpeta de ejemplo" : "Elegir carpeta"}</button></div>` });
   bv.sumarPaso({ id: "ia", titulo: "Tu IA (opcional)", orden: 30,
     cuerpo: () => `<p>Para «Dibújame» y el README, Esquema usa la IA que ya tienes, con tu cuenta. Solo ve lo que le pides; nunca tus archivos.</p>${filasIA()}` });
 
@@ -110,15 +110,9 @@
   const ic = (n) => `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
 
   // ───────────── Avisos ─────────────
-  /** Un aviso corto abajo. Con `accion` ({texto, f}) lleva un botón (p. ej. «Deshacer») y dura más. */
-  function toast(texto, traducido = false, accion = null) {
-    if (bv.retener(texto, traducido)) return;  // mientras se elige el idioma, los avisos esperan
-    const t = $("#toast"); t.textContent = traducido ? texto : tr(texto); t.classList.add("visible");
-    toast._accion = accion;
-    t.classList.toggle("con-accion", !!accion);
-    if (accion) { const b = document.createElement("button"); b.className = "toast-accion"; b.dataset.accion = "toast-accion"; b.textContent = accion.texto; t.appendChild(b); }
-    clearTimeout(toast._t); toast._t = setTimeout(() => { t.classList.remove("visible", "con-accion"); toast._accion = null; }, accion ? 8000 : 2400);
-  }
+  /** Un aviso corto abajo (pieza «componentes»: en cola, sin repetirse). Con `accion` ({texto, f}) lleva un botón (p. ej.
+   *  «Deshacer») y dura más. Mientras se elige el idioma, esperan (`retener`). */
+  const toast = (texto, traducido = false, accion = null) => ui.aviso(texto, { traducido, accion: accion || undefined });
 
   // ───────────── Archivos y documentos ─────────────
   const extension = (r) => (/\.(md|mmd|markdown|mermaid)$/i.exec(r || "") || [, ""])[1].toLowerCase();
@@ -203,7 +197,7 @@
 
   // ───────────── Proyectos (ui/proyectos.js) ─────────────
   const P = window.EsquemaProyectos({
-    E, M, host, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA, enBienvenida: () => bv.activa,
+    E, M, host, ui, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA, enBienvenida: () => bv.activa,
     pintar: () => pintar(), abrir: (r) => abrir(r), cambiarTextoDe: (r, t, op) => cambiarTextoDe(r, t, op), guardarTodo: () => guardarTodo(),
     textoLienzo: () => textoLienzo(), traducirDOM: (r) => traducirDOM(r), nombreDe: (r) => nombreDe(r), ponerTextoLienzo: (t, op) => ponerTextoLienzo(t, op), resultadoBloque: (t, p) => resultadoBloque(t, p),
     abrirMenu: (tipo, b) => abrirMenu(tipo, b), pintarMenu: () => pintarMenu(), esDiagrama: (r) => esDiagrama(r), porRuta,
@@ -217,10 +211,8 @@
     const foco = document.activeElement?.id;
     const sel = textarea ? [textarea.selectionStart, textarea.selectionEnd, textarea.scrollTop] : null;
     const scrollDoc = $(".vista-doc")?.scrollTop;
-    document.documentElement.dataset.tema = E.config.tema === "claro" ? "claro" : E.config.tema === "oscuro" ? "oscuro" : "";
-    if (!document.documentElement.dataset.tema) delete document.documentElement.dataset.tema;
     if (bv.soloIdioma) { app.innerHTML = dialogos(); traducirDOM(app); bv.enfocar(); return; }  // nada más detrás
-    app.innerHTML = `${lateral()}<main class="contenido">${barra()}${area()}</main>${E.lateral ? '<div class="velo" data-accion="cerrar-lateral"></div>' : ""}${dialogos()}${menu()}`;
+    app.innerHTML = `${lateral()}<main class="contenido">${barra()}${area()}</main>${E.lateral ? '<div class="velo" data-accion="cerrar-lateral"></div>' : ""}${dialogos()}${menu()}${ui.capas()}`;
     traducirDOM(app);
     const t = $("#texto");
     if (t) {
@@ -233,6 +225,7 @@
     if ($(".vista-doc")) { pintarVistaDoc(); if (scrollDoc) $(".vista-doc").scrollTop = scrollDoc; }
     P.despuesDePintar();
     if (foco && foco !== "texto" && foco !== "lienzo") $("#" + foco)?.focus();
+    ui.despuesDePintar();  // el foco entra al diálogo que se abrió, no se escapa y vuelve al cerrarlo
     const af = $("[data-autofoco]"); if (af && !app.contains(document.activeElement)) af.focus();
   }
   /** Después de un cambio de texto: solo lo que depende del texto (rápido; no se vuelve a armar la pantalla). */
@@ -291,7 +284,7 @@
         ${!E.archivos.length && E.carpeta ? `<p class="vacio">Esta carpeta todavía no tiene documentos ni diagramas.</p>` : ""}`}
         ${P.recientesHTML()}
       </nav>
-      <div class="pie-lateral"><button class="boton plano" data-accion="ajustes">${ic("ajustes")} Ajustes</button></div>
+      <div class="pie-lateral"><button class="pz-boton pz-plano" data-accion="ajustes">${ic("ajustes")} Ajustes</button></div>
     </aside>`;
   }
   function barra() {
@@ -301,17 +294,17 @@
     const vistas = E.sel ? (movil() ? [["texto", "Texto"], ["dibujo", esDocumento(E.sel) && E.bloque == null ? "Vista" : "Dibujo"]] : [["texto", "Texto"], ["ambos", "Ambos"], ["dibujo", esDocumento(E.sel) && E.bloque == null ? "Vista" : "Dibujo"]]) : [];
     const vista = movil() && E.vista === "ambos" ? "dibujo" : E.vista;
     return `<header class="barra">
-      <button class="boton plano icono solo-movil" data-accion="abrir-lateral" aria-label="Archivos">${ic("menu")}</button>
+      <button class="pz-boton pz-plano icono solo-movil" data-accion="abrir-lateral" aria-label="Archivos">${ic("menu")}</button>
       ${E.sel ? `<span class="titulo" data-sin-traducir>${esc(nombreDe(E.sel))}</span><span class="estado-guardado solo-escritorio" id="estado-guardado">${estadoGuardado()}</span>` : `<span class="titulo">Esquema</span>`}
       <span class="espacio"></span>
       ${d ? `<span id="historial" class="solo-escritorio">${botonesHistorial()}</span>
-        <div class="seg" role="group" aria-label="Vista">${vistas.map(([v, n]) => `<button data-vista="${v}" aria-pressed="${vista === v}">${n}</button>`).join("")}</div>
-        <button class="boton" data-accion="dibujame" title="Pídele un diagrama a tu IA">${ic("chispa")}<span class="solo-escritorio">Dibújame</span></button>
-        ${tieneDibujo ? `<button class="boton icono" data-accion="menu-exportar" aria-label="Exportar" title="Exportar">${ic("exportar")}</button>` : ""}
-        ${P.puedeBorrar(E.sel) ? `<button class="boton plano icono" data-p-borrar="${esc(E.sel)}" aria-label="Borrar" title="Borrar">${ic("borrar")}</button>` : ""}` : ""}
+        <div class="pz-seg" role="group" aria-label="Vista">${vistas.map(([v, n]) => `<button data-vista="${v}" aria-pressed="${vista === v}">${n}</button>`).join("")}</div>
+        <button class="pz-boton" data-accion="dibujame" title="Pídele un diagrama a tu IA">${ic("chispa")}<span class="solo-escritorio">Dibújame</span></button>
+        ${tieneDibujo ? `<button class="pz-boton icono" data-accion="menu-exportar" aria-label="Exportar" title="Exportar">${ic("exportar")}</button>` : ""}
+        ${P.puedeBorrar(E.sel) ? `<button class="pz-boton pz-plano icono" data-p-borrar="${esc(E.sel)}" aria-label="Borrar" title="Borrar">${ic("borrar")}</button>` : ""}` : ""}
     </header>`;
   }
-  const botonesHistorial = () => { const d = doc(); return `<button class="boton plano icono" data-accion="deshacer" aria-label="Deshacer" title="Deshacer (⌘Z)" ${d?.pila.length ? "" : "disabled"}>${ic("deshacer")}</button><button class="boton plano icono" data-accion="rehacer" aria-label="Rehacer" title="Rehacer (⇧⌘Z)" ${d?.futuro.length ? "" : "disabled"}>${ic("rehacer")}</button>`; };
+  const botonesHistorial = () => { const d = doc(); return `<button class="pz-boton pz-plano icono" data-accion="deshacer" aria-label="Deshacer" title="Deshacer (⌘Z)" ${d?.pila.length ? "" : "disabled"}>${ic("deshacer")}</button><button class="pz-boton pz-plano icono" data-accion="rehacer" aria-label="Rehacer" title="Rehacer (⇧⌘Z)" ${d?.futuro.length ? "" : "disabled"}>${ic("rehacer")}</button>`; };
   function pintarBarraHistorial() { const h = $("#historial"); if (h) { h.innerHTML = botonesHistorial(); traducirDentro(h); } }
   function estadoGuardado() {
     const d = doc();
@@ -321,14 +314,14 @@
   function pintarEstadoGuardado() { const el = $("#estado-guardado"); if (el) el.textContent = tr(estadoGuardado()); }
 
   function area() {
-    if (!E.carpeta) return `<div class="vacio"><div><h2>Elige una carpeta</h2><p>Tus documentos y diagramas viven en una carpeta de tu computador, en archivos .md y .mmd que GitHub muestra tal cual.</p><div class="acciones"><button class="boton principal" data-accion="p-agregar">${ic("mas")} Agregar proyecto</button><button class="boton" data-accion="elegir-carpeta">${ic("carpeta")} Abrir una carpeta</button></div></div></div>`;
+    if (!E.carpeta) return `<div class="vacio"><div><h2>Elige una carpeta</h2><p>Tus documentos y diagramas viven en una carpeta de tu computador, en archivos .md y .mmd que GitHub muestra tal cual.</p><div class="acciones"><button class="pz-boton pz-principal" data-accion="p-agregar">${ic("mas")} Agregar proyecto</button><button class="pz-boton" data-accion="elegir-carpeta">${ic("carpeta")} Abrir una carpeta</button></div></div></div>`;
     if (E.panel) return P.areaHTML();
     const d = doc();
     if (!E.sel || !d) return inicioHTML();
-    if (d.texto == null) return `<div class="vacio"><div class="esperando"><span class="giro"></span> Abriendo…</div></div>`;
+    if (d.texto == null) return `<div class="vacio"><div class="esperando"><span class="pz-giro"></span> Abriendo…</div></div>`;
     const vista = movil() && E.vista === "ambos" ? "dibujo" : E.vista;
     const derecha = esDiagrama(E.sel) ? `<section class="panel-dibujo">${lienzoHTML()}</section>`
-      : E.bloque != null ? `<section class="panel-dibujo con-cab"><div class="cab-bloque"><button class="boton plano" data-accion="volver-doc">${ic("volver")} Listo</button><span data-sin-traducir>${T("Diagrama {n} de {x}", { n: E.bloque + 1, x: nombreDe(E.sel) })}</span></div>${lienzoHTML()}</section>`
+      : E.bloque != null ? `<section class="panel-dibujo con-cab"><div class="cab-bloque"><button class="pz-boton pz-plano" data-accion="volver-doc">${ic("volver")} Listo</button><span data-sin-traducir>${T("Diagrama {n} de {x}", { n: E.bloque + 1, x: nombreDe(E.sel) })}</span></div>${lienzoHTML()}</section>`
       : `<section class="panel-dibujo vista-doc" aria-label="Vista del documento"><article class="md" id="vista-md" data-sin-traducir></article></section>`;
     const barraDoc = P.barraDocHTML();
     return `${barraDoc ? `<div class="con-barra-doc">${barraDoc}` : ""}<div class="area" data-vista="${vista}">
@@ -342,9 +335,9 @@
   /** Inicio de una carpeta: lo que se puede hacer, en palabras de quien la usa. Los proyectos lo muestran en su panel. */
   function inicioHTML() {
     return `<div class="inicio"><div class="inicio-cab"><span class="p-icono">${ic("carpeta")}</span><div><h2 data-sin-traducir>${esc(E.carpeta.nombre)}</h2><p>¿Qué quieres hacer?</p></div></div>
-      ${P.sinDocumentacion() ? `<div class="p-aviso inicio-docs"><span>Este proyecto todavía no tiene documentación. Tu IA puede leerlo entero y escribir la visión general, la arquitectura y los flujos principales, aparte de tu código.</span><button class="boton principal" data-accion="p-documentar">${ic("chispa")} Hacer la documentación completa</button></div>` : ""}
+      ${P.sinDocumentacion() ? `<div class="p-aviso inicio-docs"><span>Este proyecto todavía no tiene documentación. Tu IA puede leerlo entero y escribir la visión general, la arquitectura y los flujos principales, aparte de tu código.</span><button class="pz-boton pz-principal" data-accion="p-documentar">${ic("chispa")} Hacer la documentación completa</button></div>` : ""}
       ${P.accionesInicio()}
-      <p class="inicio-mas"><button class="boton plano" data-accion="readme">${ic("github")} README para GitHub</button></p></div>`;
+      <p class="inicio-mas"><button class="pz-boton pz-plano" data-accion="readme">${ic("github")} README para GitHub</button></p></div>`;
   }
   /** «el flujo de…» → flujo, «la secuencia de…» → secuencia, «la arquitectura de…» → arquitectura; si no se nota, «auto». */
   function tipoDelPedido(texto) {
@@ -490,15 +483,15 @@
       ${E.lz.mini ? `<div class="lz-mini" id="lz-mini"></div>` : ""}
       <div id="lz-tarjeta"></div>
       <div class="lz-herr" role="toolbar" aria-label="Lienzo">
-        ${tipo === "flujo" || tipo === "vacio" ? `<button class="boton" data-accion="nodo-nuevo" title="Nuevo nodo (N)">${ic("mas")} Nodo</button><span class="sep"></span>
-          <button class="boton icono" data-accion="menu-flechas" aria-label="Flechas" title="Flechas">${ic("flechas")}</button>
-          <button class="boton icono" data-accion="direccion" aria-label="Cambiar dirección" title="Cambiar dirección">${ic("direccion")}</button><span class="sep"></span>` : ""}
-        ${esSec ? `<button class="boton" data-accion="participante-nuevo" title="Nuevo participante">${ic("persona")} Participante</button><span class="sep"></span>` : ""}
-        <button class="boton icono no-movil" data-accion="alejar" aria-label="Alejar" title="Alejar (−)">${ic("menos")}</button>
-        <button class="boton zoom no-movil" data-accion="zoom-100" title="Tamaño real" id="lz-zoom" data-sin-traducir>100%</button>
-        <button class="boton icono no-movil" data-accion="acercar" aria-label="Acercar" title="Acercar (+)">${ic("mas")}</button>
-        <button class="boton icono" data-accion="ajustar" aria-label="Ver todo" title="Ver todo (0)">${ic("ajustar")}</button>
-        <button class="boton icono no-movil" data-accion="minimapa" aria-label="Minimapa" title="Minimapa" aria-pressed="${E.lz.mini}">${ic("mapa")}</button>
+        ${tipo === "flujo" || tipo === "vacio" ? `<button class="pz-boton" data-accion="nodo-nuevo" title="Nuevo nodo (N)">${ic("mas")} Nodo</button><span class="sep"></span>
+          <button class="pz-boton icono" data-accion="menu-flechas" aria-label="Flechas" title="Flechas">${ic("flechas")}</button>
+          <button class="pz-boton icono" data-accion="direccion" aria-label="Cambiar dirección" title="Cambiar dirección">${ic("direccion")}</button><span class="sep"></span>` : ""}
+        ${esSec ? `<button class="pz-boton" data-accion="participante-nuevo" title="Nuevo participante">${ic("persona")} Participante</button><span class="sep"></span>` : ""}
+        <button class="pz-boton icono no-movil" data-accion="alejar" aria-label="Alejar" title="Alejar (−)">${ic("menos")}</button>
+        <button class="pz-boton zoom no-movil" data-accion="zoom-100" title="Tamaño real" id="lz-zoom" data-sin-traducir>100%</button>
+        <button class="pz-boton icono no-movil" data-accion="acercar" aria-label="Acercar" title="Acercar (+)">${ic("mas")}</button>
+        <button class="pz-boton icono" data-accion="ajustar" aria-label="Ver todo" title="Ver todo (0)">${ic("ajustar")}</button>
+        <button class="pz-boton icono no-movil" data-accion="minimapa" aria-label="Minimapa" title="Minimapa" aria-pressed="${E.lz.mini}">${ic("mapa")}</button>
       </div>
     </div>`;
   }
@@ -604,12 +597,12 @@
       const n = r.geo.nodos.get(s.id), dir = r.geo.dir;
       const p = dir === "LR" ? { x: n.x + n.w / 2 + 12, y: n.y } : dir === "RL" ? { x: n.x - n.w / 2 - 12, y: n.y } : dir === "BT" ? { x: n.x, y: n.y - n.h / 2 - 12 } : { x: n.x, y: n.y + n.h / 2 + 12 };
       capa.innerHTML = `<circle class="asa-fondo" cx="${p.x}" cy="${p.y}" r="${16 / E.lz.z}" data-asa="${esc(s.id)}"/><circle class="asa" cx="${p.x}" cy="${p.y}" r="${7 / Math.min(1.5, Math.max(0.6, E.lz.z))}" data-asa="${esc(s.id)}"/>` + (n.fijo ? `<circle class="pin" cx="${n.x + n.w / 2 - 4}" cy="${n.y - n.h / 2 + 4}" r="3"/>` : "");
-      botones = `<button class="boton" data-accion="renombrar">${ic("lapiz")} Renombrar</button><button class="boton" data-accion="menu-formas">${ic("forma")} Forma</button>${n.fijo ? `<button class="boton" data-accion="desfijar" title="Volver al acomodo automático">${ic("pin")} Soltar</button>` : ""}<button class="boton peligro" data-accion="borrar" aria-label="Borrar">${ic("borrar")}</button>`;
-    } else if (s.tipo === "arista") botones = `<button class="boton" data-accion="renombrar">${ic("lapiz")} Texto</button><button class="boton peligro" data-accion="borrar" aria-label="Borrar">${ic("borrar")}</button>`;
-    else if (s.tipo === "participante") botones = `<button class="boton" data-accion="renombrar">${ic("lapiz")} Renombrar</button>`;
+      botones = `<button class="pz-boton" data-accion="renombrar">${ic("lapiz")} Renombrar</button><button class="pz-boton" data-accion="menu-formas">${ic("forma")} Forma</button>${n.fijo ? `<button class="pz-boton" data-accion="desfijar" title="Volver al acomodo automático">${ic("pin")} Soltar</button>` : ""}<button class="pz-boton pz-peligro" data-accion="borrar" aria-label="Borrar">${ic("borrar")}</button>`;
+    } else if (s.tipo === "arista") botones = `<button class="pz-boton" data-accion="renombrar">${ic("lapiz")} Texto</button><button class="pz-boton pz-peligro" data-accion="borrar" aria-label="Borrar">${ic("borrar")}</button>`;
+    else if (s.tipo === "participante") botones = `<button class="pz-boton" data-accion="renombrar">${ic("lapiz")} Renombrar</button>`;
     else if (s.tipo === "evento") {
       const ev = ultimoResultado?.modelo?.eventos?.[s.id];
-      botones = ev && (ev.tipo === "mensaje" || ev.tipo === "nota") ? `<button class="boton" data-accion="renombrar">${ic("lapiz")} Texto</button><button class="boton peligro" data-accion="borrar" aria-label="Borrar">${ic("borrar")}</button>` : "";
+      botones = ev && (ev.tipo === "mensaje" || ev.tipo === "nota") ? `<button class="pz-boton" data-accion="renombrar">${ic("lapiz")} Texto</button><button class="pz-boton pz-peligro" data-accion="borrar" aria-label="Borrar">${ic("borrar")}</button>` : "";
     }
     if (s.tipo === "nodo" || s.tipo === "participante") botones += P.botonElemento(s.id);
     barraSel.className = botones ? "lz-sel" : "";
@@ -877,63 +870,33 @@
       if (r.tipo === "pendiente") h = `<p class="pendiente">${T("Esquema todavía no dibuja «{x}». Lo dejo tal cual: GitHub sí lo muestra.", { x: r.palabra })}</p><pre><code>${esc(b.contenido)}</code></pre>`;
       else if (r.errores?.length) h = `<p class="error">${T("Línea {n}", { n: r.errores[0].linea + b.ini + 1 })} · ${fraseProblema(r.errores[0])}</p><pre><code>${esc(b.contenido)}</code></pre>`;
       else if (r.partes.length) h = M.svgCompleto(r, { estilo: "", titulo: T("Diagrama {n}", { n: k + 1 }) });
-      fig.innerHTML = h + (r.tipo === "flujo" || r.tipo === "secuencia" ? `<button class="boton editar" data-editar-bloque="${k}">${ic("lapiz")} ${T("Editar")}</button>` : "");
+      fig.innerHTML = h + (r.tipo === "flujo" || r.tipo === "secuencia" ? `<button class="pz-boton editar" data-editar-bloque="${k}">${ic("lapiz")} ${T("Editar")}</button>` : "");
       fig.tabIndex = 0;
     });
   }
 
   // ───────────── Diálogos ─────────────
+  /** Los diálogos de Esquema traen su propio <h2 id> y su pie adentro: `ui.envolver` (pieza «componentes») pone la capa, la caja
+   *  accesible, el foco, Tab, Esc y el velo. La bienvenida no se cierra con Esc ni con un clic fuera (`sinEsc`). */
   function dialogos() {
-    const capa = (id, html, clase = "") => `<div class="capa"><div class="dialogo ${clase}" role="dialog" aria-modal="true" aria-labelledby="${id}">${html}</div></div>`;
-    if (bv.soloIdioma) return `<div class="capa capa-idioma"><div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv">${bv.html()}</div></div>`;
-    if (bv.activa) return capa("t-bv", bv.html(), "bienvenida");
-    // titulo y texto llegan como HTML ya escapado (frase() o esc() del texto en español; traducirDOM lo traduce); los botones, como texto.
-    const dp = P.dialogoHTML(capa); if (dp && !E.confirmar) return dp;
-    if (E.confirmar) return capa("t-conf", `<h2 id="t-conf" ${E.confirmar.traducido ? "data-sin-traducir" : ""}>${E.confirmar.titulo}</h2><p ${E.confirmar.traducido ? "data-sin-traducir" : ""}>${E.confirmar.texto}</p><div class="pie-dialogo" ${E.confirmar.traducido ? "data-sin-traducir" : ""}><button class="boton" data-accion="confirmar-no">${esc(E.confirmar.no)}</button><button class="boton principal${E.confirmar.peligro ? " peligro-lleno" : ""}" data-accion="confirmar-si" data-autofoco>${esc(E.confirmar.si)}</button></div>`);
-    if (E.ajustes) return capa("t-aj", dialogoAjustes(), "ajustes");
-    if (E.readme) return capa("t-rm", dialogoReadme(), "ancho");
-    if (E.dibujar) return capa("t-dj", dialogoDibujar());
-    if (E.nuevo) return capa("t-nv", dialogoNuevo(), "ancho");
+    if (bv.soloIdioma) return ui.envolver(bv.html(), { id: "t-bv", sinEsc: true, clase: "idioma-solo" });
+    if (bv.activa) return ui.envolver(bv.html(), { id: "t-bv", sinEsc: true, clase: "bienvenida" });
+    const dp = P.dialogoHTML(); if (dp) return dp;
+    if (E.ajustes) return ui.envolver(dialogoAjustes(), { id: "t-aj", clase: "ajustes" });
+    if (E.readme) return ui.envolver(dialogoReadme(), { id: "t-rm", clase: "pz-ancho" });
+    if (E.dibujar) return ui.envolver(dialogoDibujar(), { id: "t-dj" });
+    if (E.nuevo) return ui.envolver(dialogoNuevo(), { id: "t-nv", clase: "pz-ancho" });
     return "";
   }
-  // Lo que manda la pieza «actualizaciones» (y los avisos propios de la app, con la misma forma): `texto` es la frase en
-  // español con marcadores y `valores` lo que va en ellos; se traduce aquí, al pintar (T escapa todo). Las notas del Release van tal cual.
-  const frasePieza = (r) => (r && typeof r.texto === "string" && r.texto ? T(r.texto, r.valores && typeof r.valores === "object" ? r.valores : {}) : "");
-  const versionNueva = (r) => (r && r.hay ? { hay: true, texto: String(r.texto || ""), valores: r.valores || {}, notas: String(r.notas || "") } : { hay: false });
-  /** Ajustes → Actualizaciones: buscar, el aviso de versión nueva con sus notas y el avance por pasos al instalarla. */
-  function filaActualizacion() {
-    const v = E.revisando, a = E.actualizacion || {};
-    if (v && typeof v === "object") {
-      const pct = typeof v.pct === "number" ? ` · ${Math.max(0, Math.min(100, Math.round(v.pct)))}%` : "";
-      const error = v.paso === "error";
-      return `<div class="fila"><span class="txt"><b class="${error ? "error-texto" : ""}" data-sin-traducir>${frasePieza(v)}${pct}</b>${error ? "" : frase("Paso {n} de 3", { n: v.paso }, "small")}</span>${error ? `<button class="boton" data-accion="buscar-actualizacion">Buscar de nuevo</button>` : ""}</div>`;
-    }
-    if (a.hay) {
-      const detalle = [frasePieza(a), esc(a.notas)].filter(Boolean).join("\n");
-      return `<div class="fila"><span class="txt"><b>Hay una versión nueva de Esquema</b><small class="notas-version" data-sin-traducir>${detalle}</small></span><button class="boton principal" data-accion="actualizar">Actualizar ahora</button></div>`;
-    }
-    const estado = v === "buscando" ? "Buscando…" : v === "al-dia" ? "Estás en la última versión" : v === "sin-conexion" ? "No pude revisar: sin conexión" : "Esquema revisa sola si hay versiones nuevas.";
-    return `<div class="fila"><span class="txt">${estado}</span><button class="boton" data-accion="buscar-actualizacion" ${v === "buscando" ? "disabled" : ""}>Buscar actualizaciones</button></div>`;
-  }
-  function filasIA() {
-    if (!E.ias.length) return `<p>No encontré ninguna IA instalada. Puedes instalar Claude Code, Codex o Gemini y probarla en Ajustes.</p>`;
-    return E.ias.map((ia) => {
-      const r = E.resultadoIA[ia.id], elegida = (E.config.ia || "claude") === ia.id;
-      const estado = E.probando[ia.id] ? `<span class="giro"></span>` : r ? (r.ok ? `<span class="ok" data-sin-traducir>${T("Lista")}</span>` : `<span class="mal-txt" data-sin-traducir>${esc(r.error || "")}</span>`) : "";
-      return `<div class="fila"><span class="txt"><b data-sin-traducir>${esc(ia.nombre)}</b><small>${ia.instalada ? (elegida ? "Elegida" : "Instalada") : "No está instalada"}</small></span>${estado}<button class="boton ${elegida ? "principal" : ""}" data-probar-ia="${ia.id}" ${ia.instalada ? "" : "disabled"}>${elegida && r?.ok ? "Probar otra vez" : "Usar y probar"}</button></div>`;
-    }).join("");
-  }
   function dialogoAjustes() {
-    const tema = E.config.tema || "sistema";
     return `<h2 id="t-aj">Ajustes</h2>
-      <h3>Idioma</h3><div class="seg" role="group" aria-label="Idioma" data-sin-traducir><button data-ajuste-idioma="es" aria-pressed="${E.idioma === "es"}" lang="es">Español</button><button data-ajuste-idioma="en" aria-pressed="${E.idioma === "en"}" lang="en">English</button></div>
-      <h3>Tema</h3><div class="seg" role="group" aria-label="Tema">${[["sistema", "Como el sistema"], ["claro", "Claro"], ["oscuro", "Oscuro"]].map(([v, n]) => `<button data-tema="${v}" aria-pressed="${tema === v}">${n}</button>`).join("")}</div>
+      <h3>Idioma</h3><div class="pz-seg" role="group" aria-label="Idioma" data-sin-traducir><button data-ajuste-idioma="es" aria-pressed="${E.idioma === "es"}" lang="es">Español</button><button data-ajuste-idioma="en" aria-pressed="${E.idioma === "en"}" lang="en">English</button></div>
+      <h3>Apariencia</h3>${tema.selectorHTML()}
       <h3>Tu IA</h3>${filasIA()}
-      <h3>Actualizaciones</h3>${filaActualizacion()}
-      <h3>Acerca de</h3>
-      <p>${frase("Esquema {v} · Gratis y abierto (AGPL-3.0). Sin cuentas ni telemetría: tus archivos no salen de tu computador.", { v: E.version || "" })}</p>
-      <div class="chips"><button class="chip" data-enlace="${ENLACES.sitio}">Sitio</button><button class="chip" data-enlace="${ENLACES.codigo}">Código</button><button class="chip" data-enlace="${ENLACES.comunidad}">Comunidad</button><button class="chip" data-enlace="${ENLACES.catalogo}">Catálogo de plantillas</button></div>
-      <div class="pie-dialogo"><button class="boton principal" data-accion="cerrar" data-autofoco>Listo</button></div>`;
+      <h3>Actualizaciones</h3>${ui.filaActualizacion()}
+      <h3>Acerca de</h3>${ui.acercaDe({ enlaces: { sitio: ENLACES.sitio, codigo: ENLACES.codigo, comunidad: ENLACES.comunidad, aportar: ENLACES.aportar },
+        extra: [{ texto: "Catálogo de plantillas", url: ENLACES.catalogo }] })}
+      <div class="pz-pie"><button class="pz-boton pz-principal" data-accion="cerrar">Listo</button></div>`;
   }
   const textoDe = (o) => (o && typeof o === "object" ? o[E.idioma] || o.es || o.en || "" : o || "");
   function previaPlantilla(pl) {
@@ -954,17 +917,17 @@
     const cab = P.nuevoCabHTML();
     return `<div class="titulo-nuevo"><h2 id="t-nv">${cab.titulo}</h2></div>
       ${cab.tarjetas && !q ? `<div class="nuevo-ia">${cab.tarjetas}</div><h3 class="nuevo-sub">Desde una plantilla</h3>` : ""}
-      <div class="seg nuevo-fuente" role="group" aria-label="Plantillas"><button data-fuente="app" aria-pressed="${!comunidad}">Plantillas</button><button data-fuente="comunidad" aria-pressed="${comunidad}">Comunidad</button></div>
+      <div class="pz-seg nuevo-fuente" role="group" aria-label="Plantillas"><button data-fuente="app" aria-pressed="${!comunidad}">Plantillas</button><button data-fuente="comunidad" aria-pressed="${comunidad}">Comunidad</button></div>
       <div class="buscar-fila"><input type="search" id="buscar-plantilla" placeholder="Buscar plantillas" value="${esc(n.busqueda || "")}" aria-label="Buscar plantillas" data-sin-traducir data-autofoco></div>
-      <div class="chips" style="margin-top:10px">${["todas", ...CATEGORIAS].map((c) => `<button class="chip" data-categoria="${c}" aria-pressed="${n.categoria === c}">${NOMBRE_CAT[c]}</button>`).join("")}</div>
+      <div class="pz-chips" style="margin-top:10px">${["todas", ...CATEGORIAS].map((c) => `<button class="pz-chip" data-categoria="${c}" aria-pressed="${n.categoria === c}">${NOMBRE_CAT[c]}</button>`).join("")}</div>
       ${comunidad ? catalogoHTML(q) : `<div class="plantillas">
         ${n.categoria === "todas" && !q ? `${cab.readme ? `<button class="plantilla ia" data-accion="readme"><span class="previa">${ic("github")}</span><span class="info"><b>README para GitHub</b><small>Tu IA lo escribe desde lo que cuentas y la lista de archivos.</small></span></button>` : ""}
           ${blancos.map(([id, nom, , ]) => `<button class="plantilla" data-plantilla="${id}" aria-pressed="${n.elegida === id}"><span class="previa">${ic(id === "blanco-doc" ? "doc" : "diagrama")}</span><span class="info"><b>${nom}</b><small>En blanco</small></span></button>`).join("")}` : ""}
         ${lista.map((p) => `<button class="plantilla" data-plantilla="${esc(p.id)}" aria-pressed="${n.elegida === p.id}" data-sin-traducir><span class="previa">${previaPlantilla(p)}</span><span class="info"><b>${esc(textoDe(p.nombre))}</b><small>${esc(textoDe(p.descripcion))}</small></span></button>`).join("")}
       </div>`}
-      ${!comunidad && q && !lista.length ? `<div class="vacio">${frase("Aún no hay una plantilla de «{x}».", { x: q }, "p")}<button class="boton principal" data-accion="dibujame-busqueda">${ic("chispa")} Pídesela a tu IA</button></div>` : ""}
-      ${n.elegida ? `<label for="nombre-nuevo">Nombre del archivo</label><input type="text" id="nombre-nuevo" value="${esc(n.nombre || "")}" data-sin-traducir>${n.errorNombre ? `<p class="mal-txt">${n.errorNombre}</p>` : ""}` : ""}
-      <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="crear" ${n.elegida ? "" : "disabled"}>Crear</button></div>`;
+      ${!comunidad && q && !lista.length ? `<div class="vacio">${frase("Aún no hay una plantilla de «{x}».", { x: q }, "p")}<button class="pz-boton pz-principal" data-accion="dibujame-busqueda">${ic("chispa")} Pídesela a tu IA</button></div>` : ""}
+      ${n.elegida ? `<label for="nombre-nuevo">Nombre del archivo</label><input type="text" id="nombre-nuevo" value="${esc(n.nombre || "")}" data-sin-traducir>${n.errorNombre ? `<p class="pz-error-texto">${n.errorNombre}</p>` : ""}` : ""}
+      <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="crear" ${n.elegida ? "" : "disabled"}>Crear</button></div>`;
     void el; void blancos;
   }
   /** «Comunidad» en «Nuevo»: el catálogo esquema-app/esquema-catalogo (la app lo baja y bin/plantillas.py lo valida). Tocar una
@@ -977,12 +940,12 @@
   }
   function catalogoHTML(q) {
     const c = E.catalogo, n = E.nuevo;
-    if (!c || c.estado === "cargando") return `<div class="esperando"><span class="giro"></span>Buscando plantillas de la comunidad…</div>`;
-    if (c.estado === "error") return `<div class="vacio"><p data-sin-traducir>${esc(c.error || tr("No pude conectarme. Revisa tu conexión."))}</p><button class="boton" data-accion="explorar">Reintentar</button></div>`;
+    if (!c || c.estado === "cargando") return `<div class="esperando"><span class="pz-giro"></span>Buscando plantillas de la comunidad…</div>`;
+    if (c.estado === "error") return `<div class="vacio"><p data-sin-traducir>${esc(c.error || tr("No pude conectarme. Revisa tu conexión."))}</p><button class="pz-boton" data-accion="explorar">Reintentar</button></div>`;
     const lista = catalogoFiltrado();
     const estado = (p) => c.bajando[p.id] ? frase("Descargando…", {}, "small") : enMisPlantillas(p) ? frase("En tus plantillas", {}, "small") : frase("Toca para descargarla", {}, "small");
     return `<div class="plantillas">${lista.map((p) => `<button class="plantilla" data-catalogo="${esc(p.id)}" aria-pressed="${n.elegida === p.id}" ${c.bajando[p.id] ? "aria-busy=\"true\"" : ""} data-sin-traducir><span class="previa">${previaPlantilla(p)}</span><span class="info"><b>${esc(textoDe(p.nombre))}</b><small>${esc(textoDe(p.descripcion))}</small>${p.autor ? frase("por {x}", { x: p.autor }, "small") : ""}<span class="estado-catalogo">${estado(p)}</span></span></button>`).join("")}</div>
-      ${!lista.length ? `<div class="vacio">${q ? frase("Aún no hay una plantilla de «{x}».", { x: q }, "p") : `<p>Todavía no hay plantillas de la comunidad en esta categoría.</p>`}${q ? `<button class="boton principal" data-accion="dibujame-busqueda">${ic("chispa")} Pídesela a tu IA</button>` : ""}</div>` : ""}
+      ${!lista.length ? `<div class="vacio">${q ? frase("Aún no hay una plantilla de «{x}».", { x: q }, "p") : `<p>Todavía no hay plantillas de la comunidad en esta categoría.</p>`}${q ? `<button class="pz-boton pz-principal" data-accion="dibujame-busqueda">${ic("chispa")} Pídesela a tu IA</button>` : ""}</div>` : ""}
       <p class="proponer"><button class="enlace" data-enlace="${ENLACES.proponer}">¿Hiciste una buena? Compártela con la comunidad</button></p>`;
   }
   function contenidoBlanco(id) {
@@ -1034,22 +997,22 @@
   function dialogoDibujar() {
     const d = E.dibujar, hayDiagrama = !d.nuevo && !!textoLienzo().trim(), titulo = d.nuevo ? "Crear diagrama" : "Dibújame";
     const ejemplos = d.nuevo ? EJEMPLOS_PROYECTO : EJEMPLOS_DIBUJO;
-    if (d.enviando) return `<h2 id="t-dj">${titulo}</h2><div class="esperando"><span class="giro"></span>${frase("{ia} está dibujando…", { ia: nombreIA() })}</div><p class="p-ayuda">Puedes cerrar esto y seguir trabajando: el diagrama aparece cuando tu IA responda.</p><div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cerrar</button></div>`;
+    if (d.enviando) return `<h2 id="t-dj">${titulo}</h2><div class="esperando"><span class="pz-giro"></span>${frase("{ia} está dibujando…", { ia: nombreIA() })}</div><p class="p-ayuda">Puedes cerrar esto y seguir trabajando: el diagrama aparece cuando tu IA responda.</p><div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cerrar</button></div>`;
     return `<h2 id="t-dj">${titulo}</h2>
       <p>${d.nuevo ? "Dile a tu IA qué quieres ver: «el flujo de…», «la secuencia de…» o «la arquitectura de…»." : "Cuéntale a tu IA qué quieres ver. Revisa el resultado en el lienzo: si no te gusta, lo quitas con un toque."}</p>
       <textarea id="pedido-dibujo" placeholder="${d.nuevo ? "Por ejemplo: la secuencia de un pago, desde la app hasta el banco" : "Por ejemplo: el flujo de compra de una tienda, con pago y despacho"}" data-autofoco data-sin-traducir>${esc(d.pedido || "")}</textarea>
-      <div class="chips" style="margin-top:8px">${ejemplos.map((x, i) => `<button class="chip" data-ejemplo-dibujo="${i}">${x}</button>`).join("")}</div>
-      <label>Tipo</label><div class="chips">${[["auto", "Que elija"], ["flujo", "Flujo"], ["secuencia", "Secuencia"], ["arquitectura", "Arquitectura"]].map(([v, n]) => `<button class="chip" data-tipo-dibujo="${v}" aria-pressed="${(d.tipo || "auto") === v}">${n}</button>`).join("")}</div>
+      <div class="pz-chips" style="margin-top:8px">${ejemplos.map((x, i) => `<button class="pz-chip" data-ejemplo-dibujo="${i}">${x}</button>`).join("")}</div>
+      <label>Tipo</label><div class="pz-chips">${[["auto", "Que elija"], ["flujo", "Flujo"], ["secuencia", "Secuencia"], ["arquitectura", "Arquitectura"]].map(([v, n]) => `<button class="pz-chip" data-tipo-dibujo="${v}" aria-pressed="${(d.tipo || "auto") === v}">${n}</button>`).join("")}</div>
       ${hayDiagrama ? `<label class="marcar"><input type="checkbox" id="cambiar-actual" ${d.cambiar ? "checked" : ""}> <span>Cambiar el diagrama que tengo abierto<small>${esDocumento(E.sel) ? "Si no, agrega uno nuevo al documento." : "Si no, crea uno nuevo."}</small></span></label>` : ""}
       ${E.carpeta ? `<label class="marcar"><input type="checkbox" id="usar-codigo" ${d.codigo ? "checked" : ""}> <span>Que lea el código de esta carpeta${frase("Antes de enviar te muestro exactamente qué va. Queda en la documentación del proyecto ({x}).", { x: (E.proyecto?.docs || "docs/esquema") + "/diagramas/" }, "small")}</span></label>` : ""}
-      ${d.error ? `<p class="mal-txt" data-sin-traducir>${d.error}</p>` : ""}
+      ${d.error ? `<p class="pz-error-texto" data-sin-traducir>${d.error}</p>` : ""}
       ${cambiosDelArchivo()}
-      <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="enviar-dibujo">${ic("chispa")} Dibujar</button></div>`;
+      <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="enviar-dibujo">${ic("chispa")} Dibujar</button></div>`;
   }
   function cambiosDelArchivo() {
     const l = E.cambiosIA.filter((c) => c.ruta === E.sel);
     if (!l.length) return "";
-    return `<label>Lo que hizo tu IA en este archivo</label><div class="cambios-ia">${l.slice().reverse().map((c) => `<div class="cambio-ia ${c.estado}"><b data-sin-traducir>${esc(c.pedido)}</b><span class="meta" data-sin-traducir>${c.estado === "quitado" ? T("Quitado") : esc(resumenCambio(c))}</span>${c.estado === "aplicado" ? `<div><button class="boton" data-quitar-ia="${c.id}">${ic("deshacer")} Quitar este cambio</button></div>` : ""}</div>`).join("")}</div>`;
+    return `<label>Lo que hizo tu IA en este archivo</label><div class="cambios-ia">${l.slice().reverse().map((c) => `<div class="cambio-ia ${c.estado}"><b data-sin-traducir>${esc(c.pedido)}</b><span class="meta" data-sin-traducir>${c.estado === "quitado" ? T("Quitado") : esc(resumenCambio(c))}</span>${c.estado === "aplicado" ? `<div><button class="pz-boton" data-quitar-ia="${c.id}">${ic("deshacer")} Quitar este cambio</button></div>` : ""}</div>`).join("")}</div>`;
   }
   /** Qué cambió: nodos y conexiones (o participantes y mensajes) antes y después. */
   function resumen(antes, despues) {
@@ -1122,7 +1085,7 @@
     if (!el) return;
     const c = E.cambiosIA.find((x) => x.id === E.tarjetaIA && x.ruta === E.sel && x.estado === "aplicado");
     el.className = c ? "tarjeta-ia" : "";
-    el.innerHTML = c ? `<p>${ic("chispa")} <b data-sin-traducir>${esc(c.pedido)}</b></p><p class="meta" data-sin-traducir>${esc(resumenCambio(c))}</p><div class="acciones"><button class="boton" data-quitar-ia="${c.id}">${ic("deshacer")} Quitar este cambio</button><button class="boton plano" data-accion="cerrar-tarjeta">Se queda</button></div>` : "";
+    el.innerHTML = c ? `<p>${ic("chispa")} <b data-sin-traducir>${esc(c.pedido)}</b></p><p class="meta" data-sin-traducir>${esc(resumenCambio(c))}</p><div class="acciones"><button class="pz-boton" data-quitar-ia="${c.id}">${ic("deshacer")} Quitar este cambio</button><button class="pz-boton pz-plano" data-accion="cerrar-tarjeta">Se queda</button></div>` : "";
     traducirDentro(el);
   }
   /** Quita justo lo que hizo la IA. Si la persona lo editó después, pregunta antes (y se puede deshacer). */
@@ -1134,8 +1097,9 @@
     if (!d || d.texto == null) return;
     const intacto = d.texto === c.despuesDoc;
     if (!intacto && !forzar) {
-      E.confirmar = { titulo: esc("¿Quitar el cambio de la IA?"), texto: esc("Lo editaste después. Si lo quitas, también se van esos cambios (puedes deshacerlo)."), si: "Quitar igual", no: "Dejarlo", accion: () => quitarCambioIA(id, true) };
-      return pintar();
+      ui.confirmar({ titulo: "¿Quitar el cambio de la IA?", texto: "Lo editaste después. Si lo quitas, también se van esos cambios (puedes deshacerlo).", si: "Quitar igual", no: "Dejarlo" })
+        .then((si) => { if (si) quitarCambioIA(id, true); });
+      return;
     }
     if (c.antesDoc != null && c.antesDoc !== "") cambiarTexto(c.antesDoc, { origen: "ia" });
     else if (esDiagrama(c.ruta)) cambiarTexto(c.antes || "", { origen: "ia" });
@@ -1151,24 +1115,24 @@
   function dialogoReadme() {
     const r = E.readme;
     const hay = E.archivos.some((a) => a.ruta.toLowerCase() === "readme.md");
-    if (r.paso === "escribiendo") return `<h2 id="t-rm">README para GitHub</h2><div class="esperando"><span class="giro"></span>${frase("{ia} está escribiendo tu README…", { ia: nombreIA() })}</div><div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button></div>`;
+    if (r.paso === "escribiendo") return `<h2 id="t-rm">README para GitHub</h2><div class="esperando"><span class="pz-giro"></span>${frase("{ia} está escribiendo tu README…", { ia: nombreIA() })}</div><div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button></div>`;
     if (r.paso === "listo") {
       const bloques = M.bloquesMermaid(r.texto), malos = bloques.map((b, k) => [k, resultadoBloque(b.contenido)]).filter(([, x]) => x.errores?.length);
       return `<h2 id="t-rm">Tu README</h2><p>Revísalo antes de guardarlo. Los diagramas se pueden editar después en el lienzo.</p>
         <div class="previa-readme"><article class="md" id="previa-readme" data-sin-traducir></article></div>
-        ${malos.length ? `<p class="mal-txt" data-sin-traducir>${malos.map(([k, x]) => T("El diagrama {n} tiene un error: {x}", { n: k + 1, x: M.frase(x.errores[0]) })).join("<br>")}</p>` : ""}
+        ${malos.length ? `<p class="pz-error-texto" data-sin-traducir>${malos.map(([k, x]) => T("El diagrama {n} tiene un error: {x}", { n: k + 1, x: M.frase(x.errores[0]) })).join("<br>")}</p>` : ""}
         <label for="pedido-readme">¿Quieres cambiar algo?</label><textarea id="pedido-readme" placeholder="Por ejemplo: más corto, agrega cómo instalar con Docker" data-sin-traducir>${esc(r.pedido || "")}</textarea>
-        <div class="pie-dialogo"><button class="boton izq" data-accion="readme-cambios">${ic("chispa")} Pedir cambios</button><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="readme-guardar" data-autofoco>${hay ? "Reemplazar README.md" : "Guardar como README.md"}</button></div>`;
+        <div class="pz-pie"><button class="pz-boton pz-izq" data-accion="readme-cambios">${ic("chispa")} Pedir cambios</button><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="readme-guardar">${hay ? "Reemplazar README.md" : "Guardar como README.md"}</button></div>`;
     }
     return `<h2 id="t-rm">README para GitHub</h2>
       <p>Cuéntale a tu IA de qué se trata tu proyecto. Escribe un README claro, con un diagrama si ayuda.</p>
       <label for="descripcion-readme">¿Qué hace tu proyecto y para quién?</label>
       <textarea id="descripcion-readme" placeholder="Por ejemplo: una app para que Ana Pérez lleve las cuentas de su almacén" data-autofoco data-sin-traducir>${esc(r.descripcion || "")}</textarea>
       <label class="marcar"><input type="checkbox" id="usar-estructura" ${r.estructura ? "checked" : ""}> <span>Usar la lista de archivos de la carpeta<small>Solo los nombres, nunca su contenido. Respeta .gitignore y deja fuera claves y secretos.</small></span></label>
-      <button class="boton plano" data-accion="ver-envio">${r.envio ? "Ocultar lo que se envía" : "Ver lo que se envía"}</button>
+      <button class="pz-boton pz-plano" data-accion="ver-envio">${r.envio ? "Ocultar lo que se envía" : "Ver lo que se envía"}</button>
       ${r.envio ? `<div class="lista-envio" data-sin-traducir>${r.envio.cargando ? esc(tr("Cargando…")) : esc((r.envio.archivos || []).join("\n") || tr("(nada)"))}${r.envio.omitidos ? "\n" + esc(Tp("… y {n} más que quedan fuera (secretos o ignorados).", { n: r.envio.omitidos })) : ""}</div>` : ""}
-      ${r.error ? `<p class="mal-txt" data-sin-traducir>${esc(r.error)}</p>` : ""}
-      <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="readme-escribir">${ic("chispa")} Escribir README</button></div>`;
+      ${r.error ? `<p class="pz-error-texto" data-sin-traducir>${esc(r.error)}</p>` : ""}
+      <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="readme-escribir">${ic("chispa")} Escribir README</button></div>`;
   }
   function pintarPreviaReadme() {
     const v = $("#previa-readme");
@@ -1209,6 +1173,9 @@
   // ───────────── Eventos ─────────────
   document.addEventListener("click", (e) => {
     if (bv.manejarClic(e)) return;  // idioma, Atrás, Siguiente, Empezar (pieza «bienvenida»)
+    if (e.target.closest?.('[data-pz-act="instalar"]')) guardarTodo();  // antes de actualizar, todo guardado
+    if (tema.manejarClic(e)) return pintar();
+    if (ui.manejarClic(e)) return;  // diálogos (✕, velo), confirmar, Tu IA, actualizaciones, enlaces de «Acerca de»
     const t = e.target.closest("button, [data-abrir], a[data-enlace], .velo");
     if (!t) { if (E.menu && !e.target.closest("#menu")) { E.menu = null; pintarMenu(); } return; }
     if (t.closest("#menu") === null && E.menu && !t.dataset.accion?.startsWith("menu-")) { E.menu = null; pintarMenu(); }
@@ -1216,9 +1183,7 @@
     if (d.abrir && d.pBloque !== undefined) return P.clic(t, d, e);
     if (d.abrir) return abrir(d.abrir);
     if (d.vista) { E.vista = d.vista; return pintar(); }
-    if (d.probarIa) { E.config.ia = d.probarIa; host.enviar("config", { ia: d.probarIa }); E.probando[d.probarIa] = true; host.enviar("probarIA", { ia: d.probarIa }); return pintar(); }
     if (d.ajusteIdioma) { E.config.idioma_ui = d.ajusteIdioma; host.enviar("config", { idioma_ui: d.ajusteIdioma }); return cargarIdioma(d.ajusteIdioma).then(pintar); }
-    if (d.tema) { E.config.tema = d.tema; host.enviar("config", { tema: d.tema }); return pintar(); }
     if (d.enlace) { e.preventDefault(); return abrirEnlace(d.enlace); }
     if (d.categoria) { E.nuevo.categoria = d.categoria; return pintar(); }
     if (d.fuente && E.nuevo) {
@@ -1247,7 +1212,6 @@
     const a = d.accion;
     if (!a) return;
     switch (a) {
-      case "toast-accion": { const a = toast._accion; toast._accion = null; $("#toast").classList.remove("visible", "con-accion"); a?.f(); return; }
       case "abrir-lateral": E.lateral = true; return pintar();
       case "cerrar-lateral": E.lateral = false; return pintar();
       case "elegir-carpeta": return host.enviar("elegirCarpeta");
@@ -1271,10 +1235,6 @@
       case "cerrar-tarjeta": E.tarjetaIA = null; return pintarTarjetaIA();
       case "ajustes": E.lateral = false; E.ajustes = true; return pintar();
       case "cerrar": cerrarDialogo(); return;
-      case "confirmar-si": { const c = E.confirmar; E.confirmar = null; c?.accion(); return pintar(); }
-      case "confirmar-no": { const c = E.confirmar; E.confirmar = null; c?.alNo?.(); return pintar(); }
-      case "buscar-actualizacion": E.revisando = "buscando"; host.enviar("buscarActualizacion"); return pintar();
-      case "actualizar": guardarTodo(); E.revisando = { paso: "0", texto: "Preparando…" }; host.enviar("actualizar"); return pintar();
       case "deshacer": return deshacer();
       case "rehacer": return rehacer();
       case "volver-doc": E.bloque = null; E.elegido = null; if (movil()) E.vista = "dibujo"; return pintar();
@@ -1298,7 +1258,7 @@
   function cerrarDialogo() {
     if (E.dibujar?.enviando) pendienteDibujo = { ...E.dibujar, ruta: E.sel, bloque: E.bloque, enviando: false };
     if (bv.activa && !bv.soloIdioma) { bv.terminar(); }
-    E.ajustes = false; E.nuevo = null; E.readme = null; E.dibujar = null; E.confirmar = null; E.menu = null;
+    E.ajustes = false; E.nuevo = null; E.readme = null; E.dibujar = null; E.menu = null;
     P.cerrarDialogo();
     pintar();
   }
@@ -1376,7 +1336,10 @@
     const cmd = e.metaKey || e.ctrlKey;
     if (e.key === "Escape") {
       if (E.menu) { E.menu = null; pintarMenu(); return; }
-      if (E.confirmar || E.ajustes || E.nuevo || E.readme || E.dibujar || P.hayDialogo() || bv.activa) return cerrarDialogo();
+    }
+    if (ui.manejarTecla(e)) return;  // Esc cierra lo de más arriba (confirmar o el diálogo abierto); Tab no se escapa del diálogo
+    if (e.key === "Escape") {
+      if (E.ajustes || E.nuevo || E.readme || E.dibujar || P.hayDialogo() || bv.activa) return cerrarDialogo();
       if (E.lateral) { E.lateral = false; return pintar(); }
       if (E.elegido) { E.elegido = null; return pintarSeleccion(); }
       if (E.bloque != null) { E.bloque = null; return pintar(); }
@@ -1384,9 +1347,9 @@
     if ((e.key === "Delete" || (e.key === "Backspace" && cmd)) && e.target.closest?.(".lateral [data-abrir]")) { e.preventDefault(); return P.pedirBorrar(e.target.closest(".lateral [data-abrir]").dataset.abrir); }
     if (e.target.id === "texto" && e.key === "Tab" && !e.shiftKey && E.sugerencias.length) { e.preventDefault(); return usarSugerencia(0); }
     if (e.target.id === "texto" && e.key === "Tab" && !e.shiftKey) { e.preventDefault(); const t = e.target, c = t.selectionStart; t.setRangeText("    ", c, t.selectionEnd, "end"); cambiarTexto(t.value, { origen: "texto", agrupar: true }); return; }
-    if (cmd && e.key.toLowerCase() === "z" && !e.target.closest(".dialogo, .lz-editar")) { e.preventDefault(); return e.shiftKey ? rehacer() : deshacer(); }
-    if (cmd && e.key.toLowerCase() === "y" && !e.target.closest(".dialogo")) { e.preventDefault(); return rehacer(); }
-    if (e.target.closest?.(".dialogo") && e.key === "Enter" && cmd) { const p = $(".dialogo .pie-dialogo .principal"); if (p && !p.disabled) p.click(); return; }
+    if (cmd && e.key.toLowerCase() === "z" && !e.target.closest(".pz-dialogo, .lz-editar")) { e.preventDefault(); return e.shiftKey ? rehacer() : deshacer(); }
+    if (cmd && e.key.toLowerCase() === "y" && !e.target.closest(".pz-dialogo")) { e.preventDefault(); return rehacer(); }
+    if (e.target.closest?.(".pz-dialogo") && e.key === "Enter" && cmd) { const p = $(".pz-dialogo .pz-pie .pz-principal"); if (p && !p.disabled) p.click(); return; }
     if (e.target.id !== "lienzo") return;
     if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); return borrarElegido(); }
     if (e.key === "Enter" || e.key === "F2") { e.preventDefault(); return editarEnLugar(); }
@@ -1401,13 +1364,14 @@
   window.addEventListener("resize", () => { const m = window.innerWidth <= 760, a = anchoAntes <= 760; anchoAntes = window.innerWidth; if (m !== a) pintar(); else if ($("#lienzo")) aplicarVista(); });
 
   // ───────────── Lo que llama la app ─────────────
-  window.Esquema = {
+  host.responder({
     async estado(e) {
       if (e.actualizacion) {
-        E.actualizacion = versionNueva(e.actualizacion);
-        if (E.actualizacion.hay && !E.avisoVersion) { E.avisoVersion = true; toast("Hay una versión nueva de Esquema: está en Ajustes"); }
+        ui.actualizacionDisponible(e.actualizacion);
+        if (e.actualizacion.hay && !E.avisoVersion) { E.avisoVersion = true; toast("Hay una versión nueva de Esquema: está en Ajustes"); }
       }
       Object.assign(E, { config: e.config || {}, ias: e.ias || [], version: e.version || "", plantillas: (e.plantillas || []).filter((p) => !validarPlantilla(p).length), tipos: (Array.isArray(e.tipos) ? e.tipos : []).filter((t) => !M.validarTipo(t).length), carpeta: e.carpeta || null, archivos: (e.archivos || []).slice().sort(porRuta), recientes: Array.isArray(e.proyectos) ? e.proyectos : [] });
+      tema.aplicar(tema.elegir({ config: E.config.tema }));
       const parametros = new URLSearchParams(location.search);
       if (parametros.has("vacio")) { E.carpeta = null; E.archivos = []; }
       await cargarIdioma();
@@ -1476,14 +1440,11 @@
       };
       // Se avisa solo si es lo que la persona tiene abierto (un trabajo de la IA escribe muchos documentos: no es ruido).
       if (d.texto === d.guardado && d.estado !== "guardando") { usarDisco(); if (r.ruta === E.sel) toast(Tp("«{x}» cambió en el disco: lo actualicé", { x: nombreDe(r.ruta) }), true); return; }
-      E.confirmar = {
-        titulo: frase("«{x}» cambió en el disco", { x: nombreDe(r.ruta) }),
-        texto: esc("Otro programa lo cambió mientras tenías cambios sin guardar aquí. ¿Con cuál versión te quedas?"),
-        si: "Usar la del disco", no: "Quedarme con la mía",
-        accion: usarDisco,
-        alNo: () => { d.guardado = r.texto; d.estado = "cambiado"; programarGuardado(r.ruta); },
-      };
-      pintar();
+      ui.confirmar({ titulo: "«{x}» cambió en el disco", valores: { x: nombreDe(r.ruta) },
+        texto: "Otro programa lo cambió mientras tenías cambios sin guardar aquí. ¿Con cuál versión te quedas?",
+        si: "Usar la del disco", no: "Quedarme con la mía", sinElegir: null })
+        // Esc o un clic fuera no eligen: no se pisa nada (lo tuyo queda sin guardar hasta que vuelvas a escribir o guardar).
+        .then((si) => { if (si === null) { clearTimeout(temporizadores[r.ruta]); return pintarEstadoGuardado(); } if (si) usarDisco(); else { d.guardado = r.texto; d.estado = "cambiado"; programarGuardado(r.ruta); } });
     },
     archivos(r) { E.archivos = (r.archivos || []).slice().sort(porRuta); P.alCambiarArchivos(); pintar(); },
     /** Respuesta a `papelera`: el archivo (de una carpeta sin documentación de Esquema) está en la Papelera del sistema. */
@@ -1492,7 +1453,7 @@
     proyectoRespuesta(r) { P.respuesta(r || {}); },
     /** Proyectos: cómo va un trabajo largo (documentar), mientras corre: {eventos: [{t: "estado", trabajo} | {t: "lee", ruta, n} | {t: "busca", patron}]}. */
     proyectoProgreso(r) { P.progreso(r || {}); },
-    iaProbada(r) { delete E.probando[r.ia]; E.resultadoIA[r.ia] = r; if (r.ok) toast("Lista para usar"); pintar(); },
+    iaProbada(r) { ui.iaProbada(r); },
     estructuraLista(r) { if (E.readme?.envio) { E.readme.envio = r.ok ? r : { archivos: [], error: r.error }; pintar(); } },
     readmeListo(r) {
       if (!E.readme) return;
@@ -1519,12 +1480,8 @@
     },
     exportado(r) { if (r.ok) toast(r.ruta ? Tp("Guardado en {x}", { x: r.ruta }) : tr("Listo"), true); else if (r.error) toast(r.error); },
     copiado(r) { toast(r.ok ? "Copiado: pégalo en GitHub y se verá como diagrama" : "No pude copiar"); },
-    actualizacionRevisada(r) {
-      E.actualizacion = versionNueva(r);
-      E.revisando = r.hay ? null : r.sinConexion ? "sin-conexion" : "al-dia";
-      pintar();
-    },
-    actualizacionProgreso(r) { E.revisando = { paso: String(r.paso || ""), texto: String(r.texto || ""), valores: r.valores || {}, pct: r.pct }; pintar(); },
+    actualizacionRevisada(r) { ui.actualizacionRevisada(r); },
+    actualizacionProgreso(r) { ui.actualizacionProgreso(r); },
     /** Los menús de la app (Mac: barra de menús; Windows y Linux: menú de la ventana). Nada antes de elegir el idioma. */
     menu(r) {
       const a = r && r.accion;
@@ -1546,8 +1503,9 @@
       if (a === "ajustes") { E.lateral = false; E.ajustes = true; return pintar(); }
     },
     _probar(f) { f(E); pintar(); },
-    _pruebas: { validarPlantilla, validarNombre, resumen, abrir, motor: M, proyectos: () => P, bienvenida: bv },
-  };
+  });
+  // Para las pruebas (host.responder solo suma funciones).
+  window.Esquema._pruebas = { validarPlantilla, validarNombre, resumen, abrir, motor: M, proyectos: () => P, bienvenida: bv, ui, tema };
 
   /** Una plantilla es solo datos: se valida antes de mostrarla (las incluidas y las del catálogo de la comunidad).
    *  La misma regla que bin/plantilla_formato.py (casos en pruebas/casos.json, sección «plantillas»). */
@@ -1577,7 +1535,8 @@
   let DEMO = null;
   const memoria = {};  // ruta → texto (la carpeta de ejemplo vive solo en memoria)
   const luego = (ms, f) => setTimeout(f, ms);
-  function simular(accion, d) {
+  const COMUNES = PiezaHost.simulacionesComunes({ espera: 400 });   // probarIA, buscarActualizacion, actualizar
+  function simular(accion, d, c) {
     const A = window.Esquema;
     switch (accion) {
       case "listo":
@@ -1595,7 +1554,7 @@
       case "papelera": { const ok = d.ruta in memoria && !String(d.ruta).includes(".."); if (ok) delete memoria[d.ruta]; return luego(80, () => A.enPapelera(ok ? { ok: true, ruta: d.ruta } : { ok: false, ruta: d.ruta, error: tr("Ese archivo no se puede borrar.") })); }
       case "abrirArchivo": return luego(20, () => A.archivoAbierto(d.ruta in memoria ? { ok: true, ruta: d.ruta, texto: memoria[d.ruta] } : { ok: false, ruta: d.ruta, error: tr("No encontré el archivo") }));
       case "guardarArchivo": memoria[d.ruta] = d.texto; return luego(60, () => A.archivoGuardado({ ok: true, ruta: d.ruta }));
-      case "probarIA": return luego(500, () => A.iaProbada({ ia: d.ia, ok: true }));
+      case "probarIA": case "buscarActualizacion": case "actualizar": return COMUNES[accion](d, c);
       case "estructura": return luego(200, () => A.estructuraLista({ ok: true, ...DEMO.estructura }));
       case "crearReadme": return luego(900, () => A.readmeListo({ ok: true, texto: readmeSimulado(d) }));
       case "dibujar": return luego(700, () => A.dibujoListo({ ok: true, texto: dibujoSimulado(d) }));
@@ -1609,8 +1568,6 @@
         window._copiado = d.texto;
         return (navigator.clipboard?.writeText(d.texto) || Promise.reject()).then(() => A.copiado({ ok: true }), () => A.copiado({ ok: true }));
       case "abrirEnlace": return toast("En la app, aquí se abre el enlace en tu navegador");
-      case "buscarActualizacion": return luego(300, () => A.actualizacionRevisada({ hay: false, sinConexion: false }));
-      case "actualizar": return luego(300, () => A.actualizacionProgreso({ paso: "error", codigo: "vista-previa", texto: "En la vista previa no hay nada que actualizar.", valores: {} }));
       case "catalogoPlantillas": return luego(400, () => A.catalogoListo({ ok: true, plantillas: JSON.parse(JSON.stringify(DEMO.catalogo || [])) }));
       case "descargarPlantilla": return luego(500, () => {  // en la app: Swift o Electron la bajan de raw.githubusercontent.com y bin/plantillas.py la valida
         const x = (DEMO.catalogo || []).find((y) => y.id === d.id);

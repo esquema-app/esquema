@@ -7,7 +7,7 @@
 (() => {
   "use strict";
   window.EsquemaProyectos = function (api) {
-    const { E, M, host, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA, enBienvenida } = api;
+    const { E, M, host, ui, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA, enBienvenida } = api;
     /** El error de un trabajo o de uno de sus ítems, en el idioma de la persona: un error de la IA trae {codigo, plantilla, valores}
      *  (pieza «ia» / bin/ia_vivo.py) y se traduce con su plantilla; los demás son una frase en español. */
     const errorTrabajo = (x) => (x?.error_ia?.plantilla ? Tp(x.error_ia.plantilla, x.error_ia.valores || {}) : tr(x?.error || ""));
@@ -564,7 +564,7 @@
     /** La tarjeta del trabajo: etapas, lo que lee ahora, cuántos lleva, el tiempo, y cada documento con su estado. */
     function trabajoHTML() {
       const t = pj.trabajo;
-      if (!t && pj.esperando) return `<section class="p-tarjeta p-trabajo" aria-live="polite" data-sin-traducir><h3>${T("Trabajando…")}</h3><div class="esperando"><span class="giro"></span> ${T("Preparando el trabajo…")}</div></section>`;
+      if (!t && pj.esperando) return `<section class="p-tarjeta p-trabajo" aria-live="polite" data-sin-traducir><h3>${T("Trabajando…")}</h3><div class="esperando"><span class="pz-giro"></span> ${T("Preparando el trabajo…")}</div></section>`;
       if (!t || t.descartado || (t.visto && !corriendo() && t.estado !== "esperando")) return "";
       const vivo = t.estado === "corriendo", items = t.items || [], espera = t.estado === "esperando";
       const listos = items.filter((i) => i.estado === "listo").length, total = items.filter((i) => i.estado !== "quitado").length;
@@ -572,17 +572,17 @@
       const etapa = (e) => {
         const actual = (vivo || espera) && t.etapa === e, ok = hechas.has(e) && !actual;
         const nombre = (e === "escribir" || e === "resumir") && total ? T(e === "resumir" ? "Resumiendo {n} de {x}" : "Escribiendo {n} de {x}", { n: Math.min(listos + (actual ? 1 : 0), total) || listos, x: total }) : T(NOMBRE_ETAPA[e] || e);
-        return `<li class="${ok ? "hecha" : actual ? "actual" : ""}">${ok ? ic("listo") : actual && vivo ? `<span class="giro chico"></span>` : actual ? ic("pregunta") : `<span class="punto"></span>`}<span>${nombre}</span></li>`;
+        return `<li class="${ok ? "hecha" : actual ? "actual" : ""}">${ok ? ic("listo") : actual && vivo ? `<span class="pz-giro chico"></span>` : actual ? ic("pregunta") : `<span class="punto"></span>`}<span>${nombre}</span></li>`;
       };
       const fila = (i) => {
         const est = { cola: ["En cola", ""], escribiendo: [i.tipo === "lectura" ? "Leyendo…" : "Escribiendo…", "giro"], listo: [i.tipo === "lectura" ? "Leído" : i.nuevo === false ? "Actualizado" : "Nuevo", "listo"], fallo: ["Falló", "mal"], quitado: ["Quitado", ""] }[i.estado] || ["", ""];
-        const acc = i.estado === "fallo" && !vivo ? `<button class="boton" data-t-reintentar="${esc(i.ruta)}">${ic("rehacer")} ${T("Reintentar")}</button>`
-          : i.estado === "fallo" && t.tipo === "documentar" ? `<button class="boton" data-t-reintentar="${esc(i.ruta)}">${ic("rehacer")} ${T("Reintentar")}</button>`
-          : i.estado === "listo" && !vivo && !espera && i.quitable !== false ? `<button class="boton plano" data-t-quitar="${esc(i.ruta)}">${ic("deshacer")} ${T("Quitar este cambio")}</button>` : "";
+        const acc = i.estado === "fallo" && !vivo ? `<button class="pz-boton" data-t-reintentar="${esc(i.ruta)}">${ic("rehacer")} ${T("Reintentar")}</button>`
+          : i.estado === "fallo" && t.tipo === "documentar" ? `<button class="pz-boton" data-t-reintentar="${esc(i.ruta)}">${ic("rehacer")} ${T("Reintentar")}</button>`
+          : i.estado === "listo" && !vivo && !espera && i.quitable !== false ? `<button class="pz-boton pz-plano" data-t-quitar="${esc(i.ruta)}">${ic("deshacer")} ${T("Quitar este cambio")}</button>` : "";
         // Un documento listo se abre tocando su nombre (sin un botón «Abrir» más por fila).
         const nombre = i.estado === "listo" && i.tipo !== "lectura" ? `<button class="t-abrir" data-abrir="${esc(completa(i.ruta))}" data-sin-traducir>${esc(i.titulo || i.ruta)}</button>` : `<b data-sin-traducir>${esc(i.titulo || i.ruta)}</b>`;
-        return `<li class="t-doc ${esc(i.estado)}"><span class="t-ic">${est[1] === "giro" ? `<span class="giro chico"></span>` : est[1] === "listo" ? ic("listo") : est[1] === "mal" ? ic("cerrar") : ic(i.tipo === "lectura" ? "libro" : "doc")}</span>
-          <span class="p-txt">${nombre}<small>${esc(i.ruta)} · ${T(est[0])}</small>${i.error ? `<small class="mal-txt">${errorTrabajoHTML(i)}</small>` : ""}</span>
+        return `<li class="t-doc ${esc(i.estado)}"><span class="t-ic">${est[1] === "giro" ? `<span class="pz-giro chico"></span>` : est[1] === "listo" ? ic("listo") : est[1] === "mal" ? ic("cerrar") : ic(i.tipo === "lectura" ? "libro" : "doc")}</span>
+          <span class="p-txt">${nombre}<small>${esc(i.ruta)} · ${T(est[0])}</small>${i.error ? `<small class="pz-error-texto">${errorTrabajoHTML(i)}</small>` : ""}</span>
           ${acc ? `<span class="t-acc">${acc}</span>` : ""}</li>`;
       };
       const lee = vivo && t.etapa === "explorar" || (vivo && t.leyendo);
@@ -598,18 +598,18 @@
         ${t.archivos != null && t.tipo === "documentar" ? `<p class="p-ayuda t-datos">${frase("{n} archivos · {t}", { n: t.archivos, t: tr(NOMBRE_TIPO_PROYECTO[t.tipo_proyecto] || "") })}${t.partes ? " " + frase("· {n} partes", { n: t.partes }) : ""}
           <span data-t-leidos data-sin-traducir>${t.leidos ? " · " + T("{n} archivos leídos", { n: t.leidos }) : ""}</span></p>` : ""}
         ${t.tipo === "historia_cierre" && t.commits != null ? `<p class="p-ayuda">${t.commits ? frase("Miré {c} commits y {a} archivos que cambiaron.", { c: t.commits, a: t.archivos || 0 }) : T("No encontré commits desde que la historia pasó a «En desarrollo»: lo documenté con lo que hay.")}</p>` : ""}
-        ${lee && (t.leyendo || t.buscando) ? `<p class="t-lee"><span class="giro chico"></span><span class="t-lee-txt">${t.leyendo ? `${T("Leyendo")} <code data-t-leyendo data-sin-traducir>${esc(t.leyendo)}</code>` : `${T("Buscando")} <code data-sin-traducir>${esc(t.buscando)}</code>`}</span></p>` : ""}
+        ${lee && (t.leyendo || t.buscando) ? `<p class="t-lee"><span class="pz-giro chico"></span><span class="t-lee-txt">${t.leyendo ? `${T("Leyendo")} <code data-t-leyendo data-sin-traducir>${esc(t.leyendo)}</code>` : `${T("Buscando")} <code data-sin-traducir>${esc(t.buscando)}</code>`}</span></p>` : ""}
         ${t.aviso === "plan" ? `<p class="p-ayuda">${frase("{ia} no devolvió un plan que sirva: uso uno armado con lo que encontré en el código.", { ia: t.ia || nombreIA() })}</p>` : ""}
         ${t.aviso === "tope" ? `<p class="p-ayuda">${T("Ya hubo tres rondas de preguntas: lo que falta quedó en «Preguntas abiertas» del documento.")}</p>` : ""}
         ${otroTipo ? `<p class="p-aviso">${frase("{ia} cree que esto es {x}. Si tiene razón, bórralo y agrégalo de nuevo con ese tipo.", { ia: t.ia || nombreIA(), x: tr(otroTipo) })}</p>` : ""}
-        ${t.error ? `<p class="mal-txt" data-sin-traducir>${errorTrabajoHTML(t)}</p>` : ""}
+        ${t.error ? `<p class="pz-error-texto" data-sin-traducir>${errorTrabajoHTML(t)}</p>` : ""}
         ${muestra.length ? `<ul class="t-docs">${muestra.map(fila).join("")}</ul>${ocultos ? `<p class="p-ayuda">${frase("Y {n} más ({l} listos).", { n: ocultos, l: listos })}</p>` : ""}` : ""}
         <div class="p-acciones izq">
-          ${espera ? `<button class="boton principal" data-p-responder="${esc(t.id)}">${ic("pregunta")} ${n2(t)}</button><button class="boton plano" data-t-descartar="${esc(t.id)}">${T("No responder ahora")}</button>` : ""}
-          ${t.propuestas && !vivo && !pj.propuestasVistas?.[t.id] ? `<button class="boton principal" data-t-propuestas="${esc(t.id)}">${ic("lapiz")} ${t.propuestas === 1 ? T("Revisar 1 cambio que propone") : T("Revisar {n} cambios que propone", { n: t.propuestas })}</button>` : ""}
-          ${vivo ? `<button class="boton" data-accion="p-detener">${ic("detener")} ${T("Detener")}</button><span class="p-ayuda t-sigue">${T("Puedes seguir usando Esquema: lo que termina queda guardado al tiro.")}</span>` : ""}
-          ${["interrumpido", "detenido", "error"].includes(t.estado) && items.some((i) => i.estado !== "listo" && i.estado !== "quitado") ? `<button class="boton principal" data-accion="p-seguir">${ic("rehacer")} ${T("Seguir donde quedó")}</button>` : ""}
-          ${!vivo && !espera ? `<button class="boton plano" data-accion="p-trabajo-visto">${T("Listo")}</button>` : ""}
+          ${espera ? `<button class="pz-boton pz-principal" data-p-responder="${esc(t.id)}">${ic("pregunta")} ${n2(t)}</button><button class="pz-boton pz-plano" data-t-descartar="${esc(t.id)}">${T("No responder ahora")}</button>` : ""}
+          ${t.propuestas && !vivo && !pj.propuestasVistas?.[t.id] ? `<button class="pz-boton pz-principal" data-t-propuestas="${esc(t.id)}">${ic("lapiz")} ${t.propuestas === 1 ? T("Revisar 1 cambio que propone") : T("Revisar {n} cambios que propone", { n: t.propuestas })}</button>` : ""}
+          ${vivo ? `<button class="pz-boton" data-accion="p-detener">${ic("detener")} ${T("Detener")}</button><span class="p-ayuda t-sigue">${T("Puedes seguir usando Esquema: lo que termina queda guardado al tiro.")}</span>` : ""}
+          ${["interrumpido", "detenido", "error"].includes(t.estado) && items.some((i) => i.estado !== "listo" && i.estado !== "quitado") ? `<button class="pz-boton pz-principal" data-accion="p-seguir">${ic("rehacer")} ${T("Seguir donde quedó")}</button>` : ""}
+          ${!vivo && !espera ? `<button class="pz-boton pz-plano" data-accion="p-trabajo-visto">${T("Listo")}</button>` : ""}
         </div></section>`;
     }
     const n2 = (t) => ((t.preguntas?.length || 0) === 1 ? T("Responder 1 pregunta") : T("Responder {n} preguntas", { n: t.preguntas?.length || 0 }));
@@ -777,7 +777,7 @@
         let codigo = "";
         if (conCodigo && !ca?.sinCodigo) {
           const [abC, filaC] = carpeta("#codigo", 1, "carpeta", `<span>Código</span>`, `<small data-sin-traducir>${ca ? ca.archivos.length : "…"}</small>`);
-          const cuerpoC = !ca ? `<p class="vacio" style="--n:2"><span class="giro chico"></span> Leyendo la carpeta…</p>`
+          const cuerpoC = !ca ? `<p class="vacio" style="--n:2"><span class="pz-giro chico"></span> Leyendo la carpeta…</p>`
             : !ca.archivos.length ? `<p class="vacio" style="--n:2">${ca.error ? esc(tr(ca.error)) : "La carpeta del código está vacía."}</p>`
             : `<p class="c-resumen" style="--n:2" data-c-resumen data-sin-traducir>${esc(resumenCodigo())}</p>${codigoHTML(ca.raiz, 2)}`;
           codigo = filaC + (abC ? `<div role="group">${cuerpoC}</div>` : "");
@@ -797,14 +797,14 @@
       return `${cabProyectosHTML()}<div class="arbol">${html}${otros.map(filaReciente).join("")}</div>`;
     }
     /** «Proyectos» con la acción global al lado: agregar otro proyecto (de cualquier tipo). */
-    const cabProyectosHTML = () => `<div class="lat-cab"><h3>Proyectos</h3><button class="boton plano chico" data-accion="p-agregar" title="Agregar proyecto">${ic("mas")}<span>Agregar</span></button></div>`;
+    const cabProyectosHTML = () => `<div class="lat-cab"><h3>Proyectos</h3><button class="pz-boton pz-plano chico" data-accion="p-agregar" title="Agregar proyecto">${ic("mas")}<span>Agregar</span></button></div>`;
     const filaReciente = ([p, i]) => `<button class="archivo carpeta-arbol" data-p-reciente="${i}" title="${esc(p.ubicacion || p.ruta)}" data-sin-traducir>${ic("derecha")}${ic(tipoDe(p.tipo).icono || "proyecto")}<span>${esc(p.nombre)}</span></button>`;
     function recientesHTML() {
       if (esProyecto()) return "";
       const actual = E.carpeta?.ruta;
       const otros = E.recientes.map((p, i) => [p, i]).filter(([p]) => p.ruta !== actual);
       return `${cabProyectosHTML()}<div class="arbol">${otros.map(filaReciente).join("")}</div>
-        ${otros.length ? "" : `<button class="boton principal lat-agregar" data-accion="p-agregar">${ic("mas")} Agregar proyecto</button>`}`;
+        ${otros.length ? "" : `<button class="pz-boton pz-principal lat-agregar" data-accion="p-agregar">${ic("mas")} Agregar proyecto</button>`}`;
     }
     /** El punto de color de una historia de usuario en el lateral (por entender, lista, en desarrollo, terminada). */
     function marcaArchivo(ruta) {
@@ -852,11 +852,11 @@
     function faltaHTML() {
       const items = loQueFalta(), faltan = items.filter((i) => !i.ok), completar = faltan.some((i) => i.falta);
       const sinCuenta = ["Cada elemento aparece en un documento", "Al día con el código"];
-      const fila = (i) => `<li class="${i.ok ? "hecho" : "pendiente"}">${ic(i.ok ? "listo" : "mas")}<span><b data-sin-traducir>${esc(tr(i.titulo))}</b>${i.n != null && (i.ok ? i.n && !sinCuenta.includes(i.titulo) : i.n) ? ` <small data-sin-traducir>${i.n}</small>` : ""}${i.nombres?.length ? `<small data-sin-traducir> · ${esc(i.nombres.slice(0, 4).join(", "))}${i.nombres.length > 4 ? "…" : ""}</small>` : ""}</span>${!i.ok && i.accion && !corriendo() ? `<button class="boton plano chico" data-accion="${i.accion}">Hacerlo</button>` : ""}</li>`;
+      const fila = (i) => `<li class="${i.ok ? "hecho" : "pendiente"}">${ic(i.ok ? "listo" : "mas")}<span><b data-sin-traducir>${esc(tr(i.titulo))}</b>${i.n != null && (i.ok ? i.n && !sinCuenta.includes(i.titulo) : i.n) ? ` <small data-sin-traducir>${i.n}</small>` : ""}${i.nombres?.length ? `<small data-sin-traducir> · ${esc(i.nombres.slice(0, 4).join(", "))}${i.nombres.length > 4 ? "…" : ""}</small>` : ""}</span>${!i.ok && i.accion && !corriendo() ? `<button class="pz-boton pz-plano chico" data-accion="${i.accion}">Hacerlo</button>` : ""}</li>`;
       return `<section class="p-tarjeta p-falta">
         <h3>${tipoActual().fuente === "texto" ? (faltan.length ? (faltan.length === 1 ? frase("Le falta 1 cosa") : frase("Le faltan {n} cosas", { n: faltan.length })) : "Está completo") : faltan.length ? (faltan.length === 1 ? frase("Le falta 1 cosa a la documentación") : frase("Le faltan {n} cosas a la documentación", { n: faltan.length })) : "La documentación está completa"}</h3>
         <ul>${items.map(fila).join("")}</ul>
-        ${completar ? `<div class="p-acciones izq"><button class="boton principal" data-accion="p-completar">${ic("chispa")} Completar lo que falta</button></div>` : !faltan.length && ofrece("acciones", "flujo") ? `<div class="p-acciones izq"><button class="boton" data-accion="p-flujo">${ic("chispa")} Documentar otro flujo</button></div>` : ""}
+        ${completar ? `<div class="p-acciones izq"><button class="pz-boton pz-principal" data-accion="p-completar">${ic("chispa")} Completar lo que falta</button></div>` : !faltan.length && ofrece("acciones", "flujo") ? `<div class="p-acciones izq"><button class="pz-boton" data-accion="p-flujo">${ic("chispa")} Documentar otro flujo</button></div>` : ""}
       </section>`;
     }
     /** El pedido para «Completar lo que falta» (lo ve la persona en «Ver lo que se envía»). */
@@ -868,10 +868,10 @@
       const fijos = { propuestas: "Revisa lo que propone tu IA", preguntas: "Preguntas" };
       const n = nombreProyecto(), propio = E.panel === "elementos" ? nombreSeccion("elementos", "Elementos") : E.panel === "versiones" ? nombreSeccion("versiones", "Versiones") : n;
       return `<header class="barra">
-        <button class="boton plano icono solo-movil" data-accion="abrir-lateral" aria-label="Archivos">${ic("menu")}</button>
-        ${E.proyecto && E.panel !== "proyecto" && E.panel !== "propuestas" ? `<button class="boton plano solo-movil" data-p="proyecto" aria-label="Proyecto">${ic("volver")}</button>` : ""}
+        <button class="pz-boton pz-plano icono solo-movil" data-accion="abrir-lateral" aria-label="Archivos">${ic("menu")}</button>
+        ${E.proyecto && E.panel !== "proyecto" && E.panel !== "propuestas" ? `<button class="pz-boton pz-plano solo-movil" data-p="proyecto" aria-label="Proyecto">${ic("volver")}</button>` : ""}
         <span class="titulo">${fijos[E.panel] || `<span data-sin-traducir>${esc(propio)}</span>`}</span><span class="espacio"></span>
-        ${E.panel !== "propuestas" && E.panel !== "preguntas" ? `<button class="boton principal" data-accion="p-nuevo-en" aria-label="${esc(Tp("Nuevo en {x}", { x: n }))}" data-sin-traducir>${ic("mas")}<span class="solo-escritorio">${T("Nuevo en {x}", { x: n })}</span></button>` : ""}
+        ${E.panel !== "propuestas" && E.panel !== "preguntas" ? `<button class="pz-boton pz-principal" data-accion="p-nuevo-en" aria-label="${esc(Tp("Nuevo en {x}", { x: n }))}" data-sin-traducir>${ic("mas")}<span class="solo-escritorio">${T("Nuevo en {x}", { x: n })}</span></button>` : ""}
       </header>`;
     }
 
@@ -886,7 +886,7 @@
       // Documentando por primera vez (todavía no hay esquema.json): solo el trabajo, con lo que encontró arriba.
       if (pj.esperando || pj.trabajo && !pj.trabajo.visto) return `<div class="p-panel">${cabEncontrado()}${trabajoHTML()}</div>`;
       if (E.encontrado) return `<div class="p-panel">${encontradoHTML()}</div>`;
-      return `<div class="vacio"><div class="esperando"><span class="giro"></span> Leyendo el proyecto…</div></div>`;
+      return `<div class="vacio"><div class="esperando"><span class="pz-giro"></span> Leyendo el proyecto…</div></div>`;
     }
 
     /** «Lo que encontré»: lo que Esquema leyó del repo, sin IA. */
@@ -896,7 +896,7 @@
     }
     function encontradoHTML() {
       const f = E.encontrado;
-      if (f.cargando) return `<div class="esperando"><span class="giro"></span> Leyendo el proyecto…</div>`;
+      if (f.cargando) return `<div class="esperando"><span class="pz-giro"></span> Leyendo el proyecto…</div>`;
       const fila = (titulo, html) => (html ? `<div class="p-fila"><span class="p-etq" data-sin-traducir>${esc(titulo)}</span><span class="p-val" data-sin-traducir>${html}</span></div>` : "");
       const g = f.git || {};
       const man = Object.entries(f.manifiestos || {}).map(([k, v]) => `<code>${esc(k)}</code>${v && v.name ? " " + esc(v.name) : ""}`).join(" · ");
@@ -920,7 +920,7 @@
           <input type="text" id="p-docs" value="${esc(f.docs || "docs/esquema")}" data-sin-traducir spellcheck="false">
           <p class="p-ayuda">Markdown y diagramas que GitHub muestra tal cual, más esquema.json con los elementos. ${g.hay ? "Cada versión es un commit solo de esa carpeta." : ""}</p>
         </section>`}
-        <div class="p-acciones"><button class="boton principal" data-accion="p-generar-inicial">${ic("chispa")} ${frase("Documentar con {ia}", { ia: nombreIA() })}</button></div>`;
+        <div class="p-acciones"><button class="pz-boton pz-principal" data-accion="p-generar-inicial">${ic("chispa")} ${frase("Documentar con {ia}", { ia: nombreIA() })}</button></div>`;
     }
 
     function inicioHTML() {
@@ -929,29 +929,29 @@
       const donde = E.proyecto.vinculado ? E.proyecto.ubicacion + "/" : docsDir() + "/";
       const ofrecerWiki = pj.ofrecerWiki && ofrece("acciones", "wiki") && !pj.espera;
       return `<div class="p-cab"><span class="p-icono">${ic(t.icono || "proyecto")}</span><div><h2 data-sin-traducir>${esc(x.nombre)}</h2>${frase("{t} · {d} documentos · {e} elementos · en {c}", { t: textoDe(t.nombre), d: x.documentos.filter((d) => d.tipo !== "fuente").length, e: x.elementos.length, c: donde }, "p")}${E.proyecto.vinculado && E.proyecto.codigo ? frase("Código: {x}", { x: E.proyecto.codigo }, "p") : ""}</div></div>
-        ${!E.proyecto.vinculado ? `<div class="p-aviso"><span>${frase("Esta documentación está dentro del repo ({x}). ¿La paso a una carpeta aparte en ~/Esquema? No borro nada del repo.", { x: docsDir() + "/" })}</span><button class="boton" data-accion="p-mover">Moverla aparte</button></div>` : ""}
-        ${E.proyecto.vinculado && pj.ofrecerPasar && !pj.espera && E.proyecto.codigo ? `<div class="p-aviso"><span>Guardé la versión. ¿Quieres llevar algo de esto al repo del proyecto?</span><button class="boton" data-accion="p-pasar">Pasar al proyecto</button></div>` : ""}
-        ${ofrecerWiki ? `<div class="p-aviso"><span>¿Actualizo también la wiki de GitHub con esta versión?</span><button class="boton" data-accion="p-wiki">${ic("exportar")} Publicar en la wiki</button><button class="boton plano" data-accion="p-wiki-no">Ahora no</button></div>` : ""}
+        ${!E.proyecto.vinculado ? `<div class="p-aviso"><span>${frase("Esta documentación está dentro del repo ({x}). ¿La paso a una carpeta aparte en ~/Esquema? No borro nada del repo.", { x: docsDir() + "/" })}</span><button class="pz-boton" data-accion="p-mover">Moverla aparte</button></div>` : ""}
+        ${E.proyecto.vinculado && pj.ofrecerPasar && !pj.espera && E.proyecto.codigo ? `<div class="p-aviso"><span>Guardé la versión. ¿Quieres llevar algo de esto al repo del proyecto?</span><button class="pz-boton" data-accion="p-pasar">Pasar al proyecto</button></div>` : ""}
+        ${ofrecerWiki ? `<div class="p-aviso"><span>¿Actualizo también la wiki de GitHub con esta versión?</span><button class="pz-boton" data-accion="p-wiki">${ic("exportar")} Publicar en la wiki</button><button class="pz-boton pz-plano" data-accion="p-wiki-no">Ahora no</button></div>` : ""}
         ${esperanHTML()}
-        ${(E.proyecto.historias || []).filter((h) => h.estado === "en-desarrollo" && h.commits && !corriendo()).map((h) => `<div class="p-aviso"><span>${h.commits === 1 ? frase("«{x}»: 1 commit la nombra. ¿Terminaste?", { x: h.id }) : frase("«{x}»: {n} commits la nombran. ¿Terminaste?", { x: h.id, n: h.commits })}</span><button class="boton" data-p-cerrar-hu="${esc(h.ruta)}">${ic("listo")} Documentar cómo quedó</button></div>`).join("")}
+        ${(E.proyecto.historias || []).filter((h) => h.estado === "en-desarrollo" && h.commits && !corriendo()).map((h) => `<div class="p-aviso"><span>${h.commits === 1 ? frase("«{x}»: 1 commit la nombra. ¿Terminaste?", { x: h.id }) : frase("«{x}»: {n} commits la nombran. ¿Terminaste?", { x: h.id, n: h.commits })}</span><button class="pz-boton" data-p-cerrar-hu="${esc(h.ruta)}">${ic("listo")} Documentar cómo quedó</button></div>`).join("")}
         ${trabajoHTML()}
         ${x.documentos.length && !corriendo() ? faltaHTML() : ""}
         ${corriendo() ? "" : accionesHTML()}
-        ${pj.espera ? `<div class="p-aviso"><span class="giro"></span> Guardando la versión…</div>` : ""}
-        ${pj.generando?.oculto ? `<div class="p-aviso"><span class="giro"></span><span>${frase("{ia} está trabajando en tu pedido…", { ia: nombreIA() })}</span><button class="boton plano" data-accion="p-ver-generando">Ver</button></div>` : ""}
-        ${u ? `<div class="p-aviso"><span data-sin-traducir>${esc(u.mensaje)}</span>${u.puede ? `<button class="boton" data-accion="p-deshacer">${ic("deshacer")} Deshacer este cambio</button>` : ""}</div>` : ""}
+        ${pj.espera ? `<div class="p-aviso"><span class="pz-giro"></span> Guardando la versión…</div>` : ""}
+        ${pj.generando?.oculto ? `<div class="p-aviso"><span class="pz-giro"></span><span>${frase("{ia} está trabajando en tu pedido…", { ia: nombreIA() })}</span><button class="pz-boton pz-plano" data-accion="p-ver-generando">Ver</button></div>` : ""}
+        ${u ? `<div class="p-aviso"><span data-sin-traducir>${esc(u.mensaje)}</span>${u.puede ? `<button class="pz-boton" data-accion="p-deshacer">${ic("deshacer")} Deshacer este cambio</button>` : ""}</div>` : ""}
         ${c?.n && !E.proyecto.cambiosVistos ? `<section class="p-tarjeta p-cambios">
           <h3>${frase("Cambió el proyecto desde tu última versión: {n} commits", { n: c.n })}</h3>
           <ul class="p-commits" data-sin-traducir>${c.commits.slice(0, 5).map((k) => `<li><small>${esc(k.fecha)}</small> ${esc(k.mensaje)}</li>`).join("")}</ul>
-          ${rev ? revisionHTML(rev) : `<div class="p-acciones izq"><button class="boton principal" data-accion="p-revisar" ${listos ? "" : "disabled"}>Revisar qué documentos afecta</button><button class="boton plano" data-accion="p-cambios-vistos">Ya lo revisé</button></div>`}
+          ${rev ? revisionHTML(rev) : `<div class="p-acciones izq"><button class="pz-boton pz-principal" data-accion="p-revisar" ${listos ? "" : "disabled"}>Revisar qué documentos afecta</button><button class="pz-boton pz-plano" data-accion="p-cambios-vistos">Ya lo revisé</button></div>`}
         </section>` : ""}
         ${seccionesHTML()}
         <div class="p-acciones izq">
-          ${E.proyecto.vinculado && E.proyecto.codigo ? `<button class="boton" data-accion="p-pasar">${ic("exportar")} Pasar al proyecto</button>` : ""}
-          ${ofrece("acciones", "wiki") ? `<button class="boton" data-accion="p-wiki">${ic("github")} Publicar en la wiki</button>` : ""}
-          ${ofrece("acciones", "documentar") && !corriendo() ? `<button class="boton plano" data-accion="p-documentar">${ic("proyecto")} Volver a documentar todo</button>` : ""}
-          <button class="boton" data-p="elementos">${ic("elemento")} <span data-sin-traducir>${esc(nombreSeccion("elementos", "Elementos"))}</span></button>
-          <button class="boton" data-p="versiones">${ic("historia")} <span data-sin-traducir>${esc(nombreSeccion("versiones", "Versiones"))}</span></button>
+          ${E.proyecto.vinculado && E.proyecto.codigo ? `<button class="pz-boton" data-accion="p-pasar">${ic("exportar")} Pasar al proyecto</button>` : ""}
+          ${ofrece("acciones", "wiki") ? `<button class="pz-boton" data-accion="p-wiki">${ic("github")} Publicar en la wiki</button>` : ""}
+          ${ofrece("acciones", "documentar") && !corriendo() ? `<button class="pz-boton pz-plano" data-accion="p-documentar">${ic("proyecto")} Volver a documentar todo</button>` : ""}
+          <button class="pz-boton" data-p="elementos">${ic("elemento")} <span data-sin-traducir>${esc(nombreSeccion("elementos", "Elementos"))}</span></button>
+          <button class="pz-boton" data-p="versiones">${ic("historia")} <span data-sin-traducir>${esc(nombreSeccion("versiones", "Versiones"))}</span></button>
         </div>`;
     }
     /** Todos los documentos del proyecto (los de esquema.json y los que están en la carpeta), con su título y tipo. */
@@ -984,7 +984,7 @@
     function esperanHTML() {
       const l = (pj.esperan || []).filter((t) => !(pj.trabajo && pj.trabajo.id === t.id && !pj.trabajo.visto));
       if (!l.length) return "";
-      return l.map((t) => `<div class="p-aviso p-espera"><span>${ic("pregunta")} ${(t.preguntas?.length || 0) === 1 ? frase("«{x}» espera 1 respuesta", { x: t.titulo || "" }) : frase("«{x}» espera {n} respuestas", { x: t.titulo || "", n: t.preguntas?.length || 0 })}</span><button class="boton principal" data-p-responder="${esc(t.id)}">Responder</button></div>`).join("");
+      return l.map((t) => `<div class="p-aviso p-espera"><span>${ic("pregunta")} ${(t.preguntas?.length || 0) === 1 ? frase("«{x}» espera 1 respuesta", { x: t.titulo || "" }) : frase("«{x}» espera {n} respuestas", { x: t.titulo || "", n: t.preguntas?.length || 0 })}</span><button class="pz-boton pz-principal" data-p-responder="${esc(t.id)}">Responder</button></div>`).join("");
     }
     /** Lo que se puede hacer con este proyecto (según su tipo): tarjetas grandes, como en el inicio de una carpeta. */
     function accionesHTML() {
@@ -1011,10 +1011,10 @@
       return a1 - b1 || a2 - b2 || a.ruta.localeCompare(b.ruta);
     }
     function revisionHTML(rev) {
-      if (!rev.documentos.length) return `<p class="p-ayuda">Ningún documento nombra lo que tocaron esos commits.</p><div class="p-acciones izq"><button class="boton" data-accion="p-cambios-vistos">Listo</button></div>`;
+      if (!rev.documentos.length) return `<p class="p-ayuda">Ningún documento nombra lo que tocaron esos commits.</p><div class="p-acciones izq"><button class="pz-boton" data-accion="p-cambios-vistos">Listo</button></div>`;
       return `<p class="p-ayuda">${rev.documentos.length === 1 ? frase("Puede estar desactualizado 1 documento, por:") : frase("Pueden estar desactualizados {n} documentos, por:", { n: rev.documentos.length })} <span data-sin-traducir>${rev.elementos.map((e) => esc(e.nombre)).join(", ")}</span></p>
         <ul class="p-commits" data-sin-traducir>${rev.documentos.map((r) => `<li>${esc(tituloDoc(r))} <small>${esc(rel(r))}</small></li>`).join("")}</ul>
-        <div class="p-acciones izq"><button class="boton principal" data-accion="p-revisar-ia">${ic("chispa")} ${frase("Pedir a {ia} que los ponga al día", { ia: nombreIA() })}</button><button class="boton plano" data-accion="p-cambios-vistos">Ya lo revisé</button></div>`;
+        <div class="p-acciones izq"><button class="pz-boton pz-principal" data-accion="p-revisar-ia">${ic("chispa")} ${frase("Pedir a {ia} que los ponga al día", { ia: nombreIA() })}</button><button class="pz-boton pz-plano" data-accion="p-cambios-vistos">Ya lo revisé</button></div>`;
     }
 
     // Propuestas de la IA: una tarjeta por archivo, con «Quitar este cambio».
@@ -1023,36 +1023,36 @@
       if (pr.tarea === "incorporar") return incorporarHTML(pr, n);
       const tarjeta = (p, i) => `<article class="p-prop ${p.quitada ? "quitada" : ""}">
           <div class="p-prop-cab"><span class="p-tipo">${ic(p.existe ? "lapiz" : "doc")}</span><span class="p-txt"><b>${esc(p.titulo)}</b><small>${esc(rel(p.ruta))} · ${T(p.existe ? "Cambia" : "Nuevo")}</small></span>
-            <span class="p-prop-acc">${p.error ? "" : `<button class="boton plano" data-p-ver="${i}">${T(p.ver ? "Ocultar" : "Ver")}</button><button class="boton" data-p-quitar="${i}">${p.quitada ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button>`}</span></div>
-          ${p.error ? `<p class="mal-txt">${T("Un diagrama tiene un error (línea {n}: {x}). No lo agrego; pídelo de nuevo.", { n: p.error.linea, x: p.error.frase })}</p>` : ""}
+            <span class="p-prop-acc">${p.error ? "" : `<button class="pz-boton pz-plano" data-p-ver="${i}">${T(p.ver ? "Ocultar" : "Ver")}</button><button class="pz-boton" data-p-quitar="${i}">${p.quitada ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button>`}</span></div>
+          ${p.error ? `<p class="pz-error-texto">${T("Un diagrama tiene un error (línea {n}: {x}). No lo agrego; pídelo de nuevo.", { n: p.error.linea, x: p.error.frase })}</p>` : ""}
           ${p.ver ? (p.existe ? difHTML(p.antes || "", p.texto) : `<div class="p-previa md" data-p-md="${i}"></div>`) : ""}
         </article>`;
       return `<div class="p-cab"><span class="p-icono">${ic("chispa")}</span><div><h2>${T("Revisa lo que propone tu IA")}</h2><p>${T("Nada está guardado todavía. Quita lo que no te sirva y guarda el resto como una sola versión.")}</p></div></div>
         ${pr.nota ? `<div class="p-aviso p-nota"><b>${esc(nombreIA())}:</b> ${esc(pr.nota)}</div>` : ""}
         ${pr.descartados ? `<p class="p-ayuda">${T("Descarté {n} partes de la respuesta que no venían en el formato correcto.", { n: pr.descartados })}</p>` : ""}
         ${pr.lista.map(tarjeta).join("")}
-        ${pr.elementos.length ? `<article class="p-prop ${pr.elementosQuitados ? "quitada" : ""}"><div class="p-prop-cab"><span class="p-tipo">${ic("elemento")}</span><span class="p-txt"><b>${T("Elementos ({n})", { n: pr.elementos.length })}</b><small>${T("Lo que la documentación nombra y conecta")}</small></span><span class="p-prop-acc"><button class="boton" data-p-quitar="el">${pr.elementosQuitados ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button></span></div>
+        ${pr.elementos.length ? `<article class="p-prop ${pr.elementosQuitados ? "quitada" : ""}"><div class="p-prop-cab"><span class="p-tipo">${ic("elemento")}</span><span class="p-txt"><b>${T("Elementos ({n})", { n: pr.elementos.length })}</b><small>${T("Lo que la documentación nombra y conecta")}</small></span><span class="p-prop-acc"><button class="pz-boton" data-p-quitar="el">${pr.elementosQuitados ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button></span></div>
           <div class="p-chips">${pr.elementos.map((e) => `<span class="p-chip" title="${esc(e.descripcion || "")}">${esc(e.nombre)} <small>${T(NOMBRE_TIPO[e.tipo])}${e.estado === "cambia" ? " · " + T("cambia") : ""}</small></span>`).join("")}</div></article>` : ""}
         ${!pr.lista.length && !pr.elementos.length ? `<p class="p-ayuda">${T("Tu IA no propuso cambios.")}</p>` : ""}
-        <div class="p-acciones p-pie"><button class="boton" data-accion="p-descartar">${T("Descartar todo")}</button><button class="boton principal" data-accion="p-aplicar" ${n ? "" : "disabled"}>${T("Guardar {n} cambios", { n })}</button></div>`;
+        <div class="p-acciones p-pie"><button class="pz-boton" data-accion="p-descartar">${T("Descartar todo")}</button><button class="pz-boton pz-principal" data-accion="p-aplicar" ${n ? "" : "disabled"}>${T("Guardar {n} cambios", { n })}</button></div>`;
     }
 
     /** El plan de «Agregar información», agrupado: Nuevo / Se completa / Se modifica. Cada cambio dice por qué y de dónde salió (la cita);
      *  lo que se modifica se ve con antes y después y solo se guarda si la persona lo confirma. */
     function incorporarHTML(pr, n) {
-      const elementos = pr.elementos.length ? `<article class="p-prop ${pr.elementosQuitados ? "quitada" : ""}"><div class="p-prop-cab"><span class="p-tipo">${ic("elemento")}</span><span class="p-txt"><b>${T("Elementos ({n})", { n: pr.elementos.length })}</b><small>${T("Lo que la documentación nombra y conecta")}</small></span><span class="p-prop-acc"><button class="boton" data-p-quitar="el">${pr.elementosQuitados ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button></span></div>
+      const elementos = pr.elementos.length ? `<article class="p-prop ${pr.elementosQuitados ? "quitada" : ""}"><div class="p-prop-cab"><span class="p-tipo">${ic("elemento")}</span><span class="p-txt"><b>${T("Elementos ({n})", { n: pr.elementos.length })}</b><small>${T("Lo que la documentación nombra y conecta")}</small></span><span class="p-prop-acc"><button class="pz-boton" data-p-quitar="el">${pr.elementosQuitados ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button></span></div>
           <div class="p-chips">${pr.elementos.map((e) => `<span class="p-chip" title="${esc(e.descripcion || "")}">${esc(e.nombre)} <small>${T(NOMBRE_TIPO[e.tipo])}${e.estado === "cambia" ? " · " + T("cambia") : ""}</small></span>`).join("")}</div></article>` : "";
       const tarjeta = (p, i) => {
         const fuera = p.quitada || (p.confirmar && !p.confirmada);
         const boton = p.error ? "" : p.confirmar
-          ? `<button class="boton ${p.confirmada ? "" : "principal"}" data-p-confirmar="${i}" aria-pressed="${p.confirmada}">${p.confirmada ? ic("listo") + " " + T("Lo aplico") : T("Aplicar este cambio")}</button>`
-          : `<button class="boton" data-p-quitar="${i}">${p.quitada ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button>`;
+          ? `<button class="pz-boton ${p.confirmada ? "" : "pz-principal"}" data-p-confirmar="${i}" aria-pressed="${p.confirmada}">${p.confirmada ? ic("listo") + " " + T("Lo aplico") : T("Aplicar este cambio")}</button>`
+          : `<button class="pz-boton" data-p-quitar="${i}">${p.quitada ? ic("mas") + " " + T("Volver a agregar") : ic("deshacer") + " " + T("Quitar este cambio")}</button>`;
         return `<article class="p-prop ${fuera ? "quitada" : ""} ${p.confirmar ? "p-modifica" : ""}">
           <div class="p-prop-cab"><span class="p-tipo">${ic(p.accion === "crear" ? "doc" : p.accion === "completar" ? "mas" : "lapiz")}</span><span class="p-txt"><b>${esc(p.titulo)}</b><small>${esc(rel(p.ruta))}</small></span>
-            <span class="p-prop-acc">${p.error ? "" : `<button class="boton plano" data-p-ver="${i}">${T(p.ver ? "Ocultar" : "Ver")}</button>`}${boton}</span></div>
+            <span class="p-prop-acc">${p.error ? "" : `<button class="pz-boton pz-plano" data-p-ver="${i}">${T(p.ver ? "Ocultar" : "Ver")}</button>`}${boton}</span></div>
           ${p.porque ? `<p class="p-porque">${esc(p.porque)}</p>` : ""}
           ${p.cita ? `<blockquote class="p-cita">«${esc(p.cita)}»${p.citaExacta ? "" : ` <small>${T("(no aparece tal cual en lo que agregaste)")}</small>`}</blockquote>` : ""}
-          ${p.error ? `<p class="mal-txt">${T("Un diagrama tiene un error (línea {n}: {x}). No lo agrego; pídelo de nuevo.", { n: p.error.linea, x: p.error.frase })}</p>` : ""}
+          ${p.error ? `<p class="pz-error-texto">${T("Un diagrama tiene un error (línea {n}: {x}). No lo agrego; pídelo de nuevo.", { n: p.error.linea, x: p.error.frase })}</p>` : ""}
           ${p.ver ? (p.existe ? difHTML(p.antes || "", p.texto) : `<div class="p-previa md" data-p-md="${i}"></div>`) : ""}
         </article>`;
       };
@@ -1069,7 +1069,7 @@
         ${grupo("modificar", "Se modifica", "Cambia algo que quedó viejo o contradice lo nuevo. Revisa el antes y el después.")}
         ${elementos}
         ${!pr.lista.length && !pr.elementos.length ? `<p class="p-ayuda">${T("Tu IA no propuso cambios.")}</p>` : ""}
-        <div class="p-acciones p-pie">${faltan ? `<span class="p-ayuda">${faltan === 1 ? T("1 cambio sin confirmar no se guarda") : T("{n} cambios sin confirmar no se guardan", { n: faltan })}</span>` : ""}<button class="boton" data-accion="p-descartar">${T("Descartar todo")}</button><button class="boton principal" data-accion="p-aplicar" ${n ? "" : "disabled"}>${T("Guardar {n} cambios", { n })}</button></div>`;
+        <div class="p-acciones p-pie">${faltan ? `<span class="p-ayuda">${faltan === 1 ? T("1 cambio sin confirmar no se guarda") : T("{n} cambios sin confirmar no se guardan", { n: faltan })}</span>` : ""}<button class="pz-boton" data-accion="p-descartar">${T("Descartar todo")}</button><button class="pz-boton pz-principal" data-accion="p-aplicar" ${n ? "" : "disabled"}>${T("Guardar {n} cambios", { n })}</button></div>`;
     }
 
     /** Diferencias de texto (solo lo que cambió, con 2 líneas alrededor) y, si hay diagramas que cambiaron, antes y después. */
@@ -1105,9 +1105,9 @@
       const el = elemento(pj.elemento);
       const grupos = M.TIPOS_ELEMENTO.map((t) => [t, lista.filter((e) => e.tipo === t).sort((a, b) => a.nombre.localeCompare(b.nombre))]).filter(([, l]) => l.length);
       const listaHTML = `<div class="p-el-lista ${el && movil() ? "oculto" : ""}">
-          <div class="buscar-fila"><input type="search" id="p-buscar" placeholder="Buscar elementos" aria-label="Buscar elementos" value="${esc(pj.buscar)}" data-sin-traducir><button class="boton" data-accion="p-elemento-nuevo">${ic("mas")} Nuevo</button></div>
+          <div class="buscar-fila"><input type="search" id="p-buscar" placeholder="Buscar elementos" aria-label="Buscar elementos" value="${esc(pj.buscar)}" data-sin-traducir><button class="pz-boton" data-accion="p-elemento-nuevo">${ic("mas")} Nuevo</button></div>
           ${grupos.map(([t, l]) => `<h4>${NOMBRE_TIPO[t]}</h4>${l.map((e) => `<button class="archivo" data-p-elemento="${esc(e.id)}" aria-current="${e.id === pj.elemento}" data-sin-traducir>${ic("elemento")}<span>${esc(e.nombre)}</span></button>`).join("")}`).join("")}
-          ${!lista.length ? (q ? `<div class="p-ayuda">${frase("Aún no existe «{x}».", { x: pj.buscar.trim() })} <button class="boton" data-accion="p-elemento-nuevo">${ic("mas")} ${frase("Crear «{x}»", { x: pj.buscar.trim() })}</button></div>` : `<p class="p-ayuda">Todavía no hay elementos. Documenta el proyecto con tu IA o crea uno.</p>`) : ""}
+          ${!lista.length ? (q ? `<div class="p-ayuda">${frase("Aún no existe «{x}».", { x: pj.buscar.trim() })} <button class="pz-boton" data-accion="p-elemento-nuevo">${ic("mas")} ${frase("Crear «{x}»", { x: pj.buscar.trim() })}</button></div>` : `<p class="p-ayuda">Todavía no hay elementos. Documenta el proyecto con tu IA o crea uno.</p>`) : ""}
         </div>`;
       return `<div class="p-el">${listaHTML}${el ? fichaHTML(el) : movil() ? "" : `<div class="p-ficha vacio"><p>Elige un elemento para ver dónde se usa y cambiarlo en todos los documentos a la vez.</p></div>`}</div>`;
     }
@@ -1117,27 +1117,27 @@
       const ed = pj.editar;
       const editar = ed ? `<div class="p-editar">
           ${ed.campo === "nombre" ? `<label for="p-valor">Nombre nuevo</label><input type="text" id="p-valor" value="${esc(ed.valor)}" data-sin-traducir data-autofoco>` : `<label for="p-valor">Descripción</label><textarea id="p-valor" data-sin-traducir data-autofoco>${esc(ed.valor)}</textarea>`}
-          ${ed.error ? `<p class="mal-txt">${esc(tr(ed.error))}</p>` : ""}
-          <div class="p-acciones izq"><button class="boton principal" data-accion="p-ver-cambio">${ed.campo === "nombre" ? "Ver qué cambia" : "Guardar"}</button><button class="boton plano" data-accion="p-editar-no">Cancelar</button></div></div>` : "";
+          ${ed.error ? `<p class="pz-error-texto">${esc(tr(ed.error))}</p>` : ""}
+          <div class="p-acciones izq"><button class="pz-boton pz-principal" data-accion="p-ver-cambio">${ed.campo === "nombre" ? "Ver qué cambia" : "Guardar"}</button><button class="pz-boton pz-plano" data-accion="p-editar-no">Cancelar</button></div></div>` : "";
       return `<div class="p-ficha">
-        ${movil() ? `<button class="boton plano" data-accion="p-volver-lista">${ic("volver")} Elementos</button>` : ""}
+        ${movil() ? `<button class="pz-boton pz-plano" data-accion="p-volver-lista">${ic("volver")} Elementos</button>` : ""}
         <div class="p-ficha-cab"><span class="p-icono">${ic("elemento")}</span><div><h2 data-sin-traducir>${esc(el.nombre)}</h2><p><span>${NOMBRE_TIPO[el.tipo]}</span> · <code data-sin-traducir>${esc(el.id)}</code></p></div></div>
         ${el.descripcion ? `<p class="p-desc" data-sin-traducir>${esc(el.descripcion)}</p>` : ""}
         ${el.codigo?.length ? `<p class="p-codigo"><span>En el código:</span> <span data-sin-traducir>${el.codigo.map((c) => `<code>${esc(c)}</code>`).join(" ")}</span></p>` : ""}
-        ${editar || `<div class="p-acciones izq"><button class="boton" data-accion="p-renombrar">${ic("lapiz")} Renombrar</button><button class="boton" data-accion="p-describir">Cambiar descripción</button><button class="boton" data-accion="p-comportamiento">${ic("chispa")} Cambió cómo funciona</button><button class="boton peligro" data-accion="p-quitar">${ic("borrar")} Quitar</button></div>`}
+        ${editar || `<div class="p-acciones izq"><button class="pz-boton" data-accion="p-renombrar">${ic("lapiz")} Renombrar</button><button class="pz-boton" data-accion="p-describir">Cambiar descripción</button><button class="pz-boton" data-accion="p-comportamiento">${ic("chispa")} Cambió cómo funciona</button><button class="pz-boton pz-peligro" data-accion="p-quitar">${ic("borrar")} Quitar</button></div>`}
         <h3>Dónde se usa</h3>
-        ${!listos ? `<div class="esperando"><span class="giro"></span> Leyendo los documentos…</div>` : usos.length ? `<div class="p-lista">${usos.map((u) => `<button class="p-doc" data-abrir="${esc(u.ruta)}" ${u.nodos[0] && u.nodos[0].bloque >= 0 ? `data-p-bloque="${u.nodos[0].bloque}"` : ""}><span class="p-tipo">${ic(/\.mmd$/.test(u.ruta) ? "diagrama" : "doc")}</span><span class="p-txt"><b data-sin-traducir>${esc(tituloDoc(u.ruta))}</b>${`<small data-sin-traducir>${esc(resumenUso(u))}</small>`}</span></button>`).join("")}</div>` : `<p class="p-ayuda">Ningún documento lo usa todavía.</p>`}
+        ${!listos ? `<div class="esperando"><span class="pz-giro"></span> Leyendo los documentos…</div>` : usos.length ? `<div class="p-lista">${usos.map((u) => `<button class="p-doc" data-abrir="${esc(u.ruta)}" ${u.nodos[0] && u.nodos[0].bloque >= 0 ? `data-p-bloque="${u.nodos[0].bloque}"` : ""}><span class="p-tipo">${ic(/\.mmd$/.test(u.ruta) ? "diagrama" : "doc")}</span><span class="p-txt"><b data-sin-traducir>${esc(tituloDoc(u.ruta))}</b>${`<small data-sin-traducir>${esc(resumenUso(u))}</small>`}</span></button>`).join("")}</div>` : `<p class="p-ayuda">Ningún documento lo usa todavía.</p>`}
       </div>`;
     }
 
     // Versiones: línea de tiempo, ver una, comparar y restaurar.
     function versionesHTML() {
       const v = pj.versiones;
-      if (!v || (v.cargando && !v.lista)) return `<div class="esperando"><span class="giro"></span> Leyendo la historia…</div>`;
-      if (v.error) return `<p class="mal-txt" data-sin-traducir>${esc(tr(v.error))}</p>`;
+      if (!v || (v.cargando && !v.lista)) return `<div class="esperando"><span class="pz-giro"></span> Leyendo la historia…</div>`;
+      if (v.error) return `<p class="pz-error-texto" data-sin-traducir>${esc(tr(v.error))}</p>`;
       const sel = v.lista.find((x) => x.id === v.sel);
       const linea = `<ol class="p-tiempo">
-          ${v.pendiente ? `<li class="pendiente"><span class="p-punto"></span><div><b>Cambios sin guardar como versión</b><button class="boton principal" data-accion="p-guardar-version">${ic("historia")} Guardar versión</button></div></li>` : ""}
+          ${v.pendiente ? `<li class="pendiente"><span class="p-punto"></span><div><b>Cambios sin guardar como versión</b><button class="pz-boton pz-principal" data-accion="p-guardar-version">${ic("historia")} Guardar versión</button></div></li>` : ""}
           ${v.lista.map((x) => `<li><span class="p-punto"></span><button class="p-version" data-p-version="${esc(x.id)}" aria-current="${x.id === v.sel}"><b data-sin-traducir>${esc(x.mensaje)}</b><small data-sin-traducir>${esc(fecha(x.fecha))}${v.modo === "git" ? " · " + esc(x.id.slice(0, 7)) : ""}</small></button></li>`).join("")}
           ${!v.lista.length ? `<li><p class="p-ayuda">Todavía no hay versiones guardadas.</p></li>` : ""}
         </ol>`;
@@ -1145,7 +1145,7 @@
       if (sel) {
         const A = v.archivos[sel.id], B = v.archivos[v.contra];
         const opciones = [["actual", tr("Ahora")], ...v.lista.filter((x) => x.id !== sel.id).map((x) => [x.id, `${fecha(x.fecha)} · ${x.mensaje.slice(0, 40)}`])];
-        let cuerpo = `<div class="esperando"><span class="giro"></span> Comparando…</div>`;
+        let cuerpo = `<div class="esperando"><span class="pz-giro"></span> Comparando…</div>`;
         if (A && B) {
           const lista = M.difVersiones(A, B);
           cuerpo = lista.length ? lista.map((f) => `<div class="p-dif-archivo"><button class="p-doc" data-p-dif="${esc(f.ruta)}" aria-expanded="${v.abierto === f.ruta}"><span class="p-tipo">${ic(f.ruta.endsWith(".mmd") ? "diagrama" : "doc")}</span><span class="p-txt"><b data-sin-traducir>${esc(f.ruta)}</b><small>${{ nuevo: "Nuevo después", quitado: "Ya no está", cambiado: "Cambió" }[f.estado]}</small></span></button>
@@ -1155,7 +1155,7 @@
           <h3 data-sin-traducir>${esc(sel.mensaje)}</h3>
           <div class="p-comparar"><label for="p-contra">Comparar con</label><select id="p-contra" data-sin-traducir>${opciones.map(([id, n]) => `<option value="${esc(id)}" ${id === v.contra ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></div>
           ${cuerpo}
-          <div class="p-acciones izq"><button class="boton" data-accion="p-restaurar">${ic("deshacer")} Restaurar esta versión</button></div>
+          <div class="p-acciones izq"><button class="pz-boton" data-accion="p-restaurar">${ic("deshacer")} Restaurar esta versión</button></div>
         </section>`;
       }
       return `<div class="p-cab"><span class="p-icono">${ic("historia")}</span><div><h2>Versiones de la documentación</h2><p>${v.modo === "git" ? "Cada versión es un commit de git solo con la carpeta de la documentación." : "Sin git: cada versión es una copia comprimida en la carpeta de la documentación."}</p></div></div>
@@ -1177,63 +1177,65 @@
       const fila = (f, i) => `<div class="p-pasar-fila">
           <label class="marcar"><input type="checkbox" data-p-fila="${i}" ${f.elegido ? "checked" : ""} ${f.valido === false || f.igual ? "disabled" : ""}><span><b data-sin-traducir>${esc(f.ruta)}</b><small data-sin-traducir>→ ${esc(f.destino)}</small></span></label>
           ${d.cargando ? "" : estado(f)}
-          ${f.existe && !f.igual ? `<span class="p-pasar-acc"><label class="marcar chico"><input type="checkbox" data-p-reemplazar="${i}" ${f.reemplazar ? "checked" : ""}> <span>Reemplazar</span></label><button class="boton plano" data-p-ver-dif="${i}">${d.abierta === i ? "Ocultar" : "Ver diferencia"}</button></span>` : ""}
+          ${f.existe && !f.igual ? `<span class="p-pasar-acc"><label class="marcar chico"><input type="checkbox" data-p-reemplazar="${i}" ${f.reemplazar ? "checked" : ""}> <span>Reemplazar</span></label><button class="pz-boton pz-plano" data-p-ver-dif="${i}">${d.abierta === i ? "Ocultar" : "Ver diferencia"}</button></span>` : ""}
           ${d.abierta === i ? `<div class="p-dif" data-sin-traducir>${difHTML(f.antes || "", E.docs[completa(f.ruta)]?.texto || "")}</div>` : ""}
         </div>`;
       return `<h2 id="t-pj">Pasar al proyecto</h2>
         ${frase("Elige qué documentos copiar al repo {x}. Lo que ya existe solo se cambia si marcas «Reemplazar».", { x: d.codigo || E.proyecto?.codigo || "" }, "p")}
-        ${d.cargando ? `<div class="esperando"><span class="giro"></span> Revisando el repo…</div>` : `<div class="p-pasar">${d.filas.map(fila).join("")}</div>`}
-        ${d.error ? `<p class="mal-txt">${esc(tr(d.error))}</p>` : ""}
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-pasar-enviar" ${d.cargando || d.enviando || !n ? "disabled" : ""}>${n === 1 ? "Pasar 1 archivo" : frase("Pasar {n} archivos", { n })}</button></div>`;
+        ${d.cargando ? `<div class="esperando"><span class="pz-giro"></span> Revisando el repo…</div>` : `<div class="p-pasar">${d.filas.map(fila).join("")}</div>`}
+        ${d.error ? `<p class="pz-error-texto">${esc(tr(d.error))}</p>` : ""}
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-pasar-enviar" ${d.cargando || d.enviando || !n ? "disabled" : ""}>${n === 1 ? "Pasar 1 archivo" : frase("Pasar {n} archivos", { n })}</button></div>`;
     }
-    function dialogoHTML(capa) {
-      if (pj.generando && !pj.generando.oculto) return capa("t-pj", `<h2 id="t-pj">${frase("{ia} está trabajando…", { ia: nombreIA() })}</h2><div class="esperando"><span class="giro"></span><span>Si lee el código, puede tardar varios minutos. Cuando responda te muestro lo que propone; puedes seguir usando Esquema mientras tanto.</span></div><div class="pie-dialogo"><button class="boton" data-accion="p-cancelar">Cancelar</button><button class="boton principal" data-accion="p-ocultar" data-autofoco>Seguir usando Esquema</button></div>`);
+    /** Un diálogo de proyectos (todos con su <h2 id="t-pj">) con la caja de la pieza «componentes». */
+    const envolver = (html, clase = "") => ui.envolver(html, { id: "t-pj", clase });
+    function dialogoHTML() {
+      if (pj.generando && !pj.generando.oculto) return envolver(`<h2 id="t-pj">${frase("{ia} está trabajando…", { ia: nombreIA() })}</h2><div class="esperando"><span class="pz-giro"></span><span>Si lee el código, puede tardar varios minutos. Cuando responda te muestro lo que propone; puedes seguir usando Esquema mientras tanto.</span></div><div class="pz-pie"><button class="pz-boton" data-accion="p-cancelar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-ocultar">Seguir usando Esquema</button></div>`);
       const d = pj.dialogo;
       if (!d) return "";
-      if (d.tipo === "error") return capa("t-pj", `<h2 id="t-pj">No resultó</h2><p data-sin-traducir>${esc(tr(d.texto))}</p><div class="pie-dialogo"><button class="boton principal" data-accion="cerrar" data-autofoco>Entendido</button></div>`);
-      if (d.tipo === "envio") return capa("t-pj", envioHTML(d), "ancho");
-      if (d.tipo === "pasar") return capa("t-pj", pasarHTML(d), "ancho");
-      if (d.tipo === "agregar") return capa("t-pj", agregarHTML(d), "ancho agregar");
-      if (d.tipo === "nuevo-proyecto") return capa("t-pj", nuevoProyectoHTML(d), "ancho agregar");
-      if (d.tipo === "wiki") return capa("t-pj", wikiHTML(d), "ancho");
-      if (d.tipo === "flujo") return capa("t-pj", `<h2 id="t-pj">Documentar un flujo</h2><p>Cuéntale a tu IA qué quieres documentar: «el flujo de…» o «la secuencia de…». Si necesita leer archivos del código, te pregunta antes.</p>
+      if (d.tipo === "error") return envolver(`<h2 id="t-pj">No resultó</h2><p data-sin-traducir>${esc(tr(d.texto))}</p><div class="pz-pie"><button class="pz-boton pz-principal" data-accion="cerrar">Entendido</button></div>`);
+      if (d.tipo === "envio") return envolver(envioHTML(d), "pz-ancho");
+      if (d.tipo === "pasar") return envolver(pasarHTML(d), "pz-ancho");
+      if (d.tipo === "agregar") return envolver(agregarHTML(d), "pz-ancho agregar");
+      if (d.tipo === "nuevo-proyecto") return envolver(nuevoProyectoHTML(d), "pz-ancho agregar");
+      if (d.tipo === "wiki") return envolver(wikiHTML(d), "pz-ancho");
+      if (d.tipo === "flujo") return envolver(`<h2 id="t-pj">Documentar un flujo</h2><p>Cuéntale a tu IA qué quieres documentar: «el flujo de…» o «la secuencia de…». Si necesita leer archivos del código, te pregunta antes.</p>
         <textarea id="p-pedido" placeholder="Por ejemplo: cómo se graba una reunión, desde que tocas Grabar hasta que queda guardada" data-autofoco data-sin-traducir>${esc(d.pedido || "")}</textarea>
-        ${d.error ? `<p class="mal-txt">${esc(tr(d.error))}</p>` : ""}
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-flujo-enviar">${ic("chispa")} Seguir</button></div>`);
-      if (d.tipo === "pedir") return capa("t-pj", `<h2 id="t-pj">${frase("{ia} quiere leer estos archivos", { ia: nombreIA() })}</h2>
+        ${d.error ? `<p class="pz-error-texto">${esc(tr(d.error))}</p>` : ""}
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-flujo-enviar">${ic("chispa")} Seguir</button></div>`);
+      if (d.tipo === "pedir") return envolver(`<h2 id="t-pj">${frase("{ia} quiere leer estos archivos", { ia: nombreIA() })}</h2>
         ${d.nota ? `<p data-sin-traducir>${esc(d.nota)}</p>` : ""}<p>Elige cuáles le mandas. Solo van archivos de texto del proyecto, nunca secretos ni lo que ignora .gitignore.</p>
         <div class="p-pedir" data-sin-traducir>${d.rutas.map((r, i) => `<label class="marcar"><input type="checkbox" data-p-elegir="${i}" ${d.elegidas.includes(r) ? "checked" : ""}> <span><code>${esc(r)}</code></span></label>`).join("")}</div>
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">No mandar nada</button><button class="boton principal" data-accion="p-pedir-enviar" ${d.elegidas.length ? "" : "disabled"}>Seguir</button></div>`);
-      if (d.tipo === "cambio") return capa("t-pj", cambioHTML(d), "ancho");
-      if (d.tipo === "comportamiento") return capa("t-pj", `<h2 id="t-pj">${frase("¿Qué cambió en «{x}»?", { x: d.el.nombre })}</h2><p>Tu IA propone cómo cambiar cada documento que lo usa; tú aceptas o quitas cada cambio.</p>
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">No mandar nada</button><button class="pz-boton pz-principal" data-accion="p-pedir-enviar" ${d.elegidas.length ? "" : "disabled"}>Seguir</button></div>`);
+      if (d.tipo === "cambio") return envolver(cambioHTML(d), "pz-ancho");
+      if (d.tipo === "comportamiento") return envolver(`<h2 id="t-pj">${frase("¿Qué cambió en «{x}»?", { x: d.el.nombre })}</h2><p>Tu IA propone cómo cambiar cada documento que lo usa; tú aceptas o quitas cada cambio.</p>
         <textarea id="p-pedido" placeholder="Por ejemplo: ahora pide confirmación antes de empezar" data-autofoco data-sin-traducir>${esc(d.pedido || "")}</textarea>
         ${frase("Documentos que lo usan: {n}", { n: d.documentos.length }, "p")}
-        ${d.error ? `<p class="mal-txt">${esc(tr(d.error))}</p>` : ""}
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-comportamiento-enviar" ${d.documentos.length ? "" : "disabled"}>${ic("chispa")} Seguir</button></div>`);
-      if (d.tipo === "version") return capa("t-pj", `<h2 id="t-pj">Guardar versión</h2><p>${E.proyecto?.git?.hay ? "Hago un commit solo con la carpeta de la documentación. No toco otros archivos ni subo nada." : "Guardo una copia de la documentación en .versiones/."}</p>
+        ${d.error ? `<p class="pz-error-texto">${esc(tr(d.error))}</p>` : ""}
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-comportamiento-enviar" ${d.documentos.length ? "" : "disabled"}>${ic("chispa")} Seguir</button></div>`);
+      if (d.tipo === "version") return envolver(`<h2 id="t-pj">Guardar versión</h2><p>${E.proyecto?.git?.hay ? "Hago un commit solo con la carpeta de la documentación. No toco otros archivos ni subo nada." : "Guardo una copia de la documentación en .versiones/."}</p>
         <label for="p-mensaje">¿Qué cambió?</label><input type="text" id="p-mensaje" value="${esc(d.mensaje)}" data-sin-traducir data-autofoco>
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-version-enviar">${ic("historia")} Guardar versión</button></div>`);
-      if (d.tipo === "nuevo-elemento") return capa("t-pj", `<h2 id="t-pj">Nuevo elemento</h2><p>Algo que la persona reconoce de la app: una pantalla, un botón, un servicio… Después lo enlazas desde los diagramas.</p>
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-version-enviar">${ic("historia")} Guardar versión</button></div>`);
+      if (d.tipo === "nuevo-elemento") return envolver(`<h2 id="t-pj">Nuevo elemento</h2><p>Algo que la persona reconoce de la app: una pantalla, un botón, un servicio… Después lo enlazas desde los diagramas.</p>
         <label for="p-el-nombre">Nombre</label><input type="text" id="p-el-nombre" value="${esc(d.nombre || "")}" data-sin-traducir data-autofoco>
-        <label>Tipo</label><div class="chips">${M.TIPOS_ELEMENTO.map((t) => `<button class="chip" data-p-tipo="${t}" aria-pressed="${d.tipoEl === t}">${NOMBRE_TIPO[t]}</button>`).join("")}</div>
+        <label>Tipo</label><div class="pz-chips">${M.TIPOS_ELEMENTO.map((t) => `<button class="pz-chip" data-p-tipo="${t}" aria-pressed="${d.tipoEl === t}">${NOMBRE_TIPO[t]}</button>`).join("")}</div>
         <label for="p-el-desc">Descripción (opcional)</label><textarea id="p-el-desc" data-sin-traducir>${esc(d.descripcion || "")}</textarea>
-        ${d.error ? `<p class="mal-txt">${esc(tr(d.error))}</p>` : ""}
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-elemento-crear">Crear</button></div>`);
-      if (d.tipo === "restaurar") return capa("t-pj", `<h2 id="t-pj">¿Restaurar esta versión?</h2>${frase("Vuelvo la documentación a como estaba el {f}. Lo de ahora no se pierde: queda en la historia y puedes volver.", { f: fecha(d.version.fecha) }, "p")}
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-restaurar-si" data-autofoco>Restaurar</button></div>`);
+        ${d.error ? `<p class="pz-error-texto">${esc(tr(d.error))}</p>` : ""}
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-elemento-crear">Crear</button></div>`);
+      if (d.tipo === "restaurar") return envolver(`<h2 id="t-pj">¿Restaurar esta versión?</h2>${frase("Vuelvo la documentación a como estaba el {f}. Lo de ahora no se pierde: queda en la historia y puedes volver.", { f: fecha(d.version.fecha) }, "p")}
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-restaurar-si">Restaurar</button></div>`);
       return "";
     }
     function envioHTML(d) {
       const titulo = d.datos?.forma === "diagrama" ? "Crear diagrama" : { inicial: "Documentar el proyecto", flujo: "Documentar un flujo", cambio: "Actualizar los documentos", revisar: "Poner al día la documentación", completar: "Completar la documentación" }[d.tarea];
-      if (d.cargando) return `<h2 id="t-pj">${titulo}</h2><div class="esperando"><span class="giro"></span> Preparando lo que se envía…</div>`;
-      if (d.error) return `<h2 id="t-pj">${titulo}</h2><p class="mal-txt" data-sin-traducir>${esc(tr(d.error))}</p><div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cerrar</button></div>`;
+      if (d.cargando) return `<h2 id="t-pj">${titulo}</h2><div class="esperando"><span class="pz-giro"></span> Preparando lo que se envía…</div>`;
+      if (d.error) return `<h2 id="t-pj">${titulo}</h2><p class="pz-error-texto" data-sin-traducir>${esc(tr(d.error))}</p><div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cerrar</button></div>`;
       const motivos = { ruta: "ruta no válida", fuera: "no existe, es un secreto o está ignorado", binario: "no es texto", tope: "pasa del tope de tamaño" };
       return `<h2 id="t-pj">${titulo}</h2>
         <p>${frase("Esto es exactamente lo que le mando a {ia} ({b}). Revísalo antes de enviar: nada más sale de tu computador.", { ia: nombreIA(), b: tamano(d.bytes) })}</p>
         <div class="p-envio">${d.piezas.map((p, i) => `<details ${d.abierta === i ? "open" : ""}><summary><span data-sin-traducir>${p.ruta ? `<code>${esc(p.ruta)}</code>` : esc(tr(p.titulo))}</span><small data-sin-traducir>${esc(tamano(p.bytes))}${p.recortado ? " · " + esc(tr("recortado")) : ""}</small></summary><pre data-sin-traducir>${esc(p.texto)}</pre></details>`).join("")}</div>
         ${d.aFondo ? fondoHTML(d) : ""}
         ${d.rechazados.length ? `<p class="p-ayuda">No mando: <span data-sin-traducir>${d.rechazados.map((r) => `<code>${esc(r.ruta)}</code> (${esc(tr(motivos[r.motivo] || r.motivo))})`).join(", ")}</span></p>` : ""}
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-enviar" data-autofoco>${ic("chispa")} ${frase("Enviar a {ia}", { ia: nombreIA() })}</button></div>`;
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-enviar">${ic("chispa")} ${frase("Enviar a {ia}", { ia: nombreIA() })}</button></div>`;
     }
     /** La casilla «Revisión a fondo»: la IA lee (solo lee) la carpeta del código por su cuenta, menos los secretos. */
     function fondoHTML(d) {
@@ -1245,7 +1247,7 @@
     }
     function cambioHTML(d) {
       const { listos } = docsProyecto();
-      if (!listos) return `<h2 id="t-pj">Revisando los documentos…</h2><div class="esperando"><span class="giro"></span></div>`;
+      if (!listos) return `<h2 id="t-pj">Revisando los documentos…</h2><div class="esperando"><span class="pz-giro"></span></div>`;
       const archivos = previaCambio(), cambian = archivos.filter((a) => a.despues !== a.antes);
       const c = d.cambio;
       const titulo = c.tipo === "renombrar" ? frase("Renombrar «{a}» a «{b}»", { a: d.el.nombre, b: c.nombre }, "span") : c.tipo === "quitar" ? frase("Quitar «{a}»", { a: d.el.nombre }, "span") : frase("Cambiar la descripción de «{a}»", { a: d.el.nombre }, "span");
@@ -1264,11 +1266,11 @@
         ${c.tipo === "describir" ? frase("Solo cambia el glosario (elementos.md).", {}, "p") : cambian.length === 1 ? frase("Cambia 1 documento y el glosario, todo en una sola versión que puedes deshacer.", {}, "p") : cambian.length ? frase("Cambia {n} documentos y el glosario, todo en una sola versión que puedes deshacer.", { n: cambian.length }, "p") : frase("Ningún documento cambia; solo el glosario.", {}, "p")}
         ${c.tipo === "quitar" ? `<label class="marcar"><input type="checkbox" data-p-opcion="reconectar" ${c.reconectar ? "checked" : ""}> <span>Unir lo que venía antes con lo que sigue<small>Así los flujos no quedan cortados donde estaba.</small></span></label>` : ""}
         ${c.tipo === "renombrar" ? `<label class="marcar"><input type="checkbox" data-p-opcion="tambienSinEnlace" ${c.tambienSinEnlace ? "checked" : ""}> <span>Cambiar también donde lo nombran sin enlace<small>Busca el nombre exacto como palabra.</small></span></label>` : ""}
-        <div class="p-cambio-lista" data-sin-traducir>${archivos.map((a, i) => `<div class="p-prop"><div class="p-prop-cab"><span class="p-tipo">${ic(/\.mmd$/.test(a.ruta) ? "diagrama" : "doc")}</span><span class="p-txt"><b>${esc(tituloDoc(a.ruta))}</b><small>${esc(rel(a.ruta))}${a.despues === a.antes ? " · " + esc(tr("lo menciona, no cambia")) : ""}</small></span>${a.despues !== a.antes ? `<button class="boton plano" data-p-ver-cambio="${i}">${esc(tr(d.abierto === i ? "Ocultar" : "Antes y después"))}</button>` : ""}</div>
+        <div class="p-cambio-lista" data-sin-traducir>${archivos.map((a, i) => `<div class="p-prop"><div class="p-prop-cab"><span class="p-tipo">${ic(/\.mmd$/.test(a.ruta) ? "diagrama" : "doc")}</span><span class="p-txt"><b>${esc(tituloDoc(a.ruta))}</b><small>${esc(rel(a.ruta))}${a.despues === a.antes ? " · " + esc(tr("lo menciona, no cambia")) : ""}</small></span>${a.despues !== a.antes ? `<button class="pz-boton pz-plano" data-p-ver-cambio="${i}">${esc(tr(d.abierto === i ? "Ocultar" : "Antes y después"))}</button>` : ""}</div>
             ${nota(a).length ? `<ul class="p-notas">${nota(a).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
             ${a.notas.frases.length && c.tipo !== "renombrar" ? `<p class="p-ayuda">${esc(tr("Frases que lo mencionan (revísalas después):"))}</p><ul class="p-frases">${a.notas.frases.slice(0, 6).map((f) => `<li><small>${esc(Tp("Línea {n}", { n: f.linea }))}</small> ${esc(f.despues)}</li>`).join("")}</ul>` : ""}
             ${d.abierto === i ? difHTML(a.antes, a.despues) : ""}</div>`).join("")}</div>
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-aplicar-cambio" data-autofoco>${c.tipo === "describir" ? "Guardar" : frase("Aplicar en {n} archivos", { n: cambian.length + 1 })}</button></div>`;
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-aplicar-cambio">${c.tipo === "describir" ? "Guardar" : frase("Aplicar en {n} archivos", { n: cambian.length + 1 })}</button></div>`;
     }
 
     // ───────────── Agregar al proyecto (y crear un proyecto Libro): texto pegado o archivos; Esquema detecta qué es ─────────────
@@ -1362,38 +1364,38 @@
       return `<div class="soltar" data-p-soltar>
           <span class="soltar-ic">${ic("archivo")}</span>
           <span class="soltar-txt"><b>Arrastra archivos aquí</b><small>Markdown, texto, PDF con texto, Word (.docx), OpenDocument, EPUB o HTML.</small></span>
-          <button class="boton" data-accion="p-elegir-archivos">Elegir archivos</button>
-          <input type="file" id="p-archivos" class="sr" tabindex="-1" aria-hidden="true" multiple accept="${ACEPTA}">
+          <button class="pz-boton" data-accion="p-elegir-archivos">Elegir archivos</button>
+          <input type="file" id="p-archivos" class="pz-sr" tabindex="-1" aria-hidden="true" multiple accept="${ACEPTA}">
         </div>
-        ${d.archivos.length ? `<ul class="p-archivos" data-sin-traducir>${d.archivos.map((a, k) => `<li>${ic("doc")}<span>${esc(a.nombre)}</span><small>${esc(tamanoArchivo(a.tamano))}</small><button class="boton plano icono" data-p-quitar-archivo="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: a.nombre }))}">${ic("cerrar")}</button></li>`).join("")}</ul>` : ""}
+        ${d.archivos.length ? `<ul class="p-archivos" data-sin-traducir>${d.archivos.map((a, k) => `<li>${ic("doc")}<span>${esc(a.nombre)}</span><small>${esc(tamanoArchivo(a.tamano))}</small><button class="pz-boton pz-plano icono" data-p-quitar-archivo="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: a.nombre }))}">${ic("cerrar")}</button></li>`).join("")}</ul>` : ""}
         <label for="p-pegar">O pega el texto</label>
         <textarea id="p-pegar" class="p-pegar" placeholder="${esc(tr(placeholder))}" data-sin-traducir ${d.archivos.length ? "" : "data-autofoco"}>${esc(d.texto || "")}</textarea>
-        ${(d.avisos || []).map((a) => `<p class="mal-txt" data-sin-traducir>${esc(a.nombre ? a.nombre + ": " : "")}${esc(tr(a.error))}</p>`).join("")}
-        ${d.error ? `<p class="mal-txt" data-sin-traducir>${esc(tr(d.error))}</p>` : ""}`;
+        ${(d.avisos || []).map((a) => `<p class="pz-error-texto" data-sin-traducir>${esc(a.nombre ? a.nombre + ": " : "")}${esc(tr(a.error))}</p>`).join("")}
+        ${d.error ? `<p class="pz-error-texto" data-sin-traducir>${esc(tr(d.error))}</p>` : ""}`;
     }
     function agregarHTML(d) {
       const n = nombreProyecto(), historia = d.preset === "historia", info = d.preset === "incorporar";
       const titulo = historia ? frase("Historia de usuario en {x}", { x: n }) : info ? frase("Agregar información a {x}", { x: n }) : frase("Agregar a {x}", { x: n });
-      if (d.paso === "leyendo") return `<h2 id="t-pj">${titulo}</h2><div class="esperando"><span class="giro"></span> Leyendo lo que agregaste…</div>`;
+      if (d.paso === "leyendo") return `<h2 id="t-pj">${titulo}</h2><div class="esperando"><span class="pz-giro"></span> Leyendo lo que agregaste…</div>`;
       if (d.paso === "entrada") return `<h2 id="t-pj">${titulo}</h2>
         <p>${historia ? "Pega la historia (o el texto del ticket) o elige el archivo. Tu IA te ayuda a entenderla y te pregunta lo que falta; no programa." : info ? "Notas, un correo, lo que salió de una reunión… Tu IA lo ordena en la documentación: crea lo nuevo, completa lo que existe y corrige lo que cambió. Nada se guarda hasta que revises cada cambio." : "Pega un texto o elige archivos. Esquema detecta si es una historia de usuario, un libro o un documento, y lo ordena en su sección."}</p>
         ${entradaHTML(d, historia ? "Como cliente quiero… para… (y sus criterios de aceptación)" : info ? "Pega aquí tus notas" : "Pega aquí el texto")}
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-detectar" ${d.leyendo ? "disabled" : ""} data-sin-traducir>${d.leyendo ? `<span class="giro chico"></span> ${esc(tr("Leyendo archivos…"))}` : esc(tr("Seguir"))}</button></div>`;
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-detectar" ${d.leyendo ? "disabled" : ""} data-sin-traducir>${d.leyendo ? `<span class="pz-giro chico"></span> ${esc(tr("Leyendo archivos…"))}` : esc(tr("Seguir"))}</button></div>`;
       const r = d.det, permitidos = tiposContenido();
       const datos = r.capitulos > 1 ? frase("{p} palabras · {c} capítulos", { p: r.palabras.toLocaleString(), c: r.capitulos }) : frase("{p} palabras", { p: r.palabras.toLocaleString() });
       const cod = !!(E.proyecto?.codigo || E.vinculo?.codigo || (!vinculado() && E.carpeta));
       return `<h2 id="t-pj">${titulo}</h2>
         <p class="p-ayuda">${datos}${r.archivos?.length ? ` · <span data-sin-traducir>${esc(r.archivos.join(", "))}</span>` : ""}</p>
         <label id="t-que">¿Qué es?</label>
-        <div class="seg tipos-contenido" role="radiogroup" aria-labelledby="t-que">${permitidos.map((k) => `<button role="radio" aria-checked="${d.elegido === k}" aria-pressed="${d.elegido === k}" data-p-contenido="${k}" data-sin-traducir>${esc(tr(NOMBRE_CONTENIDO[k]))}</button>`).join("")}</div>
+        <div class="pz-seg tipos-contenido" role="radiogroup" aria-labelledby="t-que">${permitidos.map((k) => `<button role="radio" aria-checked="${d.elegido === k}" aria-pressed="${d.elegido === k}" data-p-contenido="${k}" data-sin-traducir>${esc(tr(NOMBRE_CONTENIDO[k]))}</button>`).join("")}</div>
         ${r.tipo === d.elegido && r.razones?.length ? `<p class="p-ayuda razones">${frase("Lo detecté así porque: {x}.", { x: r.razones.map((x) => tr(x)).join(" · ") })}</p>` : `<p class="p-ayuda razones" data-sin-traducir>${T("Tu IA lo confirma (o te avisa) en su primera respuesta.")}</p>`}
-        ${r.solo_enlace && d.elegido === "historia" ? `<p class="mal-txt" data-sin-traducir>${T("Esquema no abre enlaces (nada sale de tu computador). Vuelve atrás y pega también el texto del ticket.")}</p>` : ""}
-        ${r.sugerir_libro && tipos().some((x) => x.id === "libro") && tipoActual().id !== "libro" ? `<div class="p-aviso"><span data-sin-traducir>${T("Es un libro largo. Para estudiarlo, resumir cada capítulo y revisar incongruencias, créalo como un proyecto Libro aparte.")}</span><button class="boton" data-accion="p-a-libro">${ic("libro")} ${T("Crear un proyecto Libro")}</button></div>` : ""}
+        ${r.solo_enlace && d.elegido === "historia" ? `<p class="pz-error-texto" data-sin-traducir>${T("Esquema no abre enlaces (nada sale de tu computador). Vuelve atrás y pega también el texto del ticket.")}</p>` : ""}
+        ${r.sugerir_libro && tipos().some((x) => x.id === "libro") && tipoActual().id !== "libro" ? `<div class="p-aviso"><span data-sin-traducir>${T("Es un libro largo. Para estudiarlo, resumir cada capítulo y revisar incongruencias, créalo como un proyecto Libro aparte.")}</span><button class="pz-boton" data-accion="p-a-libro">${ic("libro")} ${T("Crear un proyecto Libro")}</button></div>` : ""}
         <label for="p-titulo">Título</label><input type="text" id="p-titulo" class="p-input" value="${esc(d.titulo || "")}" placeholder="Si lo dejas vacío, tu IA le pone uno">
         ${d.elegido === "historia" && cod ? `<label class="marcar p-fondo" data-sin-traducir><input type="checkbox" data-p-afondo ${d.aFondo !== false ? "checked" : ""}><span><b data-sin-traducir>${T("Que lea el código (solo leer)")}</b><small data-sin-traducir>${T("Para ubicar qué partes toca. Nunca escribe ni ejecuta nada, y no abre secretos.")}</small></span></label>` : ""}
-        ${(d.avisos || []).map((a) => `<p class="mal-txt" data-sin-traducir>${esc(a.nombre ? a.nombre + ": " : "")}${esc(tr(a.error))}</p>`).join("")}
+        ${(d.avisos || []).map((a) => `<p class="pz-error-texto" data-sin-traducir>${esc(a.nombre ? a.nombre + ": " : "")}${esc(tr(a.error))}</p>`).join("")}
         <p class="p-ayuda agregar-ayuda" data-sin-traducir>${T(AYUDA_CONTENIDO[d.elegido] || "")}</p>
-        <div class="pie-dialogo"><button class="boton" data-accion="p-volver-entrada">Atrás</button><button class="boton principal" data-accion="p-agregar-enviar" ${r.solo_enlace && d.elegido === "historia" ? "disabled" : ""} data-sin-traducir>${ic("mas")} ${esc(tr("Agregar"))}</button></div>`;
+        <div class="pz-pie"><button class="pz-boton" data-accion="p-volver-entrada">Atrás</button><button class="pz-boton pz-principal" data-accion="p-agregar-enviar" ${r.solo_enlace && d.elegido === "historia" ? "disabled" : ""} data-sin-traducir>${ic("mas")} ${esc(tr("Agregar"))}</button></div>`;
     }
     function nuevoProyectoHTML(d) {
       const t = tipoDe(d.t);
@@ -1401,21 +1403,21 @@
       const cab = `<h2 id="t-pj">Agregar proyecto</h2><p id="t-tipo">¿Qué tipo de proyecto es?</p><div class="tipos-proyecto" role="radiogroup" aria-labelledby="t-tipo">${tarjetas}</div>`;
       if (d.paso === "carpeta") return t.fuente === "carpeta"
         ? `${cab}<p class="p-ayuda" data-sin-traducir>${T("La documentación de «{x}» queda aparte, en ~/Esquema, con su propio historial: Esquema nunca escribe en tu código.", { x: d.carpeta })}</p>
-          <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-vincular">Seguir</button></div>`
+          <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-vincular">Seguir</button></div>`
         : `${cab}<p class="p-aviso" data-sin-traducir>${T("«{x}» tiene textos, no código: parece un libro. Creo un proyecto Libro con sus textos, en orden, en ~/Esquema. Los archivos de la carpeta no se tocan.", { x: d.carpeta })}</p>
           <label for="p-titulo">Nombre del libro</label><input type="text" id="p-titulo" class="p-input" value="${esc(d.titulo || "")}" data-sin-traducir data-autofoco>
-          <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-crear-libro" data-sin-traducir>${ic("libro")} ${esc(tr("Crear proyecto"))}</button></div>`;
+          <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-crear-libro" data-sin-traducir>${ic("libro")} ${esc(tr("Crear proyecto"))}</button></div>`;
       if (t.fuente === "carpeta") return `${cab}<p class="p-ayuda" data-sin-traducir>${T("Elige la carpeta del código. La documentación queda aparte, en ~/Esquema, con su propio historial: Esquema nunca escribe en tu código.")}</p>
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-elegir-codigo" data-sin-traducir>${ic("carpeta")} ${esc(tr("Elegir la carpeta"))}</button></div>`;
-      if (d.paso === "leyendo" || d.paso === "creando") return `${cab}<div class="esperando" data-sin-traducir><span class="giro"></span> ${esc(tr(d.paso === "creando" ? "Creando el proyecto…" : "Leyendo lo que agregaste…"))}</div>`;
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-elegir-codigo" data-sin-traducir>${ic("carpeta")} ${esc(tr("Elegir la carpeta"))}</button></div>`;
+      if (d.paso === "leyendo" || d.paso === "creando") return `${cab}<div class="esperando" data-sin-traducir><span class="pz-giro"></span> ${esc(tr(d.paso === "creando" ? "Creando el proyecto…" : "Leyendo lo que agregaste…"))}</div>`;
       if (d.paso === "entrada") return `${cab}${entradaHTML(d, "Pega aquí el texto del libro")}
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-detectar" ${d.leyendo ? "disabled" : ""} data-sin-traducir>${d.leyendo ? `<span class="giro chico"></span> ${esc(tr("Leyendo archivos…"))}` : esc(tr("Seguir"))}</button></div>`;
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-detectar" ${d.leyendo ? "disabled" : ""} data-sin-traducir>${d.leyendo ? `<span class="pz-giro chico"></span> ${esc(tr("Leyendo archivos…"))}` : esc(tr("Seguir"))}</button></div>`;
       const r = d.det;
       return `${cab}<p class="p-ayuda">${r.capitulos > 1 ? frase("{p} palabras · {c} capítulos", { p: r.palabras.toLocaleString(), c: r.capitulos }) : frase("{p} palabras", { p: r.palabras.toLocaleString() })}</p>
         ${r.tipo !== "libro" ? `<p class="p-aviso" data-sin-traducir>${T("No parece un libro (es corto o no tiene capítulos). Igual lo parto en partes; si es otra cosa, agrégalo a un proyecto como documento.")}</p>` : ""}
         <label for="p-titulo">Nombre del libro</label><input type="text" id="p-titulo" class="p-input" value="${esc(d.titulo || r.titulo || "")}" data-sin-traducir data-autofoco>
         <p class="p-ayuda" data-sin-traducir>${T("Queda en ~/Esquema, con su propio historial. Lo parto en capítulos y, antes de resumir, te pregunto para qué lo quieres.")}</p>
-        <div class="pie-dialogo"><button class="boton" data-accion="p-volver-entrada">Atrás</button><button class="boton principal" data-accion="p-crear-libro" data-sin-traducir>${ic("libro")} ${esc(tr("Crear proyecto"))}</button></div>`;
+        <div class="pz-pie"><button class="pz-boton" data-accion="p-volver-entrada">Atrás</button><button class="pz-boton pz-principal" data-accion="p-crear-libro" data-sin-traducir>${ic("libro")} ${esc(tr("Crear proyecto"))}</button></div>`;
     }
 
     // ───────────── Preguntas: una a la vez, grande y simple (las de una historia de usuario o de un libro) ─────────────
@@ -1430,7 +1432,7 @@
     }
     function preguntasHTML() {
       const q = pj.preguntas, t = q && trabajoPorId(q.id);
-      if (!t || t.estado !== "esperando") return `<div class="pregunta"><p>Ya no hay preguntas pendientes.</p><button class="boton" data-p="proyecto">${ic("volver")} Volver al proyecto</button></div>`;
+      if (!t || t.estado !== "esperando") return `<div class="pregunta"><p>Ya no hay preguntas pendientes.</p><button class="pz-boton" data-p="proyecto">${ic("volver")} Volver al proyecto</button></div>`;
       const ps = t.preguntas, p = ps[q.k], r = q.respuestas[p.id] || {}, ultima = q.k === ps.length - 1;
       return `<section class="pregunta" aria-labelledby="t-preg" data-sin-traducir>
         <p class="preg-de"><span>${esc(t.titulo || "")}</span><span>${T("Pregunta {n} de {x}", { n: q.k + 1, x: ps.length })}</span></p>
@@ -1441,11 +1443,11 @@
         <label for="preg-libre">${p.opciones?.length ? T("Otra respuesta") : T("Tu respuesta")}</label>
         <textarea id="preg-libre" rows="3" placeholder="${esc(tr("Escribe con tus palabras (Enter para seguir)"))}">${esc(r.respuesta && !(p.opciones || []).includes(r.respuesta) ? r.respuesta : "")}</textarea>
         <div class="preg-pie">
-          ${q.k ? `<button class="boton plano" data-accion="p-preg-atras">${ic("volver")} ${T("Anterior")}</button>` : `<button class="boton plano" data-p="proyecto">${T("Responder después")}</button>`}
+          ${q.k ? `<button class="pz-boton pz-plano" data-accion="p-preg-atras">${ic("volver")} ${T("Anterior")}</button>` : `<button class="pz-boton pz-plano" data-p="proyecto">${T("Responder después")}</button>`}
           <span class="espacio"></span>
-          <button class="boton plano" data-accion="p-preg-nose">${T("No sé todavía")}</button>
-          <button class="boton plano" data-accion="p-preg-saltar">${T("Saltar")}</button>
-          <button class="boton principal" data-accion="p-preg-siguiente">${ultima ? T("Enviar respuestas") : T("Siguiente")}</button>
+          <button class="pz-boton pz-plano" data-accion="p-preg-nose">${T("No sé todavía")}</button>
+          <button class="pz-boton pz-plano" data-accion="p-preg-saltar">${T("Saltar")}</button>
+          <button class="pz-boton pz-principal" data-accion="p-preg-siguiente">${ultima ? T("Enviar respuestas") : T("Siguiente")}</button>
         </div>
         <p class="p-ayuda">${T(t.tipo === "historia" ? "Lo que respondas queda en «Decisiones», con la fecha. Si cierras Esquema, las preguntas te esperan." : t.tipo === "incorporar" ? "Con lo que respondas, tu IA termina de ordenar la información. Si cierras Esquema, las preguntas te esperan." : "Si cierras Esquema, las preguntas te esperan.")}</p>
       </section>`;
@@ -1478,10 +1480,10 @@
       const espera = (pj.esperan || []).find((t) => t.ruta === h.ruta);
       return `<div class="hu-barra" data-sin-traducir>
         <span class="hu-id">${esc(h.id)}</span>
-        <div class="seg hu-estados" role="group" aria-label="${esc(tr("Estado de la historia"))}">${ESTADOS_HU.map((e) => `<button data-hu-estado="${e}" aria-pressed="${h.estado === e}" title="${esc(tr(NOMBRE_ESTADO[e]))}"><i class="hu-punto" data-estado="${e}"></i><span class="hu-etq">${T(NOMBRE_ESTADO[e])}</span></button>`).join("")}</div>
+        <div class="pz-seg hu-estados" role="group" aria-label="${esc(tr("Estado de la historia"))}">${ESTADOS_HU.map((e) => `<button data-hu-estado="${e}" aria-pressed="${h.estado === e}" title="${esc(tr(NOMBRE_ESTADO[e]))}"><i class="hu-punto" data-estado="${e}"></i><span class="hu-etq">${T(NOMBRE_ESTADO[e])}</span></button>`).join("")}</div>
         <span class="espacio"></span>
-        ${espera ? `<button class="boton principal" data-p-responder="${esc(espera.id)}">${ic("pregunta")} ${n2(espera)}</button>` : ""}
-        ${h.estado === "en-desarrollo" ? `${h.commits ? `<small class="hu-commits">${h.commits === 1 ? T("1 commit la nombra") : T("{n} commits la nombran", { n: h.commits })}</small>` : ""}<button class="boton principal" data-accion="p-hu-terminar">${ic("listo")} ${T("Terminé el desarrollo")}</button>` : ""}
+        ${espera ? `<button class="pz-boton pz-principal" data-p-responder="${esc(espera.id)}">${ic("pregunta")} ${n2(espera)}</button>` : ""}
+        ${h.estado === "en-desarrollo" ? `${h.commits ? `<small class="hu-commits">${h.commits === 1 ? T("1 commit la nombra") : T("{n} commits la nombran", { n: h.commits })}</small>` : ""}<button class="pz-boton pz-principal" data-accion="p-hu-terminar">${ic("listo")} ${T("Terminé el desarrollo")}</button>` : ""}
       </div>`;
     }
     function cambiarEstadoHU(estado) {
@@ -1494,10 +1496,10 @@
     }
     function terminarHU(h = historiaAbierta()) {
       if (!h) return;
-      E.confirmar = { titulo: frase("¿Terminaste «{x}»?", { x: h.id }), texto: esc(tr("Tu IA compara lo que se pidió con lo que cambió en el código (commits y archivos, solo leer) y escribe «Cómo quedó». También propone poner al día los demás documentos: tú decides cuáles.")),
-        si: tr("Documentar cómo quedó"), no: tr("Todavía no"), traducido: true,
-        accion: () => { api.guardarTodo(); pj.esperando = true; pj.trabajo = null; E.panel = "proyecto"; E.sel = null; enviar("historia_cierre", { ruta: h.ruta, idioma: E.idioma }); relojTrabajo(); } };
-      api.pintar();
+      ui.confirmar({ titulo: "¿Terminaste «{x}»?", valores: { x: h.id }, texto: "Tu IA compara lo que se pidió con lo que cambió en el código (commits y archivos, solo leer) y escribe «Cómo quedó». También propone poner al día los demás documentos: tú decides cuáles.",
+        si: "Documentar cómo quedó", no: "Todavía no" }).then((si) => {
+        if (si) { api.guardarTodo(); pj.esperando = true; pj.trabajo = null; E.panel = "proyecto"; E.sel = null; enviar("historia_cierre", { ruta: h.ruta, idioma: E.idioma }); relojTrabajo(); api.pintar(); }
+      });
     }
     /** Las propuestas de «Terminé el desarrollo» se revisan con el mismo flujo de siempre (cada una con «Quitar este cambio»). */
     function abrirPropuestasDe(id, x) {
@@ -1523,11 +1525,14 @@
       if (!modo) { toast(esCodigo(ruta) ? "Los archivos del código se borran en tu editor, no desde Esquema" : "Ese archivo lo arma Esquema: no se borra"); return; }
       const nombre = modo === "docs" ? tituloDoc(ruta) : api.nombreDe(ruta);
       E.menu = null;
-      E.confirmar = modo === "docs"
-        ? { titulo: frase("¿Borrar «{x}»?", { x: nombre }), texto: esc(tr("Sale de la documentación y los enlaces a él quedan como texto. Queda en el historial de versiones y lo puedes deshacer.")), si: tr("Borrar"), no: tr("Cancelar"), traducido: true, peligro: true,
-          accion: () => { api.guardarTodo(); enviar("borrar", { ruta: rel(ruta), idioma: E.idioma }); } }
-        : { titulo: frase("¿Mandar «{x}» a la Papelera?", { x: nombre }), texto: esc(tr("Está en la carpeta de tu proyecto, no en la documentación de Esquema. Va a la Papelera del sistema: desde ahí lo recuperas.")), si: tr("Mandar a la Papelera"), no: tr("Cancelar"), traducido: true, peligro: true,
-          accion: () => { api.guardarTodo(); host.enviar("papelera", { ruta }); } };
+      const pregunta = modo === "docs"
+        ? { titulo: "¿Borrar «{x}»?", texto: "Sale de la documentación y los enlaces a él quedan como texto. Queda en el historial de versiones y lo puedes deshacer.", si: "Borrar" }
+        : { titulo: "¿Mandar «{x}» a la Papelera?", texto: "Está en la carpeta de tu proyecto, no en la documentación de Esquema. Va a la Papelera del sistema: desde ahí lo recuperas.", si: "Mandar a la Papelera" };
+      ui.confirmar({ ...pregunta, valores: { x: nombre }, peligro: true }).then((si) => {
+        if (!si) return;
+        api.guardarTodo();
+        if (modo === "docs") enviar("borrar", { ruta: rel(ruta), idioma: E.idioma }); else host.enviar("papelera", { ruta });
+      });
       api.pintar();
     }
     /** Lo borrado deja de estar en la lista y en el editor. */
@@ -1555,17 +1560,17 @@
     const ESTADO_PAGINA = { nuevo: ["Nueva", "ok"], cambia: ["Cambia", "aviso"], igual: ["Igual", ""], mano: ["Escrita a mano: no la toco", ""], sobra: ["Se quita: ya no está en la documentación", "mal"] };
     function wikiHTML(d) {
       const cab = `<h2 id="t-pj">Publicar en la wiki</h2>`;
-      if (d.cargando || d.publicando) return `${cab}<div class="esperando" data-sin-traducir><span class="giro"></span> ${esc(tr(d.publicando ? "Subiendo a la wiki con tu git…" : "Revisando la wiki…"))}</div>`;
+      if (d.cargando || d.publicando) return `${cab}<div class="esperando" data-sin-traducir><span class="pz-giro"></span> ${esc(tr(d.publicando ? "Subiendo a la wiki con tu git…" : "Revisando la wiki…"))}</div>`;
       if (d.falta_url) return `${cab}<p data-sin-traducir>${T("¿Cuál es el repositorio de GitHub de este proyecto? Su wiki es otro repositorio que Esquema arma desde tu documentación.")}</p>
         <label for="p-wiki-url">Dirección del repositorio</label><input type="text" id="p-wiki-url" class="p-input" placeholder="https://github.com/ana/mi-app" data-sin-traducir data-autofoco>
-        ${d.error && !d.primera ? `<p class="mal-txt" data-sin-traducir>${esc(tr(d.error))}</p>` : ""}
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-wiki-url">Seguir</button></div>`;
+        ${d.error && !d.primera ? `<p class="pz-error-texto" data-sin-traducir>${esc(tr(d.error))}</p>` : ""}
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-wiki-url">Seguir</button></div>`;
       if (d.error) return `${cab}<p data-sin-traducir>${esc(tr(d.error))}</p>
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cerrar</button>${d.web ? `<button class="boton" data-enlace="${esc(d.web)}">${ic("github")} Abrir GitHub</button>` : ""}${d.no_existe ? `<button class="boton principal" data-accion="p-wiki">Volver a revisar</button>` : ""}</div>`;
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cerrar</button>${d.web ? `<button class="pz-boton" data-enlace="${esc(d.web)}">${ic("github")} Abrir GitHub</button>` : ""}${d.no_existe ? `<button class="pz-boton pz-principal" data-accion="p-wiki">Volver a revisar</button>` : ""}</div>`;
       const elegibles = d.paginas.filter((x) => ["nuevo", "cambia", "sobra"].includes(x.estado)), n = elegibles.filter((x) => x.elegida !== false).length;
       return `${cab}<p>${frase("Esto queda en la wiki de {x}. Uso tu git y tu cuenta: Esquema no guarda claves. Nunca toco las páginas escritas a mano.", { x: d.url })}</p>
         <div class="p-pasar">${d.paginas.map((x, i) => `<div class="p-pasar-fila"><label class="marcar"><input type="checkbox" data-p-wiki-pag="${i}" ${["nuevo", "cambia", "sobra"].includes(x.estado) ? (x.elegida !== false ? "checked" : "") : "disabled"}><span><b data-sin-traducir>${esc(x.pagina === "_Sidebar" ? tr("Índice de la wiki (_Sidebar)") : x.pagina.replace(/-/g, " "))}</b><small data-sin-traducir>${esc(x.ruta || "")}</small></span></label><span class="p-estado ${ESTADO_PAGINA[x.estado][1]}" data-sin-traducir>${esc(tr(ESTADO_PAGINA[x.estado][0]))}</span></div>`).join("")}</div>
-        <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="p-wiki-publicar" ${n ? "" : "disabled"} data-sin-traducir>${n === 1 ? T("Publicar 1 página") : n ? T("Publicar {n} páginas", { n }) : T("La wiki está al día")}</button></div>`;
+        <div class="pz-pie"><button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="p-wiki-publicar" ${n ? "" : "disabled"} data-sin-traducir>${n === 1 ? T("Publicar 1 página") : n ? T("Publicar {n} páginas", { n }) : T("La wiki está al día")}</button></div>`;
     }
 
     // ───────────── El lienzo: enlazar un nodo con un elemento ─────────────
@@ -1574,8 +1579,8 @@
       if (!enProyecto()) return "";
       const id = M.refsDiagrama(api.textoLienzo())[nodo], el = id && elemento(id);
       // Texto fijo en español: pintarSeleccion lo traduce (traducirDOM).
-      return el ? `<button class="boton" data-p-elemento="${esc(el.id)}" title="Ver el elemento">${ic("elemento")} <span data-sin-traducir>${esc(el.nombre)}</span></button>`
-        : `<button class="boton" data-accion="p-enlazar" title="Conectar con un elemento del proyecto">${ic("elemento")} Enlazar</button>`;
+      return el ? `<button class="pz-boton" data-p-elemento="${esc(el.id)}" title="Ver el elemento">${ic("elemento")} <span data-sin-traducir>${esc(el.nombre)}</span></button>`
+        : `<button class="pz-boton" data-accion="p-enlazar" title="Conectar con un elemento del proyecto">${ic("elemento")} Enlazar</button>`;
     }
     function etiquetaElegida() {
       const s = E.elegido, t = api.textoLienzo();
@@ -1614,7 +1619,7 @@
 
     // ───────────── Eventos ─────────────
     function clic(t, d) {
-      if (d.pResponder !== undefined) { E.confirmar = null; abrirPreguntas(d.pResponder); return true; }
+      if (d.pResponder !== undefined) { abrirPreguntas(d.pResponder); return true; }
       if (d.pResp !== undefined && pj.preguntas) { responderPregunta("opcion", Number(d.pResp)); return true; }
       if (d.huEstado !== undefined) { cambiarEstadoHU(d.huEstado); return true; }
       if (d.pCerrarHu !== undefined) { terminarHU((E.proyecto?.historias || []).find((x) => x.ruta === d.pCerrarHu)); return true; }
@@ -1628,9 +1633,10 @@
       if (d.tReintentar !== undefined && pj.trabajo) { if (pj.trabajo.tipo === "documentar" || !pj.trabajo.tipo) enviar("documentar", { reintentar: pj.trabajo.id, ruta: d.tReintentar, idioma: E.idioma }); else enviar("continuar", { id: pj.trabajo.id, reintentar: d.tReintentar, idioma: E.idioma }); const i = pj.trabajo.items.find((x) => x.ruta === d.tReintentar); if (i) { i.estado = "cola"; delete i.error; delete i.error_ia; } if (!corriendo()) { pj.trabajo.estado = "corriendo"; relojTrabajo(); } api.pintar(); return true; }
       if (d.tQuitar !== undefined && pj.trabajo) {
         const i = pj.trabajo.items.find((x) => x.ruta === d.tQuitar);
-        E.confirmar = { titulo: frase("¿Quitar «{x}»?", { x: i?.titulo || d.tQuitar }), texto: i?.nuevo === false ? esc(tr("Vuelvo este documento a como estaba antes. Queda en la historia de versiones.")) : esc(tr("Era nuevo: lo saco de la documentación. Queda en la historia de versiones.")),
-          si: tr("Quitar este cambio"), no: tr("Dejarlo"), traducido: true, accion: () => { api.guardarTodo(); enviar("quitar", { id: pj.trabajo.id, ruta: d.tQuitar }); } };
-        api.pintar(); return true;
+        const id = pj.trabajo.id;
+        ui.confirmar({ titulo: "¿Quitar «{x}»?", valores: { x: i?.titulo || d.tQuitar }, texto: i?.nuevo === false ? "Vuelvo este documento a como estaba antes. Queda en la historia de versiones." : "Era nuevo: lo saco de la documentación. Queda en la historia de versiones.",
+          si: "Quitar este cambio", no: "Dejarlo" }).then((si) => { if (si) { api.guardarTodo(); enviar("quitar", { id, ruta: d.tQuitar }); } });
+        return true;
       }
       if (d.p) {
         E.lateral = false; E.panel = d.p;
@@ -1724,9 +1730,9 @@
         case "p-ocultar": if (pj.generando) pj.generando.oculto = true; api.pintar(); return true;
         case "p-ver-generando": if (pj.generando) pj.generando.oculto = false; api.pintar(); return true;
         case "p-detener":
-          E.confirmar = { titulo: esc(tr("¿Detener la documentación?")), texto: esc(tr("Lo que ya está escrito se queda guardado. Después puedes seguir donde quedó.")), si: tr("Detener"), no: tr("Seguir documentando"), traducido: true,
-            accion: () => { if (pj.trabajo) enviar("detener", { id: pj.trabajo.id }); } };
-          api.pintar(); return true;
+          ui.confirmar({ titulo: "¿Detener la documentación?", texto: "Lo que ya está escrito se queda guardado. Después puedes seguir donde quedó.", si: "Detener", no: "Seguir documentando" })
+            .then((si) => { if (si && pj.trabajo) enviar("detener", { id: pj.trabajo.id }); });
+          return true;
         case "p-seguir": if (pj.trabajo) { if (pj.trabajo.tipo === "documentar" || !pj.trabajo.tipo) enviar("documentar", { seguir: pj.trabajo.id, idioma: E.idioma }); else enviar("continuar", { id: pj.trabajo.id, idioma: E.idioma }); pj.trabajo.estado = "corriendo"; pj.trabajo.error = ""; pj.ultimoEvento = Date.now(); relojTrabajo(); E.panel = "proyecto"; api.pintar(); } return true;
         case "p-trabajo-visto": if (pj.trabajo) { pj.trabajo.visto = true; enviar("trabajo", { id: pj.trabajo.id, visto: true }); } api.pintar(); return true;
         case "p-completar": E.lateral = false; pedirIA("completar", { pedido: pedidoCompletar() }); return true;
@@ -1820,7 +1826,7 @@
       const archivos = e.dataTransfer.files;
       if (!archivos?.length || enBienvenida()) return;
       if (pj.dialogo?.tipo === "agregar" || (pj.dialogo?.tipo === "nuevo-proyecto" && tipoDe(pj.dialogo.t).fuente === "texto")) { pj.dialogo.texto = $("#p-pegar")?.value ?? pj.dialogo.texto; return leerArchivos(archivos); }
-      if (pj.dialogo || E.confirmar || E.nuevo) return;
+      if (pj.dialogo || ui.hayCapa || E.nuevo) return;
       if (E.carpeta && ofrece("acciones", "agregar")) return abrirAgregar(null, archivos);
       if (!E.carpeta) return abrirNuevoProyecto("libro", archivos);
     });

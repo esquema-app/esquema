@@ -140,10 +140,10 @@ const otroDeAfuera = deAfuera + "    D --> F[Otra vez de afuera]\n";
 fs.writeFileSync(path.join(PROYECTO, "docs", "flujo.mmd"), otroDeAfuera);
 await esperarR("archivoCambiado", 2, 8000);
 await espera(300);
-if (!(await E("!!E.confirmar"))) falla("con cambios sin guardar no preguntó");
+if (!(await v.evaluate(() => !!document.querySelector("[data-pz-confirmar]")))) falla("con cambios sin guardar no preguntó");
 else {
   await v.screenshot({ path: path.join(salida, "2-conflicto.png") });
-  await v.click('[data-accion="confirmar-si"]');
+  await v.click('[data-pz-confirmar="si"]');
   await espera(300);
   if ((await E('E.docs["docs/flujo.mmd"].texto')) !== otroDeAfuera) falla("«Usar la del disco» no dejó el texto de afuera");
   else bien("con cambios sin guardar pregunta con cuál quedarse");
