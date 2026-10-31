@@ -1,7 +1,7 @@
 """«Agregar» al proyecto, crear un proyecto Libro, responder preguntas, seguir trabajos y borrar documentos (órdenes de bin/proyecto.py).
 
   detectar   lo que la persona pegó o eligió (texto y archivos en base64) → se lee (contenido.extraer), se adivina qué es
-             (contenido.detectar) y queda guardado aparte, en <carpeta de Esquema>/entradas/<token>/, hasta que la persona confirme
+             (detectar.detectar) y queda guardado aparte, en <carpeta de Esquema>/entradas/<token>/, hasta que la persona confirme
              el tipo → {token, tipo, razones, titulo, …}. Nada se escribe todavía en el proyecto.
   agregar    {token, tipo: historia | documento | libro} → el original a fuentes/ y el trabajo de ese tipo (historias.py, libros.py).
   crear      {token, titulo} → un proyecto Libro nuevo en ~/Esquema/<titulo>/ (sin carpeta de código), con el libro importado.
@@ -13,7 +13,6 @@
 """
 import base64
 import datetime
-import json
 import os
 import re
 import shutil
@@ -21,6 +20,7 @@ import time
 
 import comun
 import contenido as C
+import detectar as DT
 import documentar as D
 import historias as H
 import incorporar as INC
@@ -83,7 +83,8 @@ def detectar(e):
         try:
             x = C.extraer(nombre, datos)
         except C.NoSePuede as ex:
-            avisos.append({"nombre": nombre, "error": str(ex)})
+            # La frase en español (`error`) y su plantilla con valores, para que la interfaz la traduzca.
+            avisos.append({"nombre": nombre, "error": str(ex), "plantilla": ex.plantilla, "valores": ex.valores})
             continue
         ruta = os.path.join(carpeta, f"original-{k}")
         with open(ruta, "wb") as f:
@@ -101,15 +102,15 @@ def detectar(e):
         return {"ok": False, "error": "Pega un texto o elige un archivo."}
     texto = textos[0][1] if len(textos) == 1 else "\n\n".join(f"# {n}\n\n{t}" if n else t for n, t in textos)
     texto = texto[:C.MAX_TEXTO]
-    det = C.detectar(texto, textos[0][0] if textos[0][0] else "", formato)
+    det = DT.detectar(texto, textos[0][0] if textos[0][0] else "", formato)
     titulo = titulo or det["titulo"] or (os.path.splitext(textos[0][0])[0] if textos[0][0] else "")
     caps = len(C.partir_capitulos(texto)) if det["tipo"] == "libro" or len(texto) > 20_000 else 0
     meta = {"titulo": titulo[:120], "detectado": det, "originales": originales, "formato": formato or "md", "pegado": bool(pegado.strip())}
     comun.escribir_atomico(os.path.join(carpeta, "texto.md"), texto)
     comun.escribir_json(os.path.join(carpeta, "meta.json"), meta)
     return {"ok": True, "token": token, "tipo": det["tipo"], "subtipo": det["subtipo"], "razones": det["razones"], "titulo": meta["titulo"],
-            "caracteres": len(texto), "palabras": len(texto.split()), "capitulos": caps, "avisos": avisos, "enlace": C.enlace_ticket(texto),
-            "solo_enlace": C.solo_enlace(texto), "archivos": [o["nombre"] for o in originales],
+            "caracteres": len(texto), "palabras": len(texto.split()), "capitulos": caps, "avisos": avisos, "enlace": DT.enlace_ticket(texto),
+            "solo_enlace": DT.solo_enlace(texto), "archivos": [o["nombre"] for o in originales],
             # Un libro grande dentro de un proyecto de software queda como referencia: mejor como proyecto Libro aparte.
             "sugerir_libro": det["tipo"] == "libro" and (len(texto) > 60_000 or caps >= 5)}
 
@@ -141,15 +142,15 @@ def agregar(e):
     entrada = _entrada(e.get("token"))
     tipo = e.get("tipo") if e.get("tipo") in ("historia", "documento", "libro", "incorporar") else entrada["detectado"]["tipo"]
     titulo = _titulo(e, entrada)
-    if tipo == "historia" and C.solo_enlace(entrada["texto"]):
+    if tipo == "historia" and DT.solo_enlace(entrada["texto"]):
         raise ValueError("Esquema no abre enlaces (nada sale de tu computador). Pega también el texto del ticket.")
-    if tipo == "incorporar" and C.solo_enlace(entrada["texto"]):
+    if tipo == "incorporar" and DT.solo_enlace(entrada["texto"]):
         raise ValueError("Esquema no abre enlaces (nada sale de tu computador). Pega también el texto.")
     os.makedirs(L["dir_docs"], exist_ok=True)
-    fuentes = LB.guardar_fuentes(L["dir_docs"], entrada, f"{C.id_historia(entrada['texto'], _hu_existentes(L))} {titulo}" if tipo == "historia" else titulo)
+    fuentes = LB.guardar_fuentes(L["dir_docs"], entrada, f"{DT.id_historia(entrada['texto'], _hu_existentes(L))} {titulo}" if tipo == "historia" else titulo)
     shutil.rmtree(entrada["carpeta"], ignore_errors=True)
     if tipo == "historia":
-        t = H.nuevo(e, entrada["texto"], titulo, C.enlace_ticket(entrada["texto"]), fuentes)
+        t = H.nuevo(e, entrada["texto"], titulo, DT.enlace_ticket(entrada["texto"]), fuentes)
         H.correr(e, t)
     elif tipo == "incorporar":
         # El original queda en fuentes/ (y en esquema.json) desde ya; el plan se revisa antes de escribir nada más.
@@ -187,11 +188,8 @@ def _entrada_carpeta(e):
             continue
         ruta = os.path.join(base, *r.split("/"))
         try:
-            if os.path.getsize(ruta) > C.MAX_ARCHIVO:
-                continue
-            with open(ruta, "rb") as f:
-                x = C.extraer(r, f.read())
-        except (OSError, C.NoSePuede):
+            x = C.extraer_archivo(ruta, r)
+        except C.NoSePuede:
             continue
         texto = x["texto"] if x["texto"].lstrip().startswith("#") else f"# {os.path.splitext(os.path.basename(r))[0]}\n\n{x['texto']}"
         partes.append(texto)

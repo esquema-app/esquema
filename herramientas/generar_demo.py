@@ -12,10 +12,9 @@ import sys
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(RAIZ, "bin"))
 import carpeta  # noqa: E402
+import catalogo  # noqa: E402
 import comun  # noqa: E402
 import inventario  # noqa: E402
-import plantilla_formato  # noqa: E402
-import plantillas  # noqa: E402
 import proyecto  # noqa: E402
 import tipos  # noqa: E402
 
@@ -78,8 +77,8 @@ def demo():
         "version": comun.VERSION,
         "carpeta": {"nombre": "proyecto-ejemplo", "ruta": "~/Proyectos/proyecto-ejemplo"},
         "archivos": archivos,
-        "plantillas": sorted(plantillas.incluidas(), key=lambda p: (p["categoria"], p["id"])),
-        "catalogo": plantilla_formato.indice(CATALOGO)[0]["plantillas"],
+        "plantillas": sorted(catalogo.incluidos(catalogo.tipo("plantillas")).values(), key=lambda p: (p["categoria"], p["id"])),
+        "catalogo": catalogo.generar(CATALOGO, catalogo.tipo("plantillas"))[0]["plantillas"],
         "estructura": {"archivos": est["archivos"], "omitidos": est["omitidos"], "manifiestos": est["manifiestos"]},
         "proyecto": demo_proyecto(),
         "tipos": tipos.incluidos(),

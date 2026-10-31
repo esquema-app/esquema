@@ -1,20 +1,33 @@
-"""Trabajos largos en segundo plano (documentar un proyecto, y lo que venga: historias de usuario, libros…). Solo biblioteca estándar.
+#!/usr/bin/env python3
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+"""Pieza «trabajos»: lo que tarda minutos corre en segundo plano, por etapas, sin perder nada. Solo biblioteca estándar.
 
-Un trabajo corre por etapas y deja TODO en disco a medida que avanza, así nada se pierde si se cierra la ventana o la app:
-- su estado en <carpeta de Esquema>/trabajos/<id>.json (nunca en la carpeta de la persona), escrito de una vez en cada cambio;
-- sus eventos, línea por línea (JSONL), en el archivo que dice ESQUEMA_PROGRESO (lo pone la app y lo lee cada ~0,5 s para pasarlo a
-  la interfaz como `proyectoProgreso`): {"t": "estado", "trabajo": <vista>} en cada cambio de estado y {"t": "lee" | "busca", …}
-  por cada archivo que lee la IA;
-- un «latido» cada pocos segundos: si el estado dice «corriendo» y el latido es viejo, el proceso murió (la app se cerró) y el trabajo
-  queda «interrumpido», listo para «Seguir» (lo ya hecho no se repite);
-- «Detener» deja el archivo trabajos/<id>.detener: el trabajo lo ve, corta la IA y queda «detenido».
+Un trabajo deja TODO en disco a medida que avanza, así nada se pierde si se cierra la ventana o la app:
+- su estado en <carpeta de datos>/trabajos/<id>.json (nunca en la carpeta de la persona), escrito de una vez en cada cambio;
+- sus eventos, línea por línea (JSONL), en el archivo que dice <ID>_PROGRESO (lo pone el host y lo lee cada ~0,5 s con su
+  lector de progreso, `LectorProgreso` en Swift o `lectorProgreso` en Electron, para pasarlo a la interfaz):
+  {"t": "estado", "trabajo": <vista>} en cada cambio de estado y {"t": "lee" | "busca", …} por cada archivo que lee la IA;
+- un «latido» cada pocos segundos: si el estado dice «corriendo» y el latido es viejo, el proceso murió (la app se cerró) y el
+  trabajo queda «interrumpido», listo para «Seguir» (lo ya hecho no se repite);
+- «Detener» (`detener(id)`) deja el archivo trabajos/<id>.detener: el trabajo lo ve con t.detenido(), corta la IA y queda «detenido».
+- «esperando»: el trabajo le preguntó algo a la persona (t.esperar(preguntas)) y terminó su proceso; todo queda en disco y la
+  respuesta lo retoma (t.seguir()). Un trabajo que espera no se borra con los viejos.
 
-- «esperando»: el trabajo le preguntó algo a la persona (publico.preguntas) y terminó su proceso; todo queda en disco y la respuesta lo
-  retoma (orden `responder`). Un trabajo que espera no se borra con los viejos.
+Un tipo de trabajo nuevo: un módulo de la app con sus ETAPAS y una función que avanza con t.etapa(...), t.poner_item(...),
+t.leyo(ruta), t.guardar() y t.detenido(), y termina con t.terminar(estado, error). Con la pieza «ia»:
 
-Cómo se agrega un tipo de trabajo nuevo: ver AGENTS.md («Trabajos»). En corto: un módulo con ETAPAS y una función correr(t) que
-avanza con t.etapa(...), t.items, t.guardar() y t.detenido(); si necesita a la persona, t.esperar(preguntas); se registra en las órdenes
-de proyecto.py y la interfaz lo muestra con la misma tarjeta (etapas + lista de ítems con su estado) y la tarjeta de preguntas.
+    t = trabajos.Trabajo.nuevo("resumir", carpeta, ["leer", "escribir"], {"archivos": [...]})
+    t.latir()
+    texto, error = ia.preguntar_vivo(pedido, al_evento=lambda e: t.leyo(e["ruta"]) if e["t"] == "lee" else t.busco(e["patron"]),
+                                     detener=t.detenido)
+    t.terminar("detenido" if ia.detenido(error) else "error" if error else "listo", error or "")
+
+Estados: corriendo → listo | con-fallas | detenido | error | esperando; un «corriendo» sin latido es «interrumpido».
+
+Uso: trabajos.py ver <entrada {id}> <salida.json>       → {ok, trabajo}
+     trabajos.py detener <entrada {id}> <salida.json>   → {ok, deteniendo?, trabajo}
 """
 import datetime
 import json
@@ -23,8 +36,7 @@ import re
 import threading
 import time
 
-import comun
-import ia_vivo
+import nucleo
 
 LATIDO = 5          # segundos entre latidos
 MUERTO = 45         # sin latido por más que esto = el proceso ya no está
@@ -32,7 +44,7 @@ MAX_GUARDADOS = 40  # trabajos viejos que se conservan
 
 
 def carpeta():
-    return os.path.join(comun.carpeta_app(), "trabajos")
+    return os.path.join(nucleo.carpeta_datos(), "trabajos")
 
 
 def ahora():
@@ -47,8 +59,8 @@ _lock_progreso = threading.Lock()
 
 
 def emitir(evento):
-    """Una línea de progreso para la app (si la app la pidió con ESQUEMA_PROGRESO)."""
-    ruta = os.environ.get("ESQUEMA_PROGRESO")
+    """Una línea de progreso para el host (si la pidió con <ID>_PROGRESO)."""
+    ruta = nucleo.entorno("PROGRESO")
     if not ruta:
         return
     linea = json.dumps(evento, ensure_ascii=False) + "\n"
@@ -84,7 +96,7 @@ class Trabajo:
     def cargar(cls, i):
         if not id_valido(i):
             raise ValueError("No encontré ese trabajo.")
-        x = comun.leer_json(os.path.join(carpeta(), i + ".json"), None)
+        x = nucleo.leer_json(os.path.join(carpeta(), i + ".json"), None)
         if not isinstance(x, dict) or x.get("formato") != 1:
             raise ValueError("No encontré ese trabajo.")
         return cls(x)
@@ -95,8 +107,8 @@ class Trabajo:
 
     def guardar(self, emitir_estado=True):
         with self._lock:
-            comun.carpeta_privada(carpeta())
-            comun.escribir_json(os.path.join(carpeta(), self.id + ".json"), self.x)
+            nucleo.carpeta_privada(carpeta())
+            nucleo.escribir_json(os.path.join(carpeta(), self.id + ".json"), self.x)
             if emitir_estado:
                 emitir({"t": "estado", "trabajo": self.vista()})
 
@@ -212,11 +224,14 @@ class Trabajo:
 
 
 def _error(error):
-    """(texto en español, error_ia o None): un error de la IA llega como {codigo, plantilla, valores} (pieza «ia» / ia_vivo)."""
+    """(texto en español, error_ia o None): un error de la IA llega como {codigo, plantilla, valores} (pieza «ia»)."""
     if isinstance(error, dict):
         ia_ = {"codigo": str(error.get("codigo", "")), "plantilla": str(error.get("plantilla", "")),
                "valores": {str(k): str(v)[:300] for k, v in (error.get("valores") or {}).items()}}
-        return ia_vivo.frase(error)[:600], ia_
+        texto = ia_["plantilla"]
+        for k, v in ia_["valores"].items():
+            texto = texto.replace("{" + k + "}", v)
+        return texto.strip()[:600], ia_
     return str(error or "")[:600], None
 
 
@@ -238,7 +253,7 @@ def del_proyecto(proyecto, tipo=None):
     """El último trabajo de esta carpeta (el más nuevo primero), o None. `tipo`: uno o varios tipos de trabajo."""
     tipos = (tipo,) if isinstance(tipo, str) else tipo
     for n in _nombres()[:MAX_GUARDADOS * 3]:
-        x = comun.leer_json(os.path.join(carpeta(), n), None)
+        x = nucleo.leer_json(os.path.join(carpeta(), n), None)
         if isinstance(x, dict) and x.get("proyecto") == proyecto and (tipos is None or x.get("tipo") in tipos):
             return Trabajo(x)
     return None
@@ -248,7 +263,7 @@ def esperando(proyecto):
     """Los trabajos de esta carpeta que esperan respuestas de la persona (el más nuevo primero)."""
     r = []
     for n in _nombres()[:MAX_GUARDADOS * 3]:
-        x = comun.leer_json(os.path.join(carpeta(), n), None)
+        x = nucleo.leer_json(os.path.join(carpeta(), n), None)
         if isinstance(x, dict) and x.get("proyecto") == proyecto and x.get("estado") == "esperando":
             r.append(Trabajo(x))
     return r
@@ -257,7 +272,7 @@ def esperando(proyecto):
 def limpiar_viejos():
     nombres = _nombres()
     # Los que esperan respuestas no se borran: son de la persona hasta que responda o los descarte.
-    viejos = [n for n in nombres[MAX_GUARDADOS:] if (comun.leer_json(os.path.join(carpeta(), n), {}) or {}).get("estado") != "esperando"]
+    viejos = [n for n in nombres[MAX_GUARDADOS:] if (nucleo.leer_json(os.path.join(carpeta(), n), {}) or {}).get("estado") != "esperando"]
     for n in viejos:
         for ext in (".json", ".antes.json", ".detener"):
             try:
@@ -292,3 +307,19 @@ def limpiar_respuestas(respuestas, preguntas):
     for i in ids - set(r):
         r[i] = {"respuesta": "", "nose": False, "saltada": True}
     return r
+
+
+def detener(i):
+    """«Detener»: deja la marca que el trabajo revisa con t.detenido(). Solo si sigue corriendo."""
+    t = Trabajo.cargar(i)
+    if estado_real(t.x) != "corriendo":
+        return {"ok": True, "trabajo": t.vista()}
+    nucleo.carpeta_privada(carpeta())
+    with open(t.ruta_detener(), "w", encoding="utf-8") as f:
+        f.write(ahora())
+    return {"ok": True, "deteniendo": True, "trabajo": t.vista()}
+
+
+if __name__ == "__main__":
+    nucleo.script({"ver": lambda d: {"ok": True, "trabajo": Trabajo.cargar(d.get("id")).vista()},
+                   "detener": lambda d: detener(d.get("id"))}, __doc__)

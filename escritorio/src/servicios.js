@@ -5,6 +5,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
 const { CONFIG, datos, prepararDatos, recursos, python } = require("./rutas");
+const { lectorProgreso } = require("./progreso");
 
 let EMPAQUETADA = false;
 /** main.js dice si la app está empaquetada (app.isPackaged) antes de usar nada de aquí. */
@@ -78,14 +79,14 @@ const Idioma = {
 const Procesador = {
   enCurso: 0,
   /** `progreso(eventos)`: para los trabajos largos. El script escribe sus eventos (JSONL) en ESQUEMA_PROGRESO; cada 0,5 s se leen
-   *  las líneas nuevas y se pasan juntas. */
+   *  las líneas nuevas y se pasan juntas (pieza «trabajos», src/progreso.js). */
   correrJSON(script, args, progreso = null) {
     return new Promise((fin) => {
       const salida = path.join(os.tmpdir(), `esquema-${crypto.randomUUID()}.json`);
       // Nada del entorno con nombre ESQUEMA_* llega a los scripts: solo las rutas de la app. (bin/ia.py además se las quita a la IA.)
       const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("ESQUEMA_")));
       Object.assign(env, { ESQUEMA_RECURSOS: recursos(EMPAQUETADA), ESQUEMA_DATOS: datos(), PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1", PYTHONDONTWRITEBYTECODE: "1" });
-      const lector = progreso ? lectorProgreso(progreso) : null;
+      const lector = progreso ? lectorProgreso(progreso, { prefijo: "esquema" }) : null;
       if (lector) env.ESQUEMA_PROGRESO = lector.ruta;
       let p;
       this.enCurso++;
@@ -112,27 +113,6 @@ const Procesador = {
   },
 };
 
-/** Lee el archivo de progreso de un script (JSONL) cada 0,5 s y pasa las líneas nuevas, como JSON, a `aviso(eventos)`. */
-function lectorProgreso(aviso) {
-  const ruta = path.join(os.tmpdir(), `esquema-progreso-${crypto.randomUUID()}.jsonl`);
-  fs.writeFileSync(ruta, "", { mode: 0o600 });
-  let desde = 0, resto = "";
-  const leer = () => {
-    let d;
-    try {
-      const fd = fs.openSync(ruta, "r");
-      try { const tam = fs.fstatSync(fd).size; if (tam <= desde) return; d = Buffer.alloc(tam - desde); fs.readSync(fd, d, 0, d.length, desde); desde = tam; } finally { fs.closeSync(fd); }
-    } catch { return; }
-    resto += d.toString("utf8");
-    const lineas = resto.split("\n"); resto = lineas.pop();
-    const eventos = [];
-    for (const l of lineas) { try { const j = JSON.parse(l); if (j && typeof j === "object") eventos.push(j); } catch {} }
-    if (eventos.length) aviso(eventos);
-  };
-  const reloj = setInterval(leer, 500);
-  return { ruta, terminar() { clearInterval(reloj); leer(); try { fs.unlinkSync(ruta); } catch {} } };
-}
-
 /** Los guardados corren de a uno y en el orden en que llegaron: así el último texto escrito es el que queda en el disco. */
 const EnOrden = {
   _cola: Promise.resolve(),
@@ -145,4 +125,4 @@ const EnOrden = {
   },
 };
 
-module.exports = { configurar, leerJSON, escribirAtomico, Config, Idioma, Procesador, EnOrden, lectorProgreso };
+module.exports = { configurar, leerJSON, escribirAtomico, Config, Idioma, Procesador, EnOrden };

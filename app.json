@@ -25,5 +25,17 @@
    "gemini"
   ],
   "carpeta": "texto"
+ },
+ "catalogo": {
+  "repo": "esquema-app/esquema-catalogo",
+  "rama": "main",
+  "tipos": {
+   "plantillas": {
+    "validador": "plantilla_formato",
+    "indice": "index.json",
+    "singular": "plantilla",
+    "origen": false
+   }
+  }
  }
 }

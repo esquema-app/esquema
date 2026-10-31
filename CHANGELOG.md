@@ -5,6 +5,12 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Más avisos en tu idioma y archivos más seguros:** si una plantilla de la comunidad no se puede descargar o un archivo que
+  agregas no se puede leer, el aviso sale en el idioma que elegiste. Los Word, EPUB y PDF que agregas se leen con topes más
+  estrictos (contados al abrirlos), así un archivo armado para llenar la memoria no la llena. · *More notices in your language and
+  safer files: if a community template can't be downloaded or a file you add can't be read, the notice shows in the language you
+  chose. Word, EPUB and PDF files you add are read with stricter limits (counted while opening them), so a file built to fill up
+  memory can't.*
 - **Enviar comentarios desde la app:** en Ajustes → Acerca de, «Enviar comentarios» abre GitHub con tu mensaje listo (algo falla,
   una idea u otro); lo revisas y lo publicas tú. «Acerca de» vuelve a tener el enlace al catálogo de plantillas. Los avisos con
   botón («Deshacer», «Revisar», «Responder») se ven igual que los demás, y si un archivo cambió en el disco, Esc ya no elige por

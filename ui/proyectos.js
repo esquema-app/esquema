@@ -9,7 +9,7 @@
   window.EsquemaProyectos = function (api) {
     const { E, M, host, ui, $, esc, ic, T, Tp, tr, frase, toast, movil, nombreIA, enBienvenida } = api;
     /** El error de un trabajo o de uno de sus ítems, en el idioma de la persona: un error de la IA trae {codigo, plantilla, valores}
-     *  (pieza «ia» / bin/ia_vivo.py) y se traduce con su plantilla; los demás son una frase en español. */
+     *  (pieza «ia», `preguntar_vivo`) y se traduce con su plantilla; los demás son una frase en español. */
     const errorTrabajo = (x) => (x?.error_ia?.plantilla ? Tp(x.error_ia.plantilla, x.error_ia.valores || {}) : tr(x?.error || ""));
     const errorTrabajoHTML = (x) => esc(errorTrabajo(x));
     const pj = (E.pj = { dialogo: null, generando: null, versiones: null, elemento: null, buscar: "", editar: null, ultimo: null, espera: null, pedido: false, ultimoEnvio: null,
@@ -1370,7 +1370,7 @@
         ${d.archivos.length ? `<ul class="p-archivos" data-sin-traducir>${d.archivos.map((a, k) => `<li>${ic("doc")}<span>${esc(a.nombre)}</span><small>${esc(tamanoArchivo(a.tamano))}</small><button class="pz-boton pz-plano icono" data-p-quitar-archivo="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: a.nombre }))}">${ic("cerrar")}</button></li>`).join("")}</ul>` : ""}
         <label for="p-pegar">O pega el texto</label>
         <textarea id="p-pegar" class="p-pegar" placeholder="${esc(tr(placeholder))}" data-sin-traducir ${d.archivos.length ? "" : "data-autofoco"}>${esc(d.texto || "")}</textarea>
-        ${(d.avisos || []).map((a) => `<p class="pz-error-texto" data-sin-traducir>${esc(a.nombre ? a.nombre + ": " : "")}${esc(tr(a.error))}</p>`).join("")}
+        ${(d.avisos || []).map((a) => `<p class="pz-error-texto" data-sin-traducir>${esc(a.nombre ? a.nombre + ": " : "")}${esc(a.plantilla ? Tp(a.plantilla, a.valores || {}) : tr(a.error))}</p>`).join("")}
         ${d.error ? `<p class="pz-error-texto" data-sin-traducir>${esc(tr(d.error))}</p>` : ""}`;
     }
     function agregarHTML(d) {
@@ -1393,7 +1393,7 @@
         ${r.sugerir_libro && tipos().some((x) => x.id === "libro") && tipoActual().id !== "libro" ? `<div class="p-aviso"><span data-sin-traducir>${T("Es un libro largo. Para estudiarlo, resumir cada capítulo y revisar incongruencias, créalo como un proyecto Libro aparte.")}</span><button class="pz-boton" data-accion="p-a-libro">${ic("libro")} ${T("Crear un proyecto Libro")}</button></div>` : ""}
         <label for="p-titulo">Título</label><input type="text" id="p-titulo" class="p-input" value="${esc(d.titulo || "")}" placeholder="Si lo dejas vacío, tu IA le pone uno">
         ${d.elegido === "historia" && cod ? `<label class="marcar p-fondo" data-sin-traducir><input type="checkbox" data-p-afondo ${d.aFondo !== false ? "checked" : ""}><span><b data-sin-traducir>${T("Que lea el código (solo leer)")}</b><small data-sin-traducir>${T("Para ubicar qué partes toca. Nunca escribe ni ejecuta nada, y no abre secretos.")}</small></span></label>` : ""}
-        ${(d.avisos || []).map((a) => `<p class="pz-error-texto" data-sin-traducir>${esc(a.nombre ? a.nombre + ": " : "")}${esc(tr(a.error))}</p>`).join("")}
+        ${(d.avisos || []).map((a) => `<p class="pz-error-texto" data-sin-traducir>${esc(a.nombre ? a.nombre + ": " : "")}${esc(a.plantilla ? Tp(a.plantilla, a.valores || {}) : tr(a.error))}</p>`).join("")}
         <p class="p-ayuda agregar-ayuda" data-sin-traducir>${T(AYUDA_CONTENIDO[d.elegido] || "")}</p>
         <div class="pz-pie"><button class="pz-boton" data-accion="p-volver-entrada">Atrás</button><button class="pz-boton pz-principal" data-accion="p-agregar-enviar" ${r.solo_enlace && d.elegido === "historia" ? "disabled" : ""} data-sin-traducir>${ic("mas")} ${esc(tr("Agregar"))}</button></div>`;
     }
