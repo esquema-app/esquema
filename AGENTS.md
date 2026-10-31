@@ -392,7 +392,8 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
 - **Formas** (menú): básicas, arquitectura (forma clásica + ícono en `%% esquema`) y procesos (BPMN básico). Íconos propios de 16 px.
 - **Autocompletar** (fila de sugerencias, Tab): palabras clave, nombres de nodos y participantes, flechas después de un nodo, formas
   para un nodo nuevo; en un `.md`, dentro de los bloques mermaid.
-- **Documento:** texto | vista con los diagramas dibujados (`resultadoBloque` con caché); «Editar» abre el bloque en el lienzo en el
+- **Documento:** texto | vista con los diagramas dibujados (`resultadoBloque` con caché; `pintarVistaDoc` va por partes: cada bloque
+  de primer nivel tiene su clave —el HTML, o el número y el texto de un diagrama— y solo se crea lo que cambió, probado en «Documento»); «Editar» abre el bloque en el lienzo en el
   lugar (el texto sigue siendo el del documento); los enlaces nunca navegan (https → navegador; relativos → abre ese archivo).
 - **Lateral de un proyecto** (`P.lateralHTML`: toda carpeta abierta se ve como proyecto): «Proyectos» con una carpeta por proyecto; el
   abierto trae **Código** (los `.md`/`.mmd` del repo: `E.codigoDocs` en uno vinculado, o lo que queda fuera de `docsDir()` en uno de

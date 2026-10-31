@@ -303,6 +303,15 @@ console.log("Texto → lienzo: revisado");
   await espera(p, 200);
   const figs = await p.$$eval(".md-diagrama svg.esq", (x) => x.length);
   if (figs !== 2) falla("La vista del documento no dibuja sus 2 diagramas: " + figs);
+  // Por partes: escribir en un párrafo cambia solo ese párrafo; los diagramas y el resto siguen siendo los mismos elementos.
+  await p.evaluate(() => { window._vistaAntes = [...document.querySelector("#vista-md").children]; });
+  await p.evaluate(() => { const t = document.querySelector("#texto"); t.focus(); t.selectionStart = t.selectionEnd = t.value.indexOf("Matías Soto.") + 12; });
+  await p.keyboard.type(" Hola."); await espera(p, 250);
+  const porPartes = await p.evaluate(() => { const ahora = [...document.querySelector("#vista-md").children]; const antes = window._vistaAntes; return { nuevos: ahora.filter((el) => !antes.includes(el)).map((el) => el.textContent), figs: [...document.querySelectorAll(".md-diagrama")].every((f) => antes.includes(f)), largo: ahora.length === antes.length }; });
+  if (porPartes.nuevos.length !== 1 || !porPartes.nuevos[0].includes("Matías Soto. Hola.") || !porPartes.figs || !porPartes.largo) falla("Escribir en un párrafo rearma más que ese párrafo en la vista: " + JSON.stringify(porPartes));
+  await p.keyboard.press("ControlOrMeta+z"); await espera(p, 250);
+  if ((await textoDoc(p)).includes("Hola.")) falla("Deshacer no quita lo escrito en el documento");
+  if (await p.$$eval("#vista-md > *", (x) => x.some((el) => el.textContent.includes("Hola.")))) falla("La vista del documento no vuelve a como estaba al deshacer");
   await p.hover(".md-diagrama"); await p.click('[data-editar-bloque="0"]');
   await p.waitForSelector("#lienzo .nodo");
   const w = await (await p.$('.nodo[data-id="W"]')).boundingBox();
@@ -315,6 +324,14 @@ console.log("Texto → lienzo: revisado");
   await captura(p, "documento-bloque");
   await p.click('[data-accion="volver-doc"]'); await espera(p, 200);
   if (!(await p.$(".md-diagrama svg"))) falla("Al volver, la vista del documento no se ve");
+  // Un diagrama con error dice su línea del documento: si se agregan líneas arriba, la línea se pone al día.
+  await probar(p, 'const d = E.docs[E.sel]; d.texto = d.texto.replace("```mermaid\\nflowchart", "```mermaid\\nflowchart TD\\n    A --> [\\nflowchart");');
+  await espera(p, 250);
+  const lineaError = async () => Number((await p.$eval(".md-diagrama .error", (x) => x.textContent)).match(/\d+/)[0]);
+  const l1 = await lineaError();
+  await p.evaluate(() => { const t = document.querySelector("#texto"); t.focus(); t.selectionStart = t.selectionEnd = 0; });
+  await p.keyboard.press("Enter"); await p.keyboard.press("Enter"); await espera(p, 250);
+  if ((await lineaError()) !== l1 + 2) falla(`La línea del error en la vista no se pone al día: ${l1} → ${await lineaError()}`);
   await p.close();
 }
 console.log("Documento: revisado");

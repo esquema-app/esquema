@@ -388,6 +388,7 @@
     if (!r) { r = M.dibujar(texto, { prefijo }); cacheBloques.set(k, r); if (cacheBloques.size > 60) cacheBloques.delete(cacheBloques.keys().next().value); }
     return r;
   }
+  const margenes = new WeakMap();
   function pintarMargen() {
     const m = $("#margen"), t = $("#texto");
     if (!m || !t) return;
@@ -395,7 +396,8 @@
     const malas = new Set(problemasActuales().errores.map((e) => e.linea));
     let h = "";
     for (let i = 1; i <= n; i++) h += malas.has(i) ? `<span class="mal">${i}</span>\n` : i + "\n";
-    m.innerHTML = h;
+    // Escribir dentro de una línea no cambia los números: el margen no se rearma.
+    if (margenes.get(m) !== h) { m.innerHTML = h; margenes.set(m, h); }
     m.scrollTop = t.scrollTop;
   }
   function pintarProblemas() {
@@ -864,22 +866,45 @@
   // ───────────── Vista del documento ─────────────
   let temporizadorVista = null;
   function programarVistaDoc() { clearTimeout(temporizadorVista); temporizadorVista = setTimeout(pintarVistaDoc, 90); }
+  /** La vista del documento, por partes: cada bloque de primer nivel (párrafo, título, tabla, diagrama…) se compara con el que ya
+   *  está y solo se crea lo que cambió. Escribir en un párrafo no vuelve a dibujar los diagramas ni rearma el resto (y lo que no
+   *  cambió conserva el foco y el hover). */
+  const claveVista = new WeakMap();
   function pintarVistaDoc() {
     const v = $("#vista-md"), d = doc();
     if (!v || !d || d.texto == null) return;
-    v.innerHTML = M.markdownHTML(d.texto);
     const bloques = M.bloquesMermaid(d.texto);
-    v.querySelectorAll(".md-diagrama").forEach((fig) => {
-      const k = Number(fig.dataset.bloque), b = bloques[k];
-      if (!b) return;
-      const r = resultadoBloque(b.contenido, "md" + k);
-      let h = "";
-      if (r.tipo === "pendiente") h = `<p class="pendiente">${T("Esquema todavía no dibuja «{x}». Lo dejo tal cual: GitHub sí lo muestra.", { x: r.palabra })}</p><pre><code>${esc(b.contenido)}</code></pre>`;
-      else if (r.errores?.length) h = `<p class="error">${T("Línea {n}", { n: r.errores[0].linea + b.ini + 1 })} · ${fraseProblema(r.errores[0])}</p><pre><code>${esc(b.contenido)}</code></pre>`;
-      else if (r.partes.length) h = M.svgCompleto(r, { estilo: "", titulo: T("Diagrama {n}", { n: k + 1 }) });
-      fig.innerHTML = h + (r.tipo === "flujo" || r.tipo === "secuencia" ? `<button class="boton editar" data-editar-bloque="${k}">${ic("lapiz")} ${T("Editar")}</button>` : "");
-      fig.tabIndex = 0;
-    });
+    const plantilla = document.createElement("template");
+    plantilla.innerHTML = M.markdownHTML(d.texto);
+    // Lo que ya está, por clave (un mismo párrafo puede repetirse: una fila por clave).
+    const antes = new Map();
+    for (const el of v.children) { const k = claveVista.get(el); if (k == null) continue; if (!antes.has(k)) antes.set(k, []); antes.get(k).push(el); }
+    const nuevos = [];
+    for (const el of [...plantilla.content.children]) {
+      const fig = el.matches("figure.md-diagrama"), k = fig ? Number(el.dataset.bloque) : -1;
+      // Un diagrama con error muestra su línea del documento: entonces la clave también lleva dónde empieza.
+      const b = bloques[k], conError = fig && b && resultadoBloque(b.contenido, "md" + k).errores?.length;
+      const clave = fig ? `d|${k}|${conError ? b.ini : ""}|${b?.contenido ?? ""}` : "h|" + el.outerHTML;
+      const igual = antes.get(clave)?.shift();
+      if (igual) { if (fig) igual.dataset.linea = el.dataset.linea; nuevos.push(igual); continue; }
+      claveVista.set(el, clave);
+      if (fig) dibujarFigura(el, b, k);
+      nuevos.push(el);
+    }
+    // Primero se quita lo que ya no está (y los espacios entre bloques); después cada uno a su lugar, sin mover lo que ya está bien.
+    const quedan = new Set(nuevos);
+    for (const n of [...v.childNodes]) if (!quedan.has(n)) n.remove();
+    nuevos.forEach((el, i) => { if (v.children[i] !== el) v.insertBefore(el, v.children[i] || null); });
+  }
+  function dibujarFigura(fig, b, k) {
+    if (!b) return;
+    const r = resultadoBloque(b.contenido, "md" + k);
+    let h = "";
+    if (r.tipo === "pendiente") h = `<p class="pendiente">${T("Esquema todavía no dibuja «{x}». Lo dejo tal cual: GitHub sí lo muestra.", { x: r.palabra })}</p><pre><code>${esc(b.contenido)}</code></pre>`;
+    else if (r.errores?.length) h = `<p class="error">${T("Línea {n}", { n: r.errores[0].linea + b.ini + 1 })} · ${fraseProblema(r.errores[0])}</p><pre><code>${esc(b.contenido)}</code></pre>`;
+    else if (r.partes.length) h = M.svgCompleto(r, { estilo: "", titulo: T("Diagrama {n}", { n: k + 1 }) });
+    fig.innerHTML = h + (r.tipo === "flujo" || r.tipo === "secuencia" ? `<button class="boton editar" data-editar-bloque="${k}">${ic("lapiz")} ${T("Editar")}</button>` : "");
+    fig.tabIndex = 0;
   }
 
   // ───────────── Diálogos ─────────────
