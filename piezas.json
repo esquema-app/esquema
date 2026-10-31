@@ -2,9 +2,9 @@
  "formato": 1,
  "piezas": {
   "nucleo": {
-   "version": "0.3.0",
+   "version": "0.6.0",
    "archivos": {
-    "bin/nucleo.py": "a64f7adb150adc94e117abf47ac3613df0a27c120a4916985a94ce87fe36e0d7"
+    "bin/nucleo.py": "3254be100d75d3a066b9a3ae0a7bbf9badcdef822d809756981a9345055f13a0"
    },
    "ficha": {
     "requiere": [],
@@ -13,9 +13,9 @@
    }
   },
   "ia": {
-   "version": "0.2.0",
+   "version": "0.4.0",
    "archivos": {
-    "bin/ia.py": "6ed8a27742787601dc1458af4cdd75154528dc87c22a22b2d96a03ba18b27f7d"
+    "bin/ia.py": "4da328270059d3e6f354b30a0f84d75a442b76b252f72a417fb2d09d84486f8e"
    },
    "ficha": {
     "requiere": [
@@ -26,14 +26,45 @@
    }
   },
   "i18n": {
-   "version": "0.1.1",
+   "version": "0.2.0",
    "archivos": {
-    "ui/i18n.js": "be15cee259394d061241ae880c58fe8eb070ff53a0eb87543ae1dd9c5b00e910"
+    "ui/i18n.js": "9cdae929afea783542af322018e47730e400cbee90777717d7c1ecd422d89180"
    },
    "ficha": {
     "requiere": [],
     "permisos": {},
     "red": []
+   }
+  },
+  "bienvenida": {
+   "version": "0.2.0",
+   "archivos": {
+    "ui/bienvenida.js": "4a38f4e5a30400d298004dc185cab982d25ebdb8fafe1fe96ff35c9eb6aac23d",
+    "ui/bienvenida.css": "55240fa5fbe4f62849f2a93d25f4409f3a710bd95fb3b9d09bf3028b918f260e"
+   },
+   "ficha": {
+    "requiere": [
+     "i18n"
+    ],
+    "permisos": {},
+    "red": []
+   }
+  },
+  "actualizaciones": {
+   "version": "0.2.0",
+   "archivos": {
+    "app/Sources/PiezaActualizaciones/Actualizaciones.swift": "99130798812ee9640d0252d3bf6f5d45d681d5fcf33ae490d115f74cbb7fff3c",
+    "escritorio/src/actualizaciones.js": "48ac04b4e6f7fbd7c8ba3ad5604ac7de33ba71f41d2b8065cae01c59fd9bfdc1"
+   },
+   "ficha": {
+    "requiere": [],
+    "permisos": {},
+    "red": [
+     "api.github.com",
+     "github.com",
+     "objects.githubusercontent.com",
+     "release-assets.githubusercontent.com"
+    ]
    }
   }
  }

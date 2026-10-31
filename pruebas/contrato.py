@@ -65,9 +65,13 @@ if mac is not None:
         problemas.append("Mac: el puente tiene que atender solo al marco principal con origen file (Ventana.swift)")
     if not tiene(mac, r"decidePolicyFor", r"hasPrefix\(carpetaUI\)", r'scheme == "https"'):
         problemas.append("Mac: la ventana solo puede navegar dentro de ui/ y abrir https en el navegador (Ventana.swift)")
-    act = leer("app/Sources/Esquema/Actualizaciones.swift") or ""
-    if not tiene(act, r'repo = "esquema-app/esquema"', r"/releases/download/", r"esDescargaNuestra\(z\)", r"shasum -a 256", r"comillas\("):
-        problemas.append("Mac: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella y comillas() (Actualizaciones.swift)")
+    # Actualizaciones: la pieza «actualizaciones» (su propio target), configurada con el repo de Esquema.
+    act = leer("app/Sources/PiezaActualizaciones/Actualizaciones.swift") or ""
+    paquete = leer("app/Package.swift") or ""
+    if not tiene(act, r"/releases/download/", r"esDescargaNuestra\(zip, repo: c\.repo\)", r"shasum -a 256", r"comillas\(", r"--proto-redir '=https'") \
+            or not tiene(swift, r'Actualizaciones\.configurar\(\.init\(repo: "esquema-app/esquema", nombre: "Esquema"') \
+            or not tiene(paquete, r'\.target\(name: "PiezaActualizaciones"', r'dependencies: \["PiezaActualizaciones"\]'):
+        problemas.append("Mac: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella y comillas() (pieza «actualizaciones», configurada en EsquemaApp.swift)")
     cat = leer("app/Sources/Esquema/Catalogo.swift") or ""
     if not tiene(cat, r'base = "https://raw\.githubusercontent\.com/esquema-app/esquema-catalogo/main/"', r"SinRedirecciones", r"willPerformHTTPRedirection",
                  r"SHA256\.hash", r"calculada == huella", r"datos\.count == tamano", r'"plantillas\.py", \["catalogo"', r'"plantillas\.py", "instalar"'):
@@ -93,8 +97,9 @@ if escritorio:
     if set(re.findall(r'exposeInMainWorld\("(\w+)"', precarga)) != {"ESQUEMA_HOST", "esquemaEscritorio"}:
         problemas.append("Windows/Linux: preload.js solo expone ESQUEMA_HOST y esquemaEscritorio.enviar")
     act = leer("escritorio/src/actualizaciones.js") or ""
-    if not tiene(act, r'REPO = "esquema-app/esquema"', r"/releases/download/", r"esDescargaNuestra\(url\(inst\.archivo\)\)", r"huella !== esperada"):
-        problemas.append("Windows/Linux: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella (actualizaciones.js)")
+    if not tiene(act, r"/releases/download/", r"esDescargaNuestra\(archivo, o\.repo\)", r"huella !== esperada", r"leerHuella") \
+            or not tiene(escritorio, r'crearActualizaciones\(\{ app, net, repo: "esquema-app/esquema", nombre: "Esquema" \}\)'):
+        problemas.append("Windows/Linux: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella (pieza «actualizaciones», configurada en main.js)")
     cat = leer("escritorio/src/catalogo.js") or ""
     if not tiene(cat, r'BASE = "https://raw\.githubusercontent\.com/esquema-app/esquema-catalogo/main/"', r'redirect: "error"', r"huella !== e\.sha256",
                  r"datos\.length !== e\.tamano", r'"plantillas\.py", \["catalogo"', r'"plantillas\.py", "instalar"') or "crearCatalogo" not in escritorio:

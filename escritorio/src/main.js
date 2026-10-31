@@ -8,7 +8,7 @@ const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, nativeImage, net, 
 const { ES_WIN, datos, prepararDatos, recursos, absoluta } = require("./rutas");
 const { configurar, leerJSON, Config, Idioma, Procesador, EnOrden } = require("./servicios");
 const { Vigilante } = require("./vigilante");
-const { Actualizaciones, SIN_CONEXION } = require("./actualizaciones");
+const { crear: crearActualizaciones } = require("./actualizaciones");
 const { crearCatalogo } = require("./catalogo");
 
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
@@ -26,6 +26,9 @@ const t = (s) => Idioma.t(s);
 const MAXIMO_EXPORTAR = 50 * 1024 * 1024;
 // Plantillas de la comunidad: solo de raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones (src/catalogo.js).
 const Catalogo = crearCatalogo({ fetch: (u, o) => net.fetch(u, o), procesador: Procesador, t, version: app.getVersion() });
+// Versiones nuevas: pieza «actualizaciones» (src/actualizaciones.js). Solo de los Releases de este repo, con su .sha256. Lo que
+// manda a la interfaz trae `texto` en español y `valores`: la interfaz lo traduce (nada se traduce aquí).
+const Actualizaciones = crearActualizaciones({ app, net, repo: "esquema-app/esquema", nombre: "Esquema" });
 
 // ───────────────────────── Ventana (equivale a Ventana.swift) ─────────────────────────
 let ventana = null, lista = false, saliendo = false;
@@ -278,14 +281,13 @@ const ACCIONES = {
     llamar("plantillaDescargada", await Catalogo.descargar(texto(d, "id", 60)));
   },
   async buscarActualizacion() {
-    const r = await Actualizaciones.revisar().catch(() => ({ hay: false, detalle: SIN_CONEXION }));
-    llamar("actualizacionRevisada", { hay: r.hay, detalle: r.hay ? r.detalle : "", sinConexion: r.detalle === SIN_CONEXION });
+    llamar("actualizacionRevisada", await Actualizaciones.revisar().catch(() => ({ hay: false, sinConexion: true })));
   },
   async actualizar() {
     // La interfaz guarda todo justo antes de pedirlo: se espera a que termine. Nunca en medio de la IA escribiendo.
     await esperarGuardados(5000);
     if (guardando > 0 || Procesador.enCurso > 0) {
-      return llamar("actualizacionProgreso", { paso: "error", texto: t("Espera a que termine de guardar o de responder tu IA y vuelve a intentarlo.") });
+      return llamar("actualizacionProgreso", { paso: "error", codigo: "ocupada", texto: "Espera a que termine de guardar o de responder tu IA y vuelve a intentarlo.", valores: {} });
     }
     await Actualizaciones.instalar((p) => llamar("actualizacionProgreso", p));
   },
@@ -372,12 +374,7 @@ let tareasIniciadas = false;
 function iniciarTareas() {
   if (tareasIniciadas) return;
   tareasIniciadas = true;
-  const revisar = async () => {
-    const r = await Actualizaciones.revisar().catch(() => ({ hay: false }));
-    if (r.hay) llamar("actualizacionRevisada", { hay: true, detalle: r.detalle, sinConexion: false });
-  };
-  setTimeout(revisar, 15000);
-  setInterval(revisar, 6 * 3600 * 1000);
+  setTimeout(() => Actualizaciones.revisarCadaRato((r) => llamar("actualizacionRevisada", r)), 15000);
 }
 
 app.on("second-instance", () => mostrar());

@@ -57,7 +57,10 @@ if (info.node !== "undefined" || info.ipc !== "undefined") falla("la página ve 
 const sandbox = await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; const p = w.webContents.getLastWebPreferences(); return { sandbox: p.sandbox, aislado: p.contextIsolation, node: p.nodeIntegration }; });
 if (!sandbox.sandbox || !sandbox.aislado || sandbox.node) falla("la ventana no tiene sandbox y contextIsolation: " + JSON.stringify(sandbox));
 await v.screenshot({ path: path.join(salida, "1-idioma.png") });
-if (!(await v.$(".idiomas"))) falla("la primera pantalla no es la de idioma");
+// Pieza «bienvenida»: la pantalla de idioma sola (sin la app detrás), el del sistema (es_CL) sugerido y con el foco.
+const idioma = await v.evaluate(() => ({ opciones: document.querySelectorAll(".opciones-idioma [data-bv-idioma]").length, detras: !!document.querySelector(".lateral, .contenido"), foco: document.activeElement?.dataset.bvIdioma, sugerido: document.querySelector(".opcion-idioma.sugerido")?.dataset.bvIdioma }));
+if (idioma.opciones !== 2 || idioma.detras) falla("la primera pantalla no es la de idioma (sola): " + JSON.stringify(idioma));
+else if (idioma.foco !== "es" || idioma.sugerido !== "es") falla("el idioma del sistema no queda sugerido y enfocado: " + JSON.stringify(idioma));
 else bien("abre con la pantalla de idioma, con sandbox y contextIsolation");
 
 if (process.env.SOLO_ARRANQUE) {
@@ -88,7 +91,8 @@ const cuantas = (f) => v.evaluate((f) => (window._r[f] || []).length, f);
 const E = (f) => v.evaluate((s) => { let r; window.Esquema._probar((E) => { r = new Function("E", "return " + s)(E); }); return r; }, f);
 
 // Elegir el idioma (como un clic) y config con claves que no existen o que no le tocan a la interfaz.
-await v.click('[data-idioma="es"]');
+await v.click('[data-bv-idioma="es"]');
+await v.waitForFunction(() => document.querySelector("#t-bv")?.textContent === "Hola, esto es Esquema", null, { timeout: 5000 }).catch(() => falla("después de elegir el idioma no sigue la bienvenida"));
 await enviar("config", { tema: "oscuro", carpeta: "/etc", inventada: 1, idioma_ui: "../../x" });
 await espera(500);
 const config = JSON.parse(fs.readFileSync(path.join(DATOS, "config.json"), "utf8"));
@@ -104,7 +108,7 @@ const estado = await esperarR("estado");
 const rutas = (estado?.archivos || []).map((a) => a.ruta).sort();
 if (JSON.stringify(rutas) !== JSON.stringify(["README.md", "docs/flujo.mmd"])) falla("el estado no trae los archivos de la carpeta: " + JSON.stringify(rutas));
 else bien("estado con la carpeta y sus archivos (sin node_modules)");
-await v.evaluate(() => window.Esquema._probar((E) => { E.bv = null; E.config.bienvenida = true; }));
+await v.evaluate(() => window.Esquema._pruebas.bienvenida.terminar());
 
 // Abrir y guardar.
 await enviar("abrirArchivo", { ruta: "docs/flujo.mmd" });

@@ -50,8 +50,8 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
 | `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo, con un poco de «código» para «Documentar un proyecto»), `ia-simulada/` (lo que responde la IA en la vista previa del navegador), `catalogo-ejemplo/` (copia de las plantillas del catálogo de la comunidad: «Comunidad» en la demo y las pruebas) y scripts para construir encima del formato (`listar_diagramas.py`). |
 | `pruebas/` | `correr.sh` (todo), `motor.mjs` (motor en Node), `interfaz.mjs` (Playwright), `test_python.py`, `contrato.py` + `puente.json` (contrato del puente), `casos.json` (casos compartidos), `compat/` (ejemplos Mermaid que se leen y se escriben igual; `variantes/`: formas no canónicas), `ia_falsa.py`. |
 | `herramientas/` | `revisar_privacidad.sh`, `generar_demo.py`, `comparar_mermaid.mjs` (rendimiento y compatibilidad contra Mermaid real, instalado aparte), `empaquetar.sh` (arma `dist/Esquema.app` + zip + `.sha256`, en un Mac), `generar_icono.mjs` (íconos de las apps desde `ui/favicon.svg`), `pagina_capturas.mjs` (sirve la página como en GitHub Pages, arma `compartir.png` y `apple-touch-icon.png` y revisa la página en los dos idiomas). |
-| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (arranque, menús), `Ventana.swift` (WKWebView + puente: un `case` por acción), `Carpeta.swift` (elegir la carpeta con marcador, rutas, `Vigilante` con FSEvents), `Servicios.swift` (rutas, config, idioma, `Procesador`, `EnOrden`), `Catalogo.swift` (plantillas de la comunidad), `Actualizaciones.swift`; `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
-| `escritorio/` | App de Windows y Linux (Electron): `src/main.js` (ventana, puente `ACCIONES`, menú, protocolo `esquema://ui/`), `src/preload.js`, `src/rutas.js`, `src/servicios.js`, `src/vigilante.js` (`fs.watch`), `src/catalogo.js` (plantillas de la comunidad), `src/actualizaciones.js`; `herramientas/` (Python portátil, instalador NSIS), `pruebas/` (`arranque.mjs` con Xvfb, `vigilante.mjs`, `catalogo.mjs`), `iconos/`. Ver «Windows y Linux». |
+| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (arranque, menús), `Ventana.swift` (WKWebView + puente: un `case` por acción), `Carpeta.swift` (elegir la carpeta con marcador, rutas, `Vigilante` con FSEvents), `Servicios.swift` (rutas, config, idioma, `Procesador`, `EnOrden`), `Catalogo.swift` (plantillas de la comunidad); `Sources/PiezaActualizaciones/` (pieza «actualizaciones», su propio target); `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
+| `escritorio/` | App de Windows y Linux (Electron): `src/main.js` (ventana, puente `ACCIONES`, menú, protocolo `esquema://ui/`), `src/preload.js`, `src/rutas.js`, `src/servicios.js`, `src/vigilante.js` (`fs.watch`), `src/catalogo.js` (plantillas de la comunidad), `src/actualizaciones.js` (pieza «actualizaciones»); `herramientas/` (Python portátil, instalador NSIS), `pruebas/` (`arranque.mjs` con Xvfb, `vigilante.mjs`, `catalogo.mjs`), `iconos/`. Ver «Windows y Linux». |
 | `build.sh`, `instalar.sh`, `instalar.ps1` | Compilar e instalar en el Mac de desarrollo; instaladores de un comando (Mac/Linux y Windows) que verifican la huella. |
 | `docs/` | La página pública (GitHub Pages, `pagina.yml` la publica con `ui/` en `/demo/`): `index.html` bilingüe (es/en), `pagina.css`, `pagina.js`, `sitemap.xml`, `apple-touch-icon.png`, `favicon.svg` e `img/` (capturas y `compartir.png`). Ver «Página pública». |
 | `CHANGELOG.md` | Lo que cambia para quien usa la app, en palabras simples (ver «Lo que rodea a un cambio»). |
@@ -64,6 +64,8 @@ Esquema usa piezas de Pieza, la base de la familia de apps: código probado que 
 | `nucleo` | `bin/nucleo.py` | `app.json`, carpeta de datos (`ESQUEMA_DATOS`), config validada por `app.json`, `escribir_atomico`, `ruta_en`, `responder`. `comun.py` lo envuelve con lo propio de Esquema. |
 | `ia` | `bin/ia.py` | La IA de la persona (`preguntar`, `probar`, `lista`, `puede_leer`, `frase`). Lo propio de Esquema (prompts, `SOLO_ESTO`, `NO_LEER`) sigue en `asistente.py` y `proyecto.py`. `ia.py probar <entrada {ia}> <salida>`. |
 | `i18n` | `ui/i18n.js` | `T`, `Tp`, `tr`, `frase`, `traducirDOM` (`app.js` crea la instancia con `noTraducir: ".md"`). `ui/idiomas/en.json` lleva `codigo`. |
+| `bienvenida` | `ui/bienvenida.js`, `ui/bienvenida.css` | El paso del idioma (`data-bv-idioma`, `.opciones-idioma`, teclas 1/2, el del sistema sugerido y enfocado, avisos que esperan con `retener`) y el mecanismo de pasos. Los pasos de Esquema (hola → carpeta → IA) se suman en `app.js` con `sumarPaso` (`listo: false`: la IA es el último y dice «Empezar»; hola y carpeta con `saltable: false`). Sus colores, `--bv-*` en `app.css` con la paleta de Esquema. |
+| `actualizaciones` | `app/Sources/PiezaActualizaciones/Actualizaciones.swift`, `escritorio/src/actualizaciones.js` | Mac: target propio en `app/Package.swift`, configurado en `EsquemaApp.swift` (`Actualizaciones.configurar(.init(repo:nombre:archivoDesarrollo:variableProgreso:))`). Electron: `crear({app, net, repo, nombre})` en `main.js`. Lo que llega a la interfaz trae `texto` (español, con marcadores) y `valores`; la interfaz lo traduce con `T` (`frasePieza`). El aviso propio «espera a que termine de guardar» va con la misma forma (`codigo: "ocupada"`). |
 
 - **No edites a mano los archivos de una pieza.** Se actualizan con «Pieza al día» (`.github/workflows/pieza-al-dia.yml`, una vez por
   semana abre un PR o un issue) o con `python3 <pieza>/herramientas/pieza.py actualizar .`. Si hay que cambiar algo, el cambio va
@@ -72,9 +74,7 @@ Esquema usa piezas de Pieza, la base de la familia de apps: código probado que 
   lo busca junto a `bin/`. Las claves de config que aceptan las apps (Swift y Electron) son las de `app.json`; `carpeta` solo la
   escribe el selector de carpetas, nunca `config` (`comun.guardar_config` la descarta).
 - `.gitignore` es una lista blanca: `app.json` y `piezas.json` están en ella.
-- No adoptadas todavía: `bienvenida` (Esquema tiene su propia bienvenida con `data-idioma`, que usan las pruebas de Electron, y su
-  `--suave` es un fondo, no un texto) y `actualizaciones` (en Mac pide un target propio de SwiftPM; hoy no se puede adoptar solo la
-  mitad de Electron).
+- En las pruebas, la bienvenida se maneja con `window.Esquema._pruebas.bienvenida` (`abrir`, `ir`, `terminar`), no con el estado.
 
 ## Formato de los archivos
 - **Documento** `.md`: Markdown de GitHub. Cada diagrama es un bloque ```` ```mermaid ````. GitHub lo muestra igual que Esquema.
@@ -251,7 +251,8 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
 - **Menús de la app** (`window.Esquema.menu({accion})`): guardar, deshacer, rehacer, acercar, alejar, ajustar, texto, ambos, dibujo,
   nuevo, ajustes. Nada antes del idioma; en la bienvenida no se abren otros diálogos.
 - **Actualizaciones** (Ajustes → Actualizaciones, `filaActualizacion`): buscar, «Hay una versión nueva» con sus notas, «Actualizar
-  ahora» (guarda todo antes) y el avance por pasos. Un aviso corto la primera vez que el estado trae una versión nueva.
+  ahora» (guarda todo antes) y el avance por pasos. Lo de la app llega como `{texto, valores}` (pieza «actualizaciones») y se
+  traduce al pintar con `frasePieza`; las notas del Release van tal cual. Un aviso corto la primera vez que el estado trae una versión nueva.
 - **Proyectos** (`ui/proyectos.js`, `E.proyecto`, `E.panel`, `E.pj`): «Nuevo» → «Documentar un proyecto» (o el vacío «Elige una
   carpeta») elige la carpeta del repo (`elegirCarpeta {proyecto: true}`) → `proyecto {orden: "abrir"}`; si no hay documentación,
   «Lo que encontré» (`leer`, sin IA: README, guías, lenguajes, carpetas, manifiestos, workflows, git) y la carpeta de docs. Todo
@@ -270,8 +271,9 @@ error, el lienzo sigue mostrando el último dibujo bueno (atenuado) y la línea 
   marcados en los dos dibujos) y restaurar. Al abrir: «Cambió el proyecto desde tu última versión: N commits» → «Revisar qué
   documentos afecta» → la IA los pone al día (tarea `revisar`). En el navegador, `P.simular` usa `demo.json → proyecto` (git
   ficticio, IA simulada desde `ejemplos/ia-simulada/`, versiones en memoria).
-- **Primer uso:** lo primero es el idioma (`pasoIdioma`, título bilingüe fijo, el del sistema sugerido y enfocado; nada más se muestra
-  ni se pide antes); al elegir se guarda por `config` igual que en Ajustes y sigue la bienvenida traducida: hola → carpeta → IA.
+- **Primer uso** (pieza «bienvenida», `bv` en `app.js`): lo primero es el idioma (título bilingüe fijo, el del sistema sugerido y
+  enfocado, teclas 1/2; nada más se muestra ni se pide antes y los avisos esperan); al elegir se guarda por `config` igual que en
+  Ajustes y sigue la bienvenida traducida: hola → carpeta → IA. Se decide con el primer estado (`bv.abrir`).
 
 ## Puente interfaz ↔ app (contrato en `pruebas/puente.json`)
 La UI llama `host.enviar(accion, datos)` y la app responde con `window.Esquema.<funcion>(json)`. En el navegador responde `simular()`
@@ -318,8 +320,9 @@ desconocidos en `config.json`, abrir algo que no sea https, pasar a `bin/proyect
 - **Arranque:** menús y ventana de inmediato (en el idioma del sistema hasta que la persona elija); lo que corre solo
   (actualizaciones al abrir y cada 6 h) parte en `EsquemaApp.iniciarTareas()` recién con `Idioma.elegido`. Un aviso automático solo
   llega a la interfaz si hay versión nueva (nunca se vuelve a mandar el estado: no interrumpe la bienvenida).
-- **Actualizaciones:** `Esquema-macOS.zip` + `.sha256` solo desde `https://github.com/esquema-app/esquema/releases/download/…`
-  (`esDescargaNuestra`), con `curl --proto '=https'`; un guion (todo lo variable con `comillas()`) espera a que la app se cierre, la
+- **Actualizaciones** (pieza «actualizaciones», target `PiezaActualizaciones`): `Esquema-macOS.zip` + `.sha256` solo desde
+  `https://github.com/esquema-app/esquema/releases/download/…` (`esDescargaNuestra`), con `curl --proto '=https' --proto-redir '=https'`
+  y huella de 64 hex obligatoria; un guion (todo lo variable con `comillas()`) espera a que la app se cierre, la
   reemplaza (deja `.anterior` si falla) y la abre. Instalación de desarrollo (`build.sh` deja la ruta del checkout en
   `~/Library/Application Support/Esquema/desarrollo`): `git pull --ff-only` + `empaquetar.sh`. Nunca con un guardado o la IA en curso.
 - Desarrollo: checkout en `~/Developer/esquema`; `bash build.sh` (se niega si la IA está respondiendo) instala en
@@ -344,8 +347,9 @@ desconocidos en `config.json`, abrir algo que no sea https, pasar a `bin/proyect
   bash herramientas/instalador-windows.sh` (NSIS propio por usuario en `%LOCALAPPDATA%\Programs\Esquema`, `/S` silencioso; al
   actualizar primero le pide cerrar a la app para que guarde). Linux con `instalar.sh` en `~/.local/share/Esquema` + lanzador
   `~/.local/bin/esquema` (agrega `--no-sandbox` si el sistema restringe user namespaces), o AppImage, o .deb (no se actualiza solo).
-- **Actualizaciones** (`src/actualizaciones.js`): instalador de Windows, AppImage o tar.gz según cómo se instaló, solo desde los
-  Releases de este repo y verificados con su `.sha256`; sin empaquetar no busca.
+- **Actualizaciones** (`src/actualizaciones.js`, pieza «actualizaciones»): instalador de Windows, AppImage o tar.gz según cómo se
+  instaló, solo desde los Releases de este repo y verificados con su `.sha256`; sin empaquetar no busca. Al abrir (15 s después) y
+  cada 6 h con `revisarCadaRato`, recién con el idioma elegido.
 - **Pruebas:** `pruebas/arranque.mjs` abre la app de verdad con Xvfb (HOME temporal, carpeta e IA ficticias): idioma primero,
   config, abrir/guardar, cambio de afuera, conflicto, archivo nuevo, rutas fuera de la carpeta, IA sin herramientas, menú,
   navegación y protocolo; con `ELECTRON=dist/linux-unpacked/esquema APP=1` prueba la empaquetada. **Windows no se puede probar
