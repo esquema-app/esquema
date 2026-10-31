@@ -547,6 +547,8 @@ def probar(ia):
                 "error": ERRORES["desconocida"]}
     _, error = preguntar("Responde solo con la palabra: listo", ia=ia, timeout=120)
     if error:
+        # Se prueba desde «Tu IA» (bienvenida o Ajustes): «Revisa en Ajustes → Tu IA» de app.json sobra ahí.
+        error = {k: v for k, v in error.items() if k != "ayuda"}
         return {"ia": ia, "ok": False, **error, "error": frase(error)}
     return {"ia": ia, "ok": True}
 

@@ -239,6 +239,11 @@ button { cursor: pointer; }
 body:has(.pz-capa) #toast, body:has(.p-pie) #toast, body:has(.pregunta) #toast { top: calc(16px + env(safe-area-inset-top, 0px)); bottom: auto; transform: translate(-50%, -20px); }
 body:has(.pz-capa) #toast.visible, body:has(.p-pie) #toast.visible, body:has(.pregunta) #toast.visible { transform: translate(-50%, 0); }
 
+/* Táctil y celular: todo lo que se toca a --pz-tactil (44 px), como antes de «componentes» 0.3 (que ahora solo sube lo suyo). */
+@media (pointer: coarse), (max-width: 760px) {
+  :root { --pz-boton-alto: var(--pz-tactil); --pz-chip-alto: var(--pz-tactil); }
+}
+
 /* ───── Celular (y ventanas angostas) ───── */
 @media (max-width: 760px) {
   #app { grid-template-columns: minmax(0, 1fr); }

@@ -1,5 +1,5 @@
 {
-  "descripcion": "Contrato entre la interfaz (ui/app.js) y las apps (Mac: app/Sources/Esquema/Ventana.swift; Windows y Linux: escritorio/src/main.js). La interfaz llama host.enviar(accion, datos); la app responde llamando window.Esquema.<respuesta>(json). pruebas/contrato.py revisa que esto, la interfaz y cada app digan lo mismo. Los scripts van con el Python portátil de la app; el último argumento es el JSON de salida.",
+  "descripcion": "Contrato entre la interfaz (ui/app.js) y las apps (Mac: pieza «host-mac» + app/Sources/Esquema; Windows y Linux: pieza «host-escritorio» + escritorio/src/main.js). La interfaz llama host.enviar(accion, datos); la app responde llamando window.Esquema.<respuesta>(json). Cada acción la atiende el host (listo, config, abrirEnlace, copiar; actualizaciones en Electron), está declarada en app.json → acciones (proyecto, dibujar, crearReadme, estructura; probarIA viene de la pieza «ia») o la registra la app (lo nativo). pruebas/contrato.py revisa que esto, la interfaz y cada app digan lo mismo. Los scripts van con el Python portátil de la app; el último argumento es el JSON de salida.",
   "acciones": {
     "listo": {
       "datos": {},
@@ -63,7 +63,7 @@
     "estructura": {
       "datos": {},
       "responde": "estructuraLista",
-      "como": "bin/carpeta.py estructura <carpeta> <salida>: lo mismo que verá la IA para el README (solo nombres)."
+      "como": "Declarada (app.json → acciones): bin/carpeta.py estructura <entrada {carpeta}> <salida>, con la carpeta que pone la app: lo mismo que verá la IA para el README (solo nombres)."
     },
     "crearReadme": {
       "datos": {
@@ -74,7 +74,7 @@
         "pedido?": "qué cambiar"
       },
       "responde": "readmeListo",
-      "como": "bin/asistente.py readme <entrada {…datos, carpeta}> <salida>"
+      "como": "Declarada (app.json → acciones; el idioma lo pone el host, idiomaUI, y la carpeta, carpetaActual): bin/asistente.py readme <entrada {…datos, carpeta}> <salida>"
     },
     "dibujar": {
       "datos": {
@@ -84,7 +84,7 @@
         "idioma": "es|en"
       },
       "responde": "dibujoListo",
-      "como": "bin/asistente.py dibujar <entrada> <salida>"
+      "como": "Declarada (app.json → acciones; el idioma lo pone el host, idiomaUI): bin/asistente.py dibujar <entrada> <salida>"
     },
     "proyecto": {
       "datos": {
@@ -93,7 +93,7 @@
         "…": "lo de cada orden (tarea, pedido, tipo auto|flujo|secuencia|arquitectura, forma documento|diagrama, archivos, documentos, idioma, esquema, mensaje, id, ruta, token, texto, archivos [{nombre, datos base64}], respuestas, estado, url, paginas)"
       },
       "responde": "proyectoRespuesta",
-      "como": "bin/proyecto.py <orden> <entrada {…datos, carpeta}> <salida>: la app solo acepta órdenes de la lista y pone ella la carpeta actual (borra la que mande la interfaz); las de SIN_CARPETA (detectar, crear: un proyecto Libro desde cero) corren aunque no haya carpeta abierta, sin `carpeta`. El script valida todo lo demás (rutas dentro del proyecto, carpeta de docs, esquema.json, tamaños, archivos agregados). generar llama a la IA sin herramientas. La respuesta lleva {orden}. Las órdenes largas (CON_PROGRESO de bin/proyecto.py: documentar, agregar, crear, responder, continuar, historia_cierre, estudiar, incongruencias) corren con ESQUEMA_PROGRESO=<archivo temporal>: el script escribe ahí sus eventos (una línea JSON cada uno, bin/trabajos.py) y la app lee las líneas nuevas cada 0,5 s y las pasa a la interfaz con proyectoProgreso. wiki_preparar / wiki_publicar usan el git y las credenciales de la persona (bin/wiki.py)."
+      "como": "Declarada (app.json → acciones): bin/proyecto.py <orden> <entrada {…datos, carpeta}> <salida>. El host solo acepta las órdenes de ORDENES (enum $orden), pone la carpeta actual (inyectar carpetaActual; \"\" sin carpeta: proyecto.py solo deja correr SIN_CARPETA y lo demás responde «Elige una carpeta primero»), pasa ESQUEMA_PROGRESO (los eventos llegan como proyectoProgreso), corta a los 3600 s y devuelve orden (eco). bin/proyecto.py <orden> <entrada {…datos, carpeta}> <salida>: la app solo acepta órdenes de la lista y pone ella la carpeta actual (borra la que mande la interfaz); las de SIN_CARPETA (detectar, crear: un proyecto Libro desde cero) corren aunque no haya carpeta abierta, sin `carpeta`. El script valida todo lo demás (rutas dentro del proyecto, carpeta de docs, esquema.json, tamaños, archivos agregados). generar llama a la IA sin herramientas. La respuesta lleva {orden}. Las órdenes largas (CON_PROGRESO de bin/proyecto.py: documentar, agregar, crear, responder, continuar, historia_cierre, estudiar, incongruencias) corren con ESQUEMA_PROGRESO=<archivo temporal>: el script escribe ahí sus eventos (una línea JSON cada uno, bin/trabajos.py) y la app lee las líneas nuevas cada 0,5 s y las pasa a la interfaz con proyectoProgreso. wiki_preparar / wiki_publicar usan el git y las credenciales de la persona (bin/wiki.py)."
     },
     "exportar": {
       "datos": {

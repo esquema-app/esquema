@@ -11,7 +11,14 @@
 // Sin Electron: se prueba con Node (escritorio/pruebas/vigilante.mjs).
 const fs = require("fs");
 const path = require("path");
-const { absoluta, MAXIMO } = require("./rutas");
+const { dentro } = require("./enchufe");
+
+/** Esquema solo abre, guarda y vigila documentos y diagramas, y como mucho de 2 MB (lo mismo que bin/carpeta.py). */
+const EXTENSIONES = [".md", ".mmd"];
+const MAXIMO = 2 * 1024 * 1024;
+/** La ruta relativa que manda la interfaz, revisada igual que comun.ruta_en (pieza «host-escritorio»: dentro()): relativa, sin «..»,
+ *  .md o .mmd y, siguiendo enlaces, dentro de la carpeta. Devuelve la ruta absoluta o null (bin/ la vuelve a revisar). */
+const absoluta = (relativa, base) => dentro(base, relativa, { extensiones: EXTENSIONES });
 
 const FUERA = new Set([".git", "node_modules", ".venv", "venv", "env", "__pycache__", ".mypy_cache", ".pytest_cache", ".tox", "dist", "build",
   ".next", ".nuxt", "target", ".gradle", ".idea", ".terraform", ".aws", ".ssh", ".gnupg", ".cache", "Pods", "DerivedData", ".build"]);
@@ -133,4 +140,4 @@ class Vigilante {
   }
 }
 
-module.exports = { Vigilante, importa, leerTexto, FUERA };
+module.exports = { Vigilante, importa, leerTexto, absoluta, FUERA, EXTENSIONES, MAXIMO };

@@ -6,6 +6,7 @@ Uso (el último argumento siempre es el JSON de salida):
   carpeta.py leer <entrada.json> <salida.json>       entrada {carpeta, ruta}           → {ok, ruta, texto}
   carpeta.py guardar <entrada.json> <salida.json>    entrada {carpeta, ruta, texto, nuevo?} → {ok, ruta}
   carpeta.py estructura <carpeta> <salida.json>      → {ok, archivos: [rutas], omitidos, manifiestos}
+  carpeta.py estructura <entrada.json {carpeta}> <salida.json>   lo mismo, con la carpeta que pone la app (acción declarada)
 
 Nunca borra ni mueve nada. Solo abre y escribe .md y .mmd dentro de la carpeta elegida (comun.ruta_en).
 """
@@ -130,7 +131,11 @@ def main(args):
     if orden == "listar":
         r = listar(dato)
     elif orden == "estructura":
-        r = estructura(dato)
+        if os.path.isfile(dato):  # la acción declarada «estructura»: la carpeta la pone la app en la entrada (nunca la interfaz)
+            c = (comun.leer_json(dato, {}) or {}).get("carpeta")
+            r = estructura(c) if isinstance(c, str) and c else {"ok": False, "error": "Elige una carpeta primero"}
+        else:
+            r = estructura(dato)
     else:
         entrada = comun.leer_json(dato, {}) or {}
         r = leer(entrada) if orden == "leer" else guardar(entrada)

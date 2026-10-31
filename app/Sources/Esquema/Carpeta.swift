@@ -1,5 +1,6 @@
 import AppKit
 import CoreServices
+import PiezaHost
 
 // MARK: - La carpeta de la persona (la elige con el selector del sistema; Esquema la sigue con un marcador)
 
@@ -17,7 +18,7 @@ enum Carpeta {
             if let u = try? URL(resolvingBookmarkData: d, options: [.withoutUI], relativeTo: nil, bookmarkDataIsStale: &vieja) {
                 if vieja, let nueva = try? u.bookmarkData() { UserDefaults.standard.set(nueva, forKey: claveMarcador) }
                 let real = u.standardizedFileURL.resolvingSymlinksInPath()
-                if Config.texto("carpeta") != real.path { Config.guardarCarpeta(real.path) }
+                if Config.texto("carpeta") != real.path { guardarEnConfig(real.path) }
                 return existe(real) ? real : nil
             }
         }
@@ -26,6 +27,10 @@ enum Carpeta {
         let u = URL(fileURLWithPath: c).standardizedFileURL.resolvingSymlinksInPath()
         return existe(u) ? u : nil
     }
+
+    /// config.carpeta, para los scripts. `carpeta` es "interfaz": false en app.json: solo la escribe la app (el selector del
+    /// sistema o un proyecto reciente leído de proyectos.json), nunca la acción config.
+    static func guardarEnConfig(_ ruta: String) { _ = Config.guardar(["carpeta": ruta], desdeInterfaz: false) }
 
     private static func existe(_ u: URL) -> Bool {
         var dir: ObjCBool = false
@@ -47,7 +52,7 @@ enum Carpeta {
                 guard r == .OK, let u = panel.url else { return fin(nil) }
                 let real = u.standardizedFileURL.resolvingSymlinksInPath()
                 if let marcador = try? real.bookmarkData() { UserDefaults.standard.set(marcador, forKey: claveMarcador) }
-                Config.guardarCarpeta(real.path)
+                guardarEnConfig(real.path)
                 fin(real)
             }
         }
@@ -60,22 +65,20 @@ enum Carpeta {
     static func usar(_ u: URL) -> URL {
         let real = u.standardizedFileURL.resolvingSymlinksInPath()
         if let marcador = try? real.bookmarkData() { UserDefaults.standard.set(marcador, forKey: claveMarcador) }
-        Config.guardarCarpeta(real.path)
+        guardarEnConfig(real.path)
         return real
     }
 
-    /// La ruta relativa que manda la interfaz, revisada igual que `comun.ruta_en` (bin/ la vuelve a revisar): relativa, sin «..»,
-    /// .md o .mmd y, siguiendo enlaces, dentro de la carpeta. Devuelve la ruta absoluta o nil.
+    /// La ruta relativa que manda la interfaz, revisada igual que `comun.ruta_en` (pieza «host-mac»: `Enchufe.dentro`; bin/ la
+    /// vuelve a revisar): relativa, sin «..», .md o .mmd y, siguiendo enlaces, dentro de la carpeta. Devuelve la ruta absoluta o nil.
     static func absoluta(_ valor: Any?, en base: URL) -> URL? {
-        guard let s = valor as? String, !s.isEmpty, s.count <= 400, !s.contains("\u{0}"), !s.hasPrefix("/"), !s.hasPrefix("\\"),
-              s.range(of: "^[A-Za-z]:", options: .regularExpression) == nil else { return nil }
-        let partes = s.split(separator: "/", omittingEmptySubsequences: false).flatMap { $0.split(separator: "\\", omittingEmptySubsequences: false) }
-        guard partes.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." }),
-              extensiones.contains((s as NSString).pathExtension.lowercased()) else { return nil }
-        let raiz = base.resolvingSymlinksInPath().path
-        let real = partes.reduce(base) { $0.appendingPathComponent(String($1)) }.standardizedFileURL.resolvingSymlinksInPath()
-        guard real.path.hasPrefix(raiz + "/") else { return nil }
-        return real
+        Enchufe.dentro(base, valor, extensiones: [".md", ".mmd"])
+    }
+
+    /// Una ruta para mostrar: con «~» en vez de la carpeta personal.
+    static func corta(_ u: URL) -> String {
+        let casa = FileManager.default.homeDirectoryForCurrentUser.path
+        return u.path.hasPrefix(casa + "/") ? "~" + String(u.path.dropFirst(casa.count)) : u.path
     }
 
     /// El texto de un archivo de la carpeta tal como lo lee bin/carpeta.py (UTF-8; lo que no lo es se reemplaza), o nil.
@@ -176,7 +179,7 @@ enum Vigilante {
         for (ruta, conocido) in conocidos {
             guard let u = Carpeta.absoluta(ruta, en: base), let texto = Carpeta.leerTexto(u), texto != conocido else { continue }
             conocidos[ruta] = texto
-            Ventana.shared.llamar("archivoCambiado", ["ruta": ruta, "texto": texto])
+            Puente.shared.llamar("archivoCambiado", ["ruta": ruta, "texto": texto])
         }
         Procesador.correrJSON("carpeta.py", ["listar", base.path]) { r in
             revisando = false
@@ -185,7 +188,7 @@ enum Vigilante {
                 let rutas = archivos.compactMap { $0["ruta"] as? String }
                 if rutas != lista {
                     lista = rutas
-                    Ventana.shared.llamar("archivos", ["archivos": archivos])
+                    Puente.shared.llamar("archivos", ["archivos": archivos])
                 }
             }
             if otraVez { otraVez = false; programar() }

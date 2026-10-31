@@ -3,10 +3,13 @@
 
 Revisa: 1) cada host.enviar("x") de la interfaz está en puente.json y simulado en simular() (la vista previa del navegador);
 2) cada acción de puente.json la usa la interfaz; 3) cada respuesta de puente.json existe en window.Esquema (host.responder); 4) los scripts que
-nombra el contrato existen en bin/; 5) la app de Mac (Ventana.swift, un `case` por acción) y la de Windows/Linux (escritorio/src/main.js, objeto ACCIONES)
-atienden todas las acciones, mandan todas las respuestas (también archivoCambiado, archivos y menu) y solo llaman funciones que la
-interfaz tiene; 6) la seguridad de las apps (puente solo para el marco principal, navegación solo dentro de ui/, sandbox y
-contextIsolation, actualizaciones solo desde los Releases con huella, Electron fijado y sin scripts de instalación); 7) la CSP."""
+nombra el contrato existen en bin/; 5) las acciones declaradas (acciones.json, al día con app.json → «acciones»: proyecto, dibujar,
+crearReadme, estructura y las de las piezas) con sus scripts, sus respuestas y la carpeta siempre inyectada; 6) la app de Mac (pieza
+«host-mac» + lo que registra app/Sources/Esquema) y la de Windows/Linux (pieza «host-escritorio» + lo que registra escritorio/src/main.js)
+atienden cada acción (registrada, del host o declarada), mandan todas las respuestas (también archivoCambiado, archivos y menu) y solo
+llaman funciones que la interfaz tiene; 7) la seguridad de las apps (puente solo para el marco principal, navegación solo dentro de
+ui/, sandbox y contextIsolation, rutas con dentro(), la carpeta nunca desde la interfaz, actualizaciones solo desde los Releases con
+huella, Electron fijado y sin scripts de instalación); 8) la CSP."""
 import json
 import os
 import re
@@ -57,56 +60,123 @@ def tiene(texto, *patrones):
     return all(re.search(p, texto, re.S) for p in patrones)
 
 
-mac = leer("app/Sources/Esquema/Ventana.swift")
-if mac is not None:
-    casos_mac = set(re.findall(r'"(\w+)"', " ".join(re.findall(r"case ([^:]+):", mac))))
-    problemas += [f'Mac (Ventana.swift) no atiende "{a}"' for a in sorted((acciones | contrato) - casos_mac)]
-    carpeta_swift = os.path.join(RAIZ, "app/Sources/Esquema")
+# ───────────── Las acciones declaradas (acciones.json, lo arma pieza.py; las corren los hosts de Pieza) ─────────────
+# Las que solo corren un script van en app.json → «acciones» (las de las piezas, en su pieza.json) y los dos hosts las atienden sin
+# código propio: validan los datos por su tipo, ponen lo de «inyectar» (nunca de la interfaz), corren el script con su límite y
+# responden. Lo nativo de Esquema (carpeta, archivos, Papelera, exportar, catálogo, actualizaciones en Mac) queda registrado.
+app_json = json.loads(leer("app.json"))
+acciones_json = json.loads(leer("acciones.json") or "{}").get("acciones") or {}
+declaradas = set(acciones_json)
+for n, d in (app_json.get("acciones") or {}).items():
+    if {k: v for k, v in d.items() if k != "scriptDeLaApp"} != {k: v for k, v in acciones_json.get(n, {}).items() if k != "pieza"}:
+        problemas.append(f'acciones.json no está al día con app.json en «{n}»: python3 <pieza>/herramientas/pieza.py acciones .')
+for n, d in acciones_json.items():
+    if n not in acciones | contrato:
+        continue  # de una pieza y Esquema no la usa (p. ej. catalogoQuitar): el host la carga igual, la interfaz no la pide
+    if not os.path.exists(os.path.join(RAIZ, "bin", d.get("script", ""))):
+        problemas.append(f'la acción declarada «{n}» usa bin/{d.get("script")}, que no existe')
+    for f in (d.get("responde"), d.get("progreso")):
+        if f and f not in funciones_ui:
+            problemas.append(f'la acción declarada «{n}» responde «{f}» y window.Esquema no la tiene')
+    if "carpeta" in (d.get("datos") or {}):
+        problemas.append(f'«{n}»: la carpeta nunca viene de la interfaz (va en «inyectar»)')
+respuestas_declaradas = {f for d in acciones_json.values() for f in (d.get("responde"), d.get("progreso")) if f}
+# Proyectos: una sola acción declarada para todo bin/proyecto.py. Solo sus órdenes (las mismas de ORDENES), la carpeta siempre la
+# actual (inyectada; sin carpeta, "" y proyecto.py responde «Elige una carpeta primero» salvo SIN_CARPETA), el progreso en vivo.
+py = leer("bin/proyecto.py")
+ordenes_py = set(re.findall(r'"(\w+)": \w+', re.search(r"ORDENES = \{([^}]+)\}", py).group(1)))
+p = acciones_json.get("proyecto") or {}
+if p.get("script") != "proyecto.py" or p.get("args") != ["$orden"] or set((p.get("datos") or {}).get("orden", {}).get("valores") or []) != ordenes_py \
+        or p.get("inyectar") != {"carpeta": "carpetaActual"} or (p.get("datos") or {}).get("*") != "pasar" or p.get("progreso") != "proyectoProgreso" \
+        or p.get("eco") != ["orden"] or p.get("responde") != "proyectoRespuesta":
+    problemas.append("app.json: «proyecto» declarada con $orden (las ORDENES de bin/proyecto.py), carpeta inyectada (carpetaActual), progreso proyectoProgreso y eco orden")
+if not tiene(py, r'not entrada\.get\("carpeta"\)', r"args\[0\] not in SIN_CARPETA", r"Elige una carpeta primero"):
+    problemas.append("bin/proyecto.py: sin carpeta, solo SIN_CARPETA corre (lo demás responde «Elige una carpeta primero»)")
+for n in ("crearReadme", "estructura"):
+    if (acciones_json.get(n) or {}).get("inyectar", {}).get("carpeta") != "carpetaActual":
+        problemas.append(f"app.json: «{n}» con la carpeta inyectada (carpetaActual)")
+# config: la carpeta solo la escribe la app (el selector del sistema o un reciente), nunca la acción config de la interfaz.
+if (app_json.get("config") or {}).get("carpeta") != {"tipo": "texto", "interfaz": False}:
+    problemas.append('app.json: config.carpeta tiene que ser {"tipo": "texto", "interfaz": false} (la interfaz nunca la cambia)')
+
+
+def internas(texto, patron):
+    """Lo que calza con el patrón, sin contar los comentarios (los ejemplos de las piezas nombran acciones que no existen)."""
+    sin_comentarios = re.sub(r"^\s*(//|///|\*).*$", "", texto or "", flags=re.M)
+    return set(re.findall(patron, sin_comentarios))
+
+
+# ───────────── Mac (pieza «host-mac» en app/Sources/PiezaHost + lo propio en app/Sources/Esquema) ─────────────
+carpeta_swift = os.path.join(RAIZ, "app/Sources/Esquema")
+if os.path.isdir(carpeta_swift):
     swift = "".join(leer(os.path.join("app/Sources/Esquema", n)) for n in sorted(os.listdir(carpeta_swift)) if n.endswith(".swift"))
-    llamadas_mac = set(re.findall(r'llamar\("(\w+)"', swift))
+    puente_mac = leer("app/Sources/PiezaHost/Puente.swift") or ""
+    host_mac = "".join(leer(f"app/Sources/PiezaHost/{n}.swift") or "" for n in ("Host", "Procesador", "Enchufe")) + puente_mac
+    registradas_mac = internas(swift, r'registrar\("(\w+)"')
+    atiende_mac = registradas_mac | internas(puente_mac, r'internas\["(\w+)"\]') | declaradas
+    problemas += [f'Mac no atiende "{a}" (ni registrada, ni del host, ni declarada)' for a in sorted((acciones | contrato) - atiende_mac)]
+    llamadas_mac = internas(swift, r'llamar\("(\w+)"') | internas(puente_mac, r'llamar\("(\w+)"')
     problemas += [f"Mac llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(llamadas_mac - funciones_ui)]
-    problemas += [f'Mac nunca responde "{f}"' for f in sorted(respuestas_app - llamadas_mac)]
-    # Seguridad: el puente solo para el marco principal con origen file; la ventana solo navega dentro de ui/; enlaces solo https.
-    if not tiene(mac, r"frameInfo\.isMainFrame", r'securityOrigin\.protocol == "file"'):
-        problemas.append("Mac: el puente tiene que atender solo al marco principal con origen file (Ventana.swift)")
-    if not tiene(mac, r"decidePolicyFor", r"hasPrefix\(carpetaUI\)", r'scheme == "https"'):
-        problemas.append("Mac: la ventana solo puede navegar dentro de ui/ y abrir https en el navegador (Ventana.swift)")
-    # Actualizaciones: la pieza «actualizaciones» (su propio target), configurada con el repo de Esquema.
+    problemas += [f'Mac nunca responde "{f}"' for f in sorted(respuestas_app - llamadas_mac - respuestas_declaradas)]
+    # Seguridad (la trae la pieza): el puente solo para el marco principal con un archivo de ui/; la ventana solo dentro de ui/;
+    # enlaces solo https; el panel de archivos solo para la interfaz propia. Esquema no arma otra ventana ni otro puente.
+    if not tiene(puente_mac, r"frameInfo\.isMainFrame", r'securityOrigin\.protocol == "file"', r"hasPrefix\(prefijoUI\)", r"decidePolicyFor",
+                 r'u\.scheme == "https"', r'runOpenPanelWith.*?marco\.isMainFrame, marco\.securityOrigin\.protocol == "file"'):
+        problemas.append("Mac: el puente de la pieza «host-mac» tiene que atender solo al marco principal con un archivo de ui/ y no navegar fuera (Puente.swift)")
+    if re.search(r"WKWebView\(|WKScriptMessageHandler|NSApplicationDelegate", swift):
+        problemas.append("Mac: la ventana, el puente y el delegado los pone la pieza «host-mac» (Esquema no arma otros)")
+    if not tiene(host_mac, r"hasPrefix\(prefijo\)", r'env\[prefijo \+ "PROGRESO"\]', r"matarArbol") or not tiene(swift, r"Host\.arrancar\(", r"Procesador\.lectorProgreso = ", r"LectorProgreso\(prefijo: Host\.id",
+                                                                                                               r'inyectores\["carpetaActual"\]'):
+        problemas.append("Mac: Host.arrancar con el lector de progreso (pieza «trabajos») y la carpeta inyectada; el Procesador del host sin ESQUEMA_* de afuera y con límite")
+    if not tiene(swift, r"static func absoluta.*?Enchufe\.dentro\(base, valor, extensiones: \[\"\.md\", \"\.mmd\"\]\)",
+                 r"static func papelera.*?Carpeta\.absoluta\(ruta, en: base\).*?Puente\.shared\.papelera\(u\)", r"desdeInterfaz: false",
+                 r"static func guardarArchivo.*?Fila\.agregar", r"proyectos\.json"):
+        problemas.append("Mac: rutas de la interfaz con Enchufe.dentro (.md/.mmd), Papelera solo con ellas, la carpeta en config solo desde la app, guardados en la fila y recientes de proyectos.json")
     act = leer("app/Sources/PiezaActualizaciones/Actualizaciones.swift") or ""
     paquete = leer("app/Package.swift") or ""
     if not tiene(act, r"/releases/download/", r"esDescargaNuestra\(zip, repo: c\.repo\)", r"shasum -a 256", r"comillas\(", r"--proto-redir '=https'") \
             or not tiene(swift, r'Actualizaciones\.configurar\(\.init\(repo: "esquema-app/esquema", nombre: "Esquema"') \
-            or not tiene(paquete, r'\.target\(name: "PiezaActualizaciones"', r'dependencies: \["PiezaActualizaciones"'):
-        problemas.append("Mac: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella y comillas() (pieza «actualizaciones», configurada en EsquemaApp.swift)")
-    # Plantillas de la comunidad: la pieza «catálogo» (su propio target), configurada con app.json → catalogo.
+            or not tiene(paquete, r'\.target\(name: "PiezaActualizaciones"', r'\.target\(name: "PiezaHost"', r'dependencies: \["PiezaHost", "PiezaActualizaciones"'):
+        problemas.append("Mac: las actualizaciones solo desde los Releases de esquema-app/esquema, con huella y comillas() (pieza «actualizaciones», configurada en EsquemaApp.swift) y el target PiezaHost")
     cat = leer("app/Sources/PiezaCatalogo/Catalogo.swift") or ""
     if not tiene(cat, r'host = "raw\.githubusercontent\.com"', r"SinRedirecciones", r"willPerformHTTPRedirection",
                  r"SHA256\.hash", r"calculada == huella", r"datos\.count == tamano", r'"catalogo\.py", "indice"', r'"catalogo\.py", "instalar"') \
-            or not tiene(swift, r'Catalogo\.configurar\(appJSON: Rutas\.recursos\.appendingPathComponent\("app\.json"\)', r'Catalogo\.listar\("plantillas"\)',
-                         r'Catalogo\.descargar\("plantillas", id\)') \
-            or not tiene(paquete, r'\.target\(name: "PiezaCatalogo"', r'"PiezaCatalogo"\]|"PiezaCatalogo",') \
+            or not tiene(swift, r'Catalogo\.configurar\(appJSON: Host\.recursos\.appendingPathComponent\("app\.json"\)', r'Catalogo\.listar\("plantillas"\)',
+                         r'Catalogo\.descargar\("plantillas", ') \
             or os.path.exists(os.path.join(RAIZ, "app/Sources/Esquema/Catalogo.swift")):
         problemas.append("Mac: el catálogo solo desde raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones, con tamaño y huella del índice validado (pieza «catálogo», configurada en EsquemaApp.swift)")
-    if re.search(r'"(claude|codex)"\s*,\s*\[', swift) and "--disallowedTools" not in swift:
-        problemas.append("Mac: si la app llama a la IA, tiene que ser sin herramientas")
-    if "carpeta" in re.search(r"static func guardar\(_ cambios.*?\n    \}", swift, re.S).group(0).split("default:")[0].split("switch k")[1]:
-        problemas.append("Mac: la acción config no puede cambiar la carpeta (Servicios.swift)")
+    if re.search(r'"(claude|codex)"\s*,\s*\[', swift):
+        problemas.append("Mac: la app no llama a la IA por su cuenta (la corre bin/ia.py)")
+    if "acciones.json" not in (leer("herramientas/empaquetar.sh") or ""):
+        problemas.append("Mac: herramientas/empaquetar.sh tiene que copiar acciones.json junto a app.json")
+
+# ───────────── Windows y Linux (pieza «host-escritorio» en escritorio/src/host.js + lo propio en main.js) ─────────────
 escritorio = leer("escritorio/src/main.js")
 if escritorio:
-    casos_e = set(re.findall(r"^\s{2}(?:async\s+)?(\w+)\s*\(", escritorio.split("const ACCIONES = {", 1)[1].split("\n};", 1)[0], re.M))
-    problemas += [f'Windows/Linux (ACCIONES) no atiende "{a}"' for a in sorted((acciones | contrato) - casos_e)]
-    llamadas_e = set(re.findall(r'llamar\("(\w+)"', escritorio)) | set(re.findall(r'avisar\("(\w+)"', leer("escritorio/src/vigilante.js") or ""))
+    host_js = leer("escritorio/src/host.js") or ""
+    registradas_e = internas(escritorio, r'A\.registrar\("(\w+)"')
+    internas_e = internas(host_js, r'internas\.set\("(\w+)"')
+    atiende_e = registradas_e | internas_e | declaradas
+    problemas += [f'Windows/Linux no atiende "{a}" (ni registrada, ni del host, ni declarada)' for a in sorted((acciones | contrato) - atiende_e)]
+    if "actualizaciones: crearActualizaciones(" not in escritorio:
+        problemas.append("Windows/Linux: el host atiende buscarActualizacion/actualizar solo si recibe la pieza «actualizaciones»")
+    llamadas_e = internas(escritorio, r'llamar\("(\w+)"') | internas(host_js, r'llamar\("(\w+)"') | internas(leer("escritorio/src/vigilante.js"), r'avisar\("(\w+)"')
     problemas += [f"Windows/Linux llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(llamadas_e - funciones_ui)]
-    problemas += [f'Windows/Linux nunca responde "{f}"' for f in sorted(respuestas_app - llamadas_e)]
-    if not tiene(escritorio, r"contextIsolation: true", r"sandbox: true", r"nodeIntegration: false", r"webviewTag: false"):
-        problemas.append("Windows/Linux: la ventana necesita contextIsolation, sandbox, sin nodeIntegration ni webview (main.js)")
-    if not tiene(escritorio, r'ipcMain\.on\("esquema"', r"e\.sender !== ventana\.webContents", r"e\.senderFrame !== e\.sender\.mainFrame", r"startsWith\(ORIGEN\)"):
-        problemas.append("Windows/Linux: el puente solo atiende al marco principal de la ventana propia (main.js)")
-    if not tiene(escritorio, r'"will-navigate"', r"setWindowOpenHandler", r"setPermissionRequestHandler", r'u\.protocol === "https:"'):
-        problemas.append("Windows/Linux: la ventana no puede navegar fuera de ui/ ni abrir ventanas; enlaces solo https (main.js)")
+    problemas += [f'Windows/Linux nunca responde "{f}"' for f in sorted(respuestas_app - llamadas_e - respuestas_declaradas)]
+    if not tiene(host_js, r"contextIsolation: true", r"sandbox: true", r"nodeIntegration: false", r"webviewTag: false", r"ipcMain\.on\(id, alMensaje\)",
+                 r"e\.sender !== ventana\.webContents", r"e\.senderFrame !== e\.sender\.mainFrame", r"startsWith\(ORIGEN\)", r'"will-navigate"',
+                 r"setWindowOpenHandler", r"setPermissionRequestHandler", r'u\.protocol === "https:"'):
+        problemas.append("Windows/Linux: la pieza «host-escritorio» tiene que dar la ventana con sandbox y el puente solo para el marco principal propio (host.js)")
+    if re.search(r"new BrowserWindow|ipcMain|webPreferences|preload:", escritorio):
+        problemas.append("Windows/Linux: la ventana y el puente los pone la pieza «host-escritorio» (main.js no arma otros)")
     precarga = leer("escritorio/src/preload.js") or ""
-    if set(re.findall(r'exposeInMainWorld\("(\w+)"', precarga)) != {"ESQUEMA_HOST", "esquemaEscritorio"}:
-        problemas.append("Windows/Linux: preload.js solo expone ESQUEMA_HOST y esquemaEscritorio.enviar")
+    if not tiene(precarga, r"--pieza-host=", r"exposeInMainWorld\(`\$\{id\.toUpperCase\(\)\}_HOST`", r"exposeInMainWorld\(`\$\{id\}Escritorio`") or precarga.count("exposeInMainWorld") != 2:
+        problemas.append("Windows/Linux: preload.js (pieza «host-escritorio») solo expone ESQUEMA_HOST y esquemaEscritorio.enviar")
+    if not tiene(escritorio, r"crearHost\(\{", r"lectorProgreso,", r'inyectar: \{ carpetaActual: ', r"desdeInterfaz: false",
+                 r'A\.registrar\("papelera".*?absoluta\(ruta, base\).*?host\.papelera\(abs\)', r'A\.registrar\("guardarArchivo".*?host\.fila\.agregar', r'"proyectos\.json"') \
+            or not tiene(leer("escritorio/src/vigilante.js") or "", r"dentro\(base, relativa, \{ extensiones: EXTENSIONES \}\)") \
+            or not tiene(leer("escritorio/src/progreso.js") or "", r"function lectorProgreso", r"cada = 500"):
+        problemas.append("Windows/Linux: crearHost con el lector de progreso y la carpeta inyectada; rutas con dentro() (.md/.mmd), Papelera solo con ellas, la carpeta en config solo desde la app, guardados en la fila y recientes de proyectos.json")
     act = leer("escritorio/src/actualizaciones.js") or ""
     if not tiene(act, r"/releases/download/", r"esDescargaNuestra\(archivo, o\.repo\)", r"huella !== esperada", r"leerHuella") \
             or not tiene(escritorio, r'crearActualizaciones\(\{ app, net, repo: "esquema-app/esquema", nombre: "Esquema" \}\)'):
@@ -114,10 +184,12 @@ if escritorio:
     cat = leer("escritorio/src/catalogo.js") or ""
     if not tiene(cat, r'HOST = "raw\.githubusercontent\.com"', r'redirect: "error"', r"huella !== e\.sha256",
                  r"datos\.length !== e\.tamano", r'"catalogo\.py", "indice"', r'"catalogo\.py", "instalar"') \
-            or not tiene(escritorio, r'appJson: leerJSON\(path\.join\(recursos\(app\.isPackaged\), "app\.json"\)', r'Catalogo\.listar\("plantillas"\)',
+            or not tiene(escritorio, r'appJson: leerJSON\(path\.join\(host\.recursos, "app\.json"\)', r'Catalogo\.listar\("plantillas"\)',
                          r'Catalogo\.descargar\("plantillas", '):
         problemas.append("Windows/Linux: el catálogo solo desde raw.githubusercontent.com/esquema-app/esquema-catalogo, sin redirecciones, con tamaño y huella (catalogo.js)")
     paquete = json.loads(leer("escritorio/package.json"))
+    if not any(x.get("from") == "../acciones.json" and x.get("to") == "esquema/acciones.json" for x in paquete.get("build", {}).get("extraResources", [])):
+        problemas.append("Windows/Linux: acciones.json va dentro de la app junto a app.json (extraResources de escritorio/package.json)")
     version = paquete.get("devDependencies", {}).get("electron", "")
     if not re.fullmatch(r"\d+\.\d+\.\d+", version) or tuple(map(int, version.split("."))) < (44, 9, 1):
         problemas.append(f"Windows/Linux: Electron con versión exacta y 44.9.1 o más nueva (arreglo de certificados), no «{version}»")
@@ -127,48 +199,6 @@ if escritorio:
         problemas.append("Windows/Linux: .npmrc con ignore-scripts=true y package-lock.json versionado")
     if paquete.get("version") != (re.search(r"<key>CFBundleShortVersionString</key>\s*<string>([^<]+)</string>", leer("app/Info.plist") or "") or [None, None])[1]:
         problemas.append("La versión de escritorio/package.json y la de app/Info.plist tienen que ser iguales (publicar.yml)")
-# Proyectos: las apps solo pasan a bin/proyecto.py las órdenes que el script conoce (la misma lista en los tres lados), y un
-# reciente se abre por su posición en proyectos.json (la ruta nunca viene de la interfaz).
-py = leer("bin/proyecto.py")
-ordenes_py = set(re.findall(r'"(\w+)": \w+', re.search(r"ORDENES = \{([^}]+)\}", py).group(1)))
-progreso_py = set(re.findall(r'"(\w+)"', re.search(r"CON_PROGRESO = \(([^)]+)\)", py).group(1)))
-sin_carpeta_py = set(re.findall(r'"(\w+)"', re.search(r"SIN_CARPETA = \(([^)]+)\)", py).group(1)))
-
-
-def lista_de(texto, patron):
-    m = re.search(patron, texto)
-    return set(re.findall(r'"(\w+)"', m.group(1))) if m else None
-if mac is not None:
-    om = re.search(r"ordenesProyecto: Set<String> = \[([^\]]+)\]", mac)
-    if not om or set(re.findall(r'"(\w+)"', om.group(1))) != ordenes_py:
-        problemas.append("Mac: Ventana.ordenesProyecto tiene que ser igual a ORDENES de bin/proyecto.py")
-    if not tiene(mac, r'case "proyecto":.*?ordenesProyecto\.contains\(orden\)', r'proyectos\.json'):
-        problemas.append("Mac: la acción proyecto revisa la orden y abrirProyecto lee la ruta de proyectos.json")
-# Trabajos largos: las dos apps pasan ESQUEMA_PROGRESO al script, leen sus líneas nuevas y avisan con proyectoProgreso.
-if mac is not None:
-    servicios = leer("app/Sources/Esquema/Servicios.swift") or ""
-    lector = leer("app/Sources/PiezaTrabajos/LectorProgreso.swift") or ""
-    if not tiene(servicios, r'env\["ESQUEMA_PROGRESO"\]', r"import PiezaTrabajos", r'LectorProgreso\(prefijo: "esquema"') or not tiene(lector, r"withTimeInterval: 0\.5") or lista_de(mac, r"ordenesConProgreso: Set<String> = \[([^\]]+)\]") != progreso_py or not tiene(mac, r'llamar\("proyectoProgreso"'):
-        problemas.append("Mac: las órdenes largas (CON_PROGRESO de bin/proyecto.py) pasan ESQUEMA_PROGRESO y avisan con proyectoProgreso cada 0,5 s (Servicios.swift, Ventana.swift)")
-    if lista_de(mac, r"ordenesSinCarpeta: Set<String> = \[([^\]]+)\]") != sin_carpeta_py or not tiene(mac, r'e\.removeValue\(forKey: "carpeta"\)\s*\n\s*if let base \{ e\["carpeta"\] = base\.path \}'):
-        problemas.append("Mac: solo SIN_CARPETA de bin/proyecto.py corre sin carpeta, y la carpeta la pone siempre la app (Ventana.swift)")
-    if not tiene(mac, r'case "papelera":.*?Carpeta\.absoluta\(ruta, en: base\).*?trashItem', r"runOpenPanelWith.*?marco\.isMainFrame, marco\.securityOrigin\.protocol == \"file\""):
-        problemas.append("Mac: «papelera» solo con rutas de la carpeta (a la Papelera, nunca borrar) y el panel de archivos solo para la interfaz local (Ventana.swift)")
-if escritorio:
-    servicios = leer("escritorio/src/servicios.js") or ""
-    if not tiene(servicios, r"env\.ESQUEMA_PROGRESO = ", r'require\("\./progreso"\)', r'lectorProgreso\(progreso, \{ prefijo: "esquema" \}\)') \
-            or not tiene(leer("escritorio/src/progreso.js") or "", r"function lectorProgreso", r"cada = 500") or lista_de(escritorio, r"ORDENES_CON_PROGRESO = \[([^\]]+)\]") != progreso_py or not tiene(escritorio, r'llamar\("proyectoProgreso"'):
-        problemas.append("Windows/Linux: las órdenes largas (CON_PROGRESO de bin/proyecto.py) pasan ESQUEMA_PROGRESO y avisan con proyectoProgreso cada 0,5 s (servicios.js, main.js)")
-    if lista_de(escritorio, r"ORDENES_SIN_CARPETA = \[([^\]]+)\]") != sin_carpeta_py or not tiene(escritorio, r"delete e\.orden; delete e\.carpeta;\s*\n\s*if \(base\) e\.carpeta = base;"):
-        problemas.append("Windows/Linux: solo SIN_CARPETA de bin/proyecto.py corre sin carpeta, y la carpeta la pone siempre la app (main.js)")
-    if not tiene(escritorio, r"async papelera\(d\).*?absoluta\(ruta, base\).*?shell\.trashItem\(abs\)"):
-        problemas.append("Windows/Linux: «papelera» solo con rutas de la carpeta y a la Papelera del sistema (main.js)")
-if escritorio:
-    oe = re.search(r"ORDENES_PROYECTO = \[([^\]]+)\]", escritorio)
-    if not oe or set(re.findall(r'"(\w+)"', oe.group(1))) != ordenes_py:
-        problemas.append("Windows/Linux: ORDENES_PROYECTO tiene que ser igual a ORDENES de bin/proyecto.py")
-    if not tiene(escritorio, r"ORDENES_PROYECTO\.includes\(d\.orden\)", r'"proyectos\.json"'):
-        problemas.append("Windows/Linux: la acción proyecto revisa la orden y abrirProyecto lee la ruta de proyectos.json")
 html = leer("ui/index.html")
 csp = re.search(r'Content-Security-Policy" content="([^"]+)"', html)
 if not csp or "script-src 'self'" not in csp.group(1) or "'unsafe-eval'" in csp.group(1) or "object-src 'none'" not in csp.group(1):
@@ -178,4 +208,4 @@ if re.search(r"<script>|\son\w+=", html) or re.search(r"\son(click|load|error|in
 if problemas:
     print("✗ Contrato roto:\n  - " + "\n  - ".join(problemas))
     sys.exit(1)
-print(f"✓ Contrato: {len(acciones)} acciones y {len(funciones_ui)} funciones en orden en la interfaz" + (", Mac" if mac else "") + (", Windows y Linux" if escritorio else ""))
+print(f"✓ Contrato: {len(acciones)} acciones y {len(funciones_ui)} funciones en orden en la interfaz" + (", Mac" if os.path.isdir(carpeta_swift) else "") + (", Windows y Linux" if escritorio else ""))

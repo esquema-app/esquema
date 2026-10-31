@@ -5,6 +5,11 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Por dentro, la misma app de la familia:** Esquema para Mac, Windows y Linux ahora usa la app nativa común de Pieza. En Mac hay
+  un menú Ayuda (sitio y código). Si algo tarda más de una hora (documentar un proyecto muy grande), se detiene solo y «Seguir donde
+  quedó» lo retoma sin repetir lo hecho. · *Under the hood, the same app as the rest of the family: Esquema for Mac, Windows and Linux
+  now uses Pieza's shared native app. On Mac there's a Help menu (website and source code). If something takes more than an hour
+  (documenting a very large project), it stops by itself and «Pick up where it left off» resumes it without redoing anything.*
 - **Más avisos en tu idioma y archivos más seguros:** si una plantilla de la comunidad no se puede descargar o un archivo que
   agregas no se puede leer, el aviso sale en el idioma que elegiste. Los Word, EPUB y PDF que agregas se leen con topes más
   estrictos (contados al abrirlos), así un archivo armado para llenar la memoria no la llena. · *More notices in your language and

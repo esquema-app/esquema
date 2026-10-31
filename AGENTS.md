@@ -56,8 +56,8 @@ de esa carpeta). Interfaz web única (`ui/`) en la app de Mac (`app/`, nativa) y
 | `ejemplos/` | `proyecto-ejemplo/` (la carpeta ficticia de la demo, con un poco de «código» para «Documentar un proyecto»), `ia-simulada/` (lo que responde la IA en la vista previa del navegador), `agregar/` (una historia de usuario, un libro y unas notas de reunión ficticios, en es y en, para probar «Agregar» y los proyectos Libro), `catalogo-ejemplo/` (copia de las plantillas del catálogo de la comunidad: «Comunidad» en la demo y las pruebas) y scripts para construir encima del formato (`listar_diagramas.py`). |
 | `pruebas/` | `correr.sh` (todo), `motor.mjs` (motor en Node), `interfaz.mjs` (Playwright; `window._simVelocidad` y `window._simFallar` aceleran el trabajo simulado o hacen fallar un documento), `test_python.py`, `contrato.py` + `puente.json` (contrato del puente), `casos.json` (casos compartidos), `compat/` (ejemplos Mermaid que se leen y se escriben igual; `variantes/`: formas no canónicas), `ia_falsa.py` (responde planes y documentos, con stream-json si se lo piden; `IA_FALSA_FALLA_DOC`, `IA_FALSA_LENTO`, `IA_FALSA_MODO=plan-basura`; también rondas de preguntas de una HU, su cierre, capítulos, estudio e incongruencias). |
 | `herramientas/` | `revisar_privacidad.sh`, `generar_demo.py`, `comparar_mermaid.mjs` (rendimiento y compatibilidad contra Mermaid real, instalado aparte), `empaquetar.sh` (arma `dist/Esquema.app` + zip + `.sha256`, en un Mac), `generar_icono.mjs` (íconos de las apps desde `ui/favicon.svg`), `pagina_capturas.mjs` (sirve la página como en GitHub Pages, arma `compartir.png` y `apple-touch-icon.png` y revisa la página en los dos idiomas). |
-| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (arranque, menús), `Ventana.swift` (WKWebView + puente: un `case` por acción), `Carpeta.swift` (elegir la carpeta con marcador, rutas, `Vigilante` con FSEvents), `Servicios.swift` (rutas, config, idioma, `Procesador`, `EnOrden`); `Sources/PiezaActualizaciones/`, `Sources/PiezaCatalogo/` (`Catalogo.swift`: plantillas de la comunidad) y `Sources/PiezaTrabajos/` (`LectorProgreso.swift`), piezas en su propio target; `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
-| `escritorio/` | App de Windows y Linux (Electron): `src/main.js` (ventana, puente `ACCIONES`, menú, protocolo `esquema://ui/`), `src/preload.js`, `src/rutas.js`, `src/servicios.js`, `src/vigilante.js` (`fs.watch`), `src/catalogo.js` (pieza «catálogo»: plantillas de la comunidad), `src/progreso.js` (pieza «trabajos»: el lector de progreso), `src/actualizaciones.js` (pieza «actualizaciones»); `herramientas/` (Python portátil, instalador NSIS), `pruebas/` (`arranque.mjs` con Xvfb, `vigilante.mjs`, `catalogo.mjs`), `iconos/`. Ver «Windows y Linux». |
+| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode): `EsquemaApp.swift` (`Host.arrancar` y lo propio: menús, estado, las acciones nativas registradas), `Carpeta.swift` (elegir la carpeta con marcador, rutas con `Enchufe.dentro`, `Vigilante` con FSEvents); `Sources/PiezaHost/` (pieza «host-mac»: ventana, puente, config, idioma, `Procesador`, `Fila`, acciones declaradas), `Sources/PiezaActualizaciones/`, `Sources/PiezaCatalogo/` (`Catalogo.swift`: plantillas de la comunidad) y `Sources/PiezaTrabajos/` (`LectorProgreso.swift`), piezas en su propio target; `Info.plist`, `Esquema.icns`. Ver «App de Mac». |
+| `escritorio/` | App de Windows y Linux (Electron): `src/main.js` (`crearHost` y lo propio: menú, estado, las acciones nativas registradas), `src/host.js`, `src/enchufe.js`, `src/procesador.js` y `src/preload.js` (pieza «host-escritorio»: ventana, protocolo `esquema://ui/`, puente, config, idioma, scripts, acciones declaradas), `src/vigilante.js` (`fs.watch`), `src/catalogo.js` (pieza «catálogo»: plantillas de la comunidad), `src/progreso.js` (pieza «trabajos»: el lector de progreso), `src/actualizaciones.js` (pieza «actualizaciones»); `herramientas/` (Python portátil, instalador NSIS), `pruebas/` (`arranque.mjs` con Xvfb, `vigilante.mjs`, `catalogo.mjs`), `iconos/`. Ver «Windows y Linux». |
 | `build.sh`, `instalar.sh`, `instalar.ps1` | Compilar e instalar en el Mac de desarrollo; instaladores de un comando (Mac/Linux y Windows) que verifican la huella. |
 | `docs/` | La página pública (GitHub Pages, `pagina.yml` la publica con `ui/` en `/demo/`): `index.html` bilingüe (es/en), `pagina.css`, `pagina.js`, `sitemap.xml`, `apple-touch-icon.png`, `favicon.svg` e `img/` (capturas y `compartir.png`). Ver «Página pública». |
 | `CHANGELOG.md` | Lo que cambia para quien usa la app, en palabras simples (ver «Lo que rodea a un cambio»). |
@@ -68,16 +68,18 @@ Esquema usa piezas de Pieza, la base de la familia de apps: código probado que 
 | Pieza | Archivos | Qué usa Esquema |
 |---|---|---|
 | `nucleo` (0.7) | `bin/nucleo.py` | `app.json`, carpeta de datos (`ESQUEMA_DATOS`), config validada por `app.json`, `escribir_atomico`, `ruta_en`, `responder`. `comun.py` lo envuelve con lo propio de Esquema. |
-| `ia` (0.6) | `bin/ia.py` | La IA de la persona (`preguntar`, `probar`, `lista`, `puede_leer`, `frase`) y, en los trabajos largos, `preguntar_vivo` (cuenta lo que lee, se detiene; `ia.detenido(error)`), siempre con argumentos por nombre. Lo propio de Esquema (prompts, `SOLO_ESTO`, `NO_LEER`) sigue en `asistente.py` y `proyecto.py`. `ia.py probar <entrada {ia}> <salida>`. |
-| `i18n` (0.3) | `ui/i18n.js` | `T`, `Tp`, `tr`, `frase`, `traducirDOM` (`app.js` crea la instancia con `noTraducir: ".md"`). `ui/idiomas/en.json` lleva `codigo`. |
+| `ia` (0.6.1) | `bin/ia.py` | La IA de la persona (`preguntar`, `probar`, `lista`, `puede_leer`, `frase`) y, en los trabajos largos, `preguntar_vivo` (cuenta lo que lee, se detiene; `ia.detenido(error)`), siempre con argumentos por nombre. Lo propio de Esquema (prompts, `SOLO_ESTO`, `NO_LEER`) sigue en `asistente.py` y `proyecto.py`. `ia.py probar <entrada {ia}> <salida>`. |
+| `i18n` (0.3.1) | `ui/i18n.js` | `T`, `Tp`, `tr`, `frase`, `traducirDOM` (`app.js` crea la instancia con `noTraducir: ".md"`). `ui/idiomas/en.json` lleva `codigo`. |
 | `bienvenida` (0.3) | `ui/bienvenida.js`, `ui/bienvenida.css` | El paso del idioma (`data-bv-idioma`, `.opciones-idioma`, teclas 1/2, el del sistema sugerido y enfocado, avisos que esperan con `retener`) y el mecanismo de pasos. Los pasos de Esquema (hola → carpeta → IA) se suman en `app.js` con `sumarPaso` (`listo: false`: la IA es el último y dice «Empezar»; hola y carpeta con `saltable: false`). Sus colores, `--bv-*`, los conecta la pieza `tema`; sus botones son los de `componentes` (`.pz-pie`, `.pz-boton`, `.pz-principal`). Va en `ui.envolver(bv.html(), {id: "t-bv", sinEsc: true})`. |
 | `host-ui` (0.2) | `ui/host.js` | El puente: `PiezaHost.crearHost({nombre: "esquema", global: "Esquema", simular})` en `app.js`; `host.enviar(accion, datos)` y `host.responder({…})` (las respuestas quedan en `window.Esquema`; `_pruebas` se asigna aparte porque `responder` solo suma funciones). `HOST = host.plataforma` y `<html data-host>`. `simular(accion, d, c)` es la vista previa (modo función); `probarIA`, `buscarActualizacion` y `actualizar` salen de `PiezaHost.simulacionesComunes()`. |
-| `tema` (0.2) | `ui/tema.css`, `ui/tema.js` | Los tokens (`--fondo`, `--panel`, `--panel-2`, `--linea`, `--texto`, `--texto-suave`, `--acento`, `--rojo`, `--verde`, `--sombra`, derivados `--hover`, `--acento-suave`, `--rojo-suave`) con `light-dark()`. El modo va en `<html data-pz-modo>`. `app.css` solo redefine los pares que Esquema cambia y lo propio con `light-dark()`: `--lienzo`, `--punto`, `--d-*`. `tema.aplicar(tema.elegir({config}))` al llegar el estado (`?tema=` gana); «Apariencia» en Ajustes es `tema.selectorHTML()`. El SVG exportado no usa estos tokens (`M.COLORES`). |
-| `componentes` (0.2) | `ui/componentes.js`, `ui/componentes.css` | `ui = PiezaComponentes.crear({i18n, host, app, repo, version, pintar, cerrar: cerrarDialogo, retener, elegirIA})`. Clases `pz-` (`.pz-boton`, `.pz-principal`, `.pz-plano`, `.pz-peligro`, `.pz-pie`, `.pz-fila`, `.pz-seg`, `.pz-chip(s)`, `.pz-giro`, `.pz-error-texto`, `.pz-capa`/`.pz-dialogo`, `.pz-ancho`). Los diálogos de Esquema traen su `<h2 id>` y su pie: van en `ui.envolver(html, {id, clase})` (en `proyectos.js`, `envolver(html, clase)` con `t-pj`), y `ui.capas()` + `ui.despuesDePintar()` en `pintar()`; `ui.manejarClic`/`ui.manejarTecla` (al abrir, el foco va al título o a un campo con `data-autofoco`; Tab, Esc y velo; la bienvenida con `sinEsc`). `await ui.confirmar({titulo, valores, texto, si, no, peligro, sinElegir})` (frases en español; `[data-pz-confirmar]`; con `peligro` el foco empieza en «Cancelar»; el conflicto «cambió en el disco» usa `sinElegir: null`, así Esc no elige). `toast(t, traducido, accion)` es `ui.aviso` (con botón: «Deshacer», «Revisar», «Responder», «Ver la wiki»; `.pz-toast-accion`). «Tu IA» (`ui.filasIA`: la IA se elige recién cuando la prueba sale bien), actualizaciones (`ui.filaActualizacion`; antes de instalar, `guardarTodo()`) y «Acerca de» (`ui.acercaDe` con `extra`: el catálogo de plantillas; «Enviar comentarios» abre un issue prellenado en GitHub). |
+| `tema` (0.2.1) | `ui/tema.css`, `ui/tema.js` | Los tokens (`--fondo`, `--panel`, `--panel-2`, `--linea`, `--texto`, `--texto-suave`, `--acento`, `--rojo`, `--verde`, `--sombra`, derivados `--hover`, `--acento-suave`, `--rojo-suave`) con `light-dark()`. El modo va en `<html data-pz-modo>`. `app.css` solo redefine los pares que Esquema cambia y lo propio con `light-dark()`: `--lienzo`, `--punto`, `--d-*`. `tema.aplicar(tema.elegir({config}))` al llegar el estado (`?tema=` gana); «Apariencia» en Ajustes es `tema.selectorHTML()`. El SVG exportado no usa estos tokens (`M.COLORES`). |
+| `componentes` (0.3) | `ui/componentes.js`, `ui/componentes.css` | `ui = PiezaComponentes.crear({i18n, host, app, repo, version, pintar, cerrar: cerrarDialogo, retener, elegirIA})`. Clases `pz-` (`.pz-boton`, `.pz-principal`, `.pz-plano`, `.pz-peligro`, `.pz-pie`, `.pz-fila`, `.pz-seg`, `.pz-chip(s)`, `.pz-giro`, `.pz-error-texto`, `.pz-capa`/`.pz-dialogo`, `.pz-ancho`). Los diálogos de Esquema traen su `<h2 id>` y su pie: van en `ui.envolver(html, {id, clase})` (en `proyectos.js`, `envolver(html, clase)` con `t-pj`), y `ui.capas()` + `ui.despuesDePintar()` en `pintar()`; `ui.manejarClic`/`ui.manejarTecla` (al abrir, el foco va al título o a un campo con `data-autofoco`; Tab, Esc y velo; la bienvenida con `sinEsc`). `await ui.confirmar({titulo, valores, texto, si, no, peligro, sinElegir})` (frases en español; `[data-pz-confirmar]`; con `peligro` el foco empieza en «Cancelar»; el conflicto «cambió en el disco» usa `sinElegir: null`, así Esc no elige). `toast(t, traducido, accion)` es `ui.aviso` (con botón: «Deshacer», «Revisar», «Responder», «Ver la wiki»; `.pz-toast-accion`). «Tu IA» (`ui.filasIA`: la IA se elige recién cuando la prueba sale bien), actualizaciones (`ui.filaActualizacion`; antes de instalar, `guardarTodo()`) y «Acerca de» (`ui.acercaDe` con `extra`: el catálogo de plantillas; «Enviar comentarios» abre un issue prellenado en GitHub). |
 | `actualizaciones` (0.3) | `app/Sources/PiezaActualizaciones/Actualizaciones.swift`, `escritorio/src/actualizaciones.js` | Mac: target propio en `app/Package.swift`, configurado en `EsquemaApp.swift` (`Actualizaciones.configurar(.init(repo:nombre:archivoDesarrollo:variableProgreso:))`). Electron: `crear({app, net, repo, nombre})` en `main.js`. Lo que llega a la interfaz trae `texto` (español, con marcadores) y `valores`; la fila de Ajustes es de la pieza `componentes` (`ui.filaActualizacion`, que lo traduce con `T`). El aviso propio «espera a que termine de guardar» va con la misma forma (`codigo: "ocupada"`). |
-| `trabajos` (0.1) | `bin/trabajos.py`, `app/Sources/PiezaTrabajos/LectorProgreso.swift`, `escritorio/src/progreso.js` | El motor de los trabajos largos (ver «Trabajos»): `Trabajo.nuevo/cargar`, `etapa`, `poner_item`, `leyo`, `esperar`/`seguir`, `terminar`, `detener(id)`, `emitir` en `ESQUEMA_PROGRESO`. Los lectores del host: `LectorProgreso(prefijo: "esquema")` (target `PiezaTrabajos`, lo usa `Procesador.correrJSON`) y `lectorProgreso(aviso, {prefijo: "esquema"})` (lo usa `servicios.js`). Lo propio de cada trabajo sigue en `documentar.py`, `historias.py`, `libros.py`, `incorporar.py`; `documentar.detener` revisa el proyecto antes de llamar `trabajos.detener`. |
+| `trabajos` (0.1) | `bin/trabajos.py`, `app/Sources/PiezaTrabajos/LectorProgreso.swift`, `escritorio/src/progreso.js` | El motor de los trabajos largos (ver «Trabajos»): `Trabajo.nuevo/cargar`, `etapa`, `poner_item`, `leyo`, `esperar`/`seguir`, `terminar`, `detener(id)`, `emitir` en `ESQUEMA_PROGRESO`. Los lectores del host: `LectorProgreso(prefijo: Host.id)` (target `PiezaTrabajos`, en `Procesador.lectorProgreso` de «host-mac») y `lectorProgreso` (`src/progreso.js`, pasado a `crearHost` de «host-escritorio»). Lo propio de cada trabajo sigue en `documentar.py`, `historias.py`, `libros.py`, `incorporar.py`; `documentar.detener` revisa el proyecto antes de llamar `trabajos.detener`. |
 | `contenido` (0.1) | `bin/contenido.py` | Leer lo que se agrega (`extraer`, `extraer_archivo`, `partir_capitulos`, `titulo_de`, `slug`, topes) y `NoSePuede(codigo)` con `plantilla`/`valores` para traducir. Lo propio de Esquema (`detectar`, `id_historia`, `enlace_ticket`, `solo_enlace`, los `RE_*`) está en `bin/detectar.py`. |
 | `catalogo` (0.1) | `bin/catalogo.py`, `app/Sources/PiezaCatalogo/Catalogo.swift`, `escritorio/src/catalogo.js` | Las plantillas de la comunidad (ver «Catálogo de la comunidad»): `app.json` → `catalogo` (`esquema-app/esquema-catalogo`, tipo `plantillas` con `indice: "index.json"`, validador `plantilla_formato`, `singular: "plantilla"`, `origen: false`). Mac: target propio, `Catalogo.configurar(appJSON:agente:correr:)` en `EsquemaApp.swift`; Electron: `crear({fetch, procesador, appJson, agente})` en `main.js`. `estado.py` lista las plantillas con `catalogo.listar("plantillas")`. |
+| `host-mac` (0.1) | `app/Sources/PiezaHost/` (`Host.swift`, `Puente.swift`, `Procesador.swift`, `Enchufe.swift`) | La app de Mac: ventana, puente con guardas, config e idioma desde `app.json`, menús en el idioma elegido, apariencia, esperar la fila al salir y las acciones de `acciones.json`. Target propio en `app/Package.swift`; `EsquemaApp.swift` arranca con `Host.arrancar` y registra lo nativo (ver «Puente»). |
+| `host-escritorio` (0.1) | `escritorio/src/host.js`, `enchufe.js`, `procesador.js`, `preload.js` | Lo mismo en Electron: `crearHost({…})` en `main.js`, `host.acciones.registrar` para lo nativo; `acciones.json` va en `extraResources` junto a `app.json`. |
 
 - **No edites a mano los archivos de una pieza.** Se actualizan con «Pieza al día» (`.github/workflows/pieza-al-dia.yml`, una vez por
   semana abre un PR o un issue) o con `python3 <pieza>/herramientas/pieza.py actualizar .`. Si hay que cambiar algo, el cambio va
@@ -85,7 +87,10 @@ Esquema usa piezas de Pieza, la base de la familia de apps: código probado que 
 - `app.json` va dentro de las apps (`herramientas/empaquetar.sh` y `extraResources` de `escritorio/package.json`): `bin/nucleo.py`
   lo busca junto a `bin/`. Las claves de config que aceptan las apps (Swift y Electron) son las de `app.json`; `carpeta` solo la
   escribe el selector de carpetas, nunca `config` (`comun.guardar_config` la descarta).
-- `.gitignore` es una lista blanca: `app.json` y `piezas.json` están en ella.
+- `.gitignore` es una lista blanca: `app.json`, `piezas.json` y `acciones.json` están en ella.
+- `acciones.json` lo escribe `pieza.py` (`agregar`, `actualizar` o `acciones .`) con las acciones de las piezas y las de `app.json` →
+  `acciones`: después de cambiar una acción de la app, `python3 <pieza>/herramientas/pieza.py acciones .` (el contrato avisa si quedó
+  distinto). Las de las piezas que Esquema no usa (`listaIA`, `catalogoInstalados`, `catalogoQuitar`) se cargan igual.
 - En las pruebas, la bienvenida se maneja con `window.Esquema._pruebas.bienvenida` (`abrir`, `ir`, `terminar`), no con el estado.
 
 ## Formato de los archivos
@@ -173,9 +178,12 @@ Lo que tarda minutos (documentar un proyecto entero) **no** es una llamada gigan
   retoma; lo hecho no se repite y lo que quedó «escribiendo» vuelve a la cola.
 - **Progreso:** la app corre la orden con `ESQUEMA_PROGRESO=<archivo temporal>`; el script agrega líneas JSON (`trabajos.emitir`):
   `{t: "estado", trabajo: vista}` en cada cambio, `{t: "lee", id, ruta, n}` por cada archivo que lee la IA (relativo al código) y
-  `{t: "busca", id, patron}`. Mac (`LectorProgreso(prefijo: "esquema")` de la pieza, target `PiezaTrabajos`, desde `Procesador` en
-  `Servicios.swift`) y Windows/Linux (`lectorProgreso` de `src/progreso.js`, desde `servicios.js`) leen las líneas nuevas cada 0,5 s y llaman `window.Esquema.proyectoProgreso({eventos})`. Solo las órdenes de `ordenesConProgreso`
-  (Swift) / `ORDENES_CON_PROGRESO` (main.js) lo reciben. La respuesta final llega como siempre (`proyectoRespuesta {trabajo}`).
+  `{t: "busca", id, patron}`. La acción `proyecto` está declarada con `"progreso": "proyectoProgreso"` (`app.json` → `acciones`):
+  el `Procesador` del host (Mac: `Procesador.lectorProgreso` con `LectorProgreso` de la pieza, target `PiezaTrabajos`, en
+  `EsquemaApp.swift`; Windows/Linux: `lectorProgreso` de `src/progreso.js`, pasado a `crearHost`) lee las líneas nuevas cada 0,5 s y
+  llama `window.Esquema.proyectoProgreso({eventos})`. Toda orden recibe `ESQUEMA_PROGRESO`; solo las de `CON_PROGRESO` escriben ahí.
+  La respuesta final llega como siempre (`proyectoRespuesta {trabajo}`). El host corta la orden a los 3600 s (`limite`): un trabajo
+  más largo queda `interrumpido` y «Seguir donde quedó» lo retoma.
   Si la ventana se cerró y se vuelve a abrir, la interfaz pide `trabajo` (el último del proyecto) y, mientras corra sin eventos,
   vuelve a preguntar cada 6 s.
 - **La IA en vivo** (`ia.preguntar_vivo(prompt, timeout=…, leer=…, no_leer=…, al_evento=…, detener=…)`, de la pieza «ia»: arma el
@@ -206,8 +214,8 @@ Lo que tarda minutos (documentar un proyecto entero) **no** es una llamada gigan
 - **Agregar un tipo de trabajo nuevo** (p. ej. «Historias de usuario»): (1) un módulo en `bin/` con sus `ETAPAS` y una función
   `correr(e, t)` que avanza con `t.etapa(nombre)`, `t.poner_item(ruta, titulo=…, estado=…)`, `t.leyo(ruta)`, `t.detenido()` y
   termina con `t.terminar(estado, error)` (escribe en disco en cada paso; lo que la persona puede deshacer, como `.antes.json`);
-  (2) sus órdenes en `ORDENES` de `proyecto.py` (y en `Ventana.ordenesProyecto` y `ORDENES_PROYECTO`; las que corren largo, también
-  en `ordenesConProgreso` / `ORDENES_CON_PROGRESO`); (3) en la interfaz, el mismo `trabajoHTML` muestra etapas e ítems: agrega el
+  (2) sus órdenes en `ORDENES` de `proyecto.py` y en los `valores` de `orden` de la acción `proyecto` de `app.json` (después
+  `pieza.py acciones .`; el contrato revisa que sean las mismas; las que corren largo, también en `CON_PROGRESO`); (3) en la interfaz, el mismo `trabajoHTML` muestra etapas e ítems: agrega el
   nombre de sus etapas a `NOMBRE_ETAPA` y, si el trabajo **pregunta algo** a la persona, usa
   `t.esperar(preguntas)` (ver «Trabajos que preguntan»);
   (4) su simulación en `simularTrabajo` y pruebas en `test_python.py` (clase `Documentar` como modelo) e `interfaz.mjs`.
@@ -484,15 +492,29 @@ probarIA, estructura, crearReadme, dibujar, proyecto, exportar, copiar, abrirEnl
 buscarActualizacion, actualizar, papelera`. Respuestas: `estado, carpetaElegida, archivoAbierto, archivoGuardado, archivoCambiado, archivos,
 iaProbada, estructuraLista, readmeListo, dibujoListo, proyectoRespuesta, exportado, copiado, catalogoListo, plantillaDescargada,
 actualizacionRevisada, actualizacionProgreso, enPapelera`, `proyectoProgreso` (ver «Trabajos») y `menu` (los menús nativos).
-`proyecto {orden, …}` es una sola acción para todo lo de `bin/proyecto.py`: la app solo acepta las órdenes de `ORDENES` (la misma
-lista en `Ventana.ordenesProyecto` y en `ORDENES_PROYECTO` de `main.js`; el contrato lo revisa), le agrega la carpeta actual (salvo las de `ordenesSinCarpeta` / `ORDENES_SIN_CARPETA`: `detectar` y `crear`, que no dependen de
-ella) y responde `proyectoRespuesta {orden, …}`. Para elegir archivos en «Agregar», la interfaz usa un `<input type=file>`: el Mac lo
+**Quién atiende cada acción** (las dos apps son los hosts de Pieza: `host-mac` y `host-escritorio`):
+- **El host:** `listo` (el estado; Esquema le suma la actualización, la carpeta y sus archivos, y desde ahí vigila), `config` (solo
+  las claves de `app.json`; `carpeta` es `"interfaz": false`), `abrirEnlace` (solo https), `copiar`; en Electron también
+  `buscarActualizacion`/`actualizar` (con la pieza «actualizaciones»).
+- **Declaradas** (`app.json` → `acciones`, que `pieza.py acciones .` arma en `acciones.json` junto a las de las piezas: `probarIA` de
+  «ia»): `proyecto`, `dibujar`, `crearReadme`, `estructura`. Solo corren un script: el host valida los datos por su tipo (lo no
+  declarado se descarta, salvo `"*": "pasar"` en `proyecto`, cuyo script valida todo), pone lo de `inyectar` (`carpeta` =
+  `carpetaActual`, que registra la app: la carpeta abierta o `""`; `idioma` = `idiomaUI`), corre el script con su `limite` y
+  responde. `acciones.json` va dentro de la app junto a `app.json`.
+- **Registradas** (lo nativo, `Puente.registrar` en `EsquemaApp.swift` / `host.acciones.registrar` en `main.js`): `elegirCarpeta`,
+  `abrirProyecto`, `abrirArchivo` y `guardarArchivo` (la vigilancia tiene que conocer el texto; guardar va en la fila del host),
+  `papelera`, `exportar`, `catalogoPlantillas`, `descargarPlantilla` y, en Mac, `buscarActualizacion`/`actualizar`.
+
+`proyecto {orden, …}` es una sola acción para todo lo de `bin/proyecto.py`: el host solo acepta las órdenes de `ORDENES` (el enum de
+`orden` en `app.json`; el contrato lo revisa), le pone la carpeta actual (sin carpeta, `""`: `proyecto.py` solo deja correr
+`SIN_CARPETA` —`detectar` y `crear`— y lo demás responde «Elige una carpeta primero») y responde `proyectoRespuesta {orden, …}`. Para elegir archivos en «Agregar», la interfaz usa un `<input type=file>`: el Mac lo
 atiende con `WKUIDelegate.runOpenPanelWith` (solo el marco principal y `file://`). `abrirProyecto {indice}` abre un reciente por su posición en `proyectos.json`: la ruta la
 lee la app, nunca la manda la interfaz. `puente.json` dice qué script corre
-cada acción. `pruebas/contrato.py` revisa que interfaz, contrato y simulación coincidan, que existan los scripts, que
-`app/Sources/Esquema/Ventana.swift` (un `case` por acción) y `escritorio/src/main.js` (objeto `ACCIONES`) atiendan todo, manden
-todas las respuestas y solo llamen funciones que la interfaz tiene, y la seguridad de las dos apps (abajo). Una acción nueva va en
-`ui/app.js`, `simular()`, `puente.json`, `Ventana.swift` y `ACCIONES`.
+cada acción. `pruebas/contrato.py` revisa que interfaz, contrato y simulación coincidan, que existan los scripts, que `acciones.json`
+esté al día con `app.json`, que cada acción la atienda alguien en cada app (registrada, del host o declarada), que manden todas las
+respuestas y solo llamen funciones que la interfaz tiene, y la seguridad de las dos apps (abajo). Una acción nueva va en `ui/app.js`,
+`simular()` y `puente.json` y, si solo corre un script, en `app.json` → `acciones` (+ `pieza.py acciones .`); si es nativa, registrada
+en `EsquemaApp.swift` y en `main.js`.
 
 **Lo que las apps nunca hacen con lo que manda la interfaz:** armar comandos (todo va en un JSON de entrada), aceptar rutas absolutas
 o con `..` (cada ruta se revisa como `comun.ruta_en` antes de llamar a bin/, que la vuelve a revisar), cambiar `carpeta` por
@@ -504,24 +526,30 @@ desconocidos en `config.json`, abrir algo que no sea https, pasar a `bin/proyect
   con `bin/` y `plantillas/`) y Python portátil verificado por SHA-256 (`herramientas/empaquetar.sh`; misma versión y huella que
   Corta/Alcancía/Graba/Minuta). Firma ad hoc con requisito por identificador `app.esquema.mac` (el permiso de la carpeta sobrevive a
   cada actualización). `ui/demo.json` no va en la app.
-- **Puente:** `WKScriptMessageHandler` «esquema», solo para el marco principal con origen `file`; `decidePolicyFor` solo deja navegar
-  dentro de `ui/` y abre https en el navegador. `window.ESQUEMA_HOST = "mac"`.
+- **Host:** la pieza «host-mac» (target `PiezaHost`, no se edita a mano): `EsquemaApp.swift` arranca con `Host.arrancar(…) { p in … }`
+  y ahí configura las otras piezas, el estado, los menús, el inyector `carpetaActual` y lo que registra. **Puente:** `WKScriptMessageHandler`
+  «esquema», solo para el marco principal con origen `file` y una página dentro de `ui/`; `decidePolicyFor` solo deja navegar dentro de
+  `ui/` y abre https en el navegador; si el proceso de la página se cae, se vuelve a cargar. `window.ESQUEMA_HOST = "mac"`. Los scripts
+  corren con el `Procesador` del host: sin variables `ESQUEMA_*` de afuera, entrada y salida en una carpeta temporal 0700 y con
+  límite de tiempo (corta también a lo que lanzó el script).
 - **Carpeta:** `NSOpenPanel` → marcador (`bookmarkData`, en `UserDefaults`, la sigue aunque la muevan; la app no está en sandbox,
   así que no hace falta un marcador «security-scoped») + `config.carpeta` para los scripts.
 - **Vigilar la carpeta** (`Vigilante`, FSEvents con eventos por archivo): solo cuenta un `.md`/`.mmd` o una carpeta, fuera de `.git`,
   `node_modules` y las demás pesadas; espera 0,35 s de calma, relee los archivos abiertos (`conocidos`: el último texto que Esquema
   leyó o guardó; un guardado propio queda como conocido **antes** de escribirse, así no se avisa) → `archivoCambiado`, y vuelve a
   listar con `carpeta.py listar` → `archivos` si la lista cambió.
-- **Guardar:** de a uno y en orden (`EnOrden`), atómico (`comun.escribir_atomico`). Al salir (⌘Q, o el actualizador) la interfaz
+- **Guardar:** de a uno y en orden (`Fila` del host), atómico (`comun.escribir_atomico`). Al salir (⌘Q, o el actualizador) la interfaz
   guarda lo pendiente y la app espera los guardados (hasta 3 s); cerrar la ventana también guarda.
 - **Exportar:** `NSSavePanel` (SVG, PNG desde base64, Markdown), escritura atómica. **Copiar:** `NSPasteboard`.
-- **Menús** (en el idioma elegido, se rearman al cambiarlo): Esquema (Acerca de, Ajustes ⌘,, Salir), Archivo (Nuevo ⌘N, Abrir
+- **Apariencia:** la ventana y los menús siguen `config.tema` (el host, `NSApp.appearance`).
+- **Menús** (en el idioma elegido, se rearman al cambiarlo; el de la app, Ventana y Ayuda los pone el host, Esquema arma el medio con
+  `m.item`/`m.nativo`): Esquema (Acerca de, Ajustes ⌘,, Ocultar, Salir), Archivo (Nuevo ⌘N, Abrir
   carpeta ⌘O, Mostrar la carpeta en el Finder, Guardar ⌘S, Cerrar ventana), Edición (Deshacer ⌘Z y Rehacer ⇧⌘Z de Esquema; cortar,
   copiar, pegar y seleccionar todo del sistema), Ver (Acercar ⌘+, Alejar ⌘−, Ajustar ⌘0, Solo texto ⌘1, Texto y dibujo ⌘2, Solo
-  dibujo ⌘3, Pantalla completa), Ventana.
+  dibujo ⌘3, Pantalla completa), Ventana, Ayuda (sitio y código).
 - **IA:** la corre `bin/ia.py` (sin herramientas ni MCP); la app no llama a ninguna IA por su cuenta.
 - **Arranque:** menús y ventana de inmediato (en el idioma del sistema hasta que la persona elija); lo que corre solo
-  (actualizaciones al abrir y cada 6 h) parte en `EsquemaApp.iniciarTareas()` recién con `Idioma.elegido`. Un aviso automático solo
+  (actualizaciones al abrir y cada 6 h, `p.tareas`) parte recién con `Idioma.elegido` (el host). Un aviso automático solo
   llega a la interfaz si hay versión nueva (nunca se vuelve a mandar el estado: no interrumpe la bienvenida).
 - **Actualizaciones** (pieza «actualizaciones», target `PiezaActualizaciones`): `Esquema-macOS.zip` + `.sha256` solo desde
   `https://github.com/esquema-app/esquema/releases/download/…` (`esDescargaNuestra`), con `curl --proto '=https' --proto-redir '=https'`
@@ -535,11 +563,15 @@ desconocidos en `config.json`, abrir algo que no sea https, pasar a `bin/proyect
 - Electron (versión exacta, **44.9.1 o más nueva**: trae el arreglo de certificados eMudhra), `package-lock.json`, `.npmrc` con
   `ignore-scripts=true` (el binario de Electron se baja con `node node_modules/electron/install.js`). Dependabot propone las
   actualizaciones con `cooldown`.
+- **Host:** la pieza «host-escritorio» (`src/host.js`, `enchufe.js`, `procesador.js`, `preload.js`; no se editan a mano): `main.js`
+  arranca con `crearHost({electron, ventana, sitio, codigo, actualizaciones, lectorProgreso, inyectar: {carpetaActual}, estado, menu})`
+  y registra lo nativo con `host.acciones.registrar`. Las rutas de la interfaz se revisan con `dentro()` de la pieza (`absoluta` en
+  `vigilante.js`: `.md`/`.mmd`).
 - **Ventana:** `contextIsolation`, `sandbox`, sin `nodeIntegration` ni `webview`; la interfaz se sirve por `esquema://ui/…` (solo
   archivos de `ui/`); `will-navigate`, `will-redirect` y `setWindowOpenHandler` no dejan salir de ahí (https → navegador); todos los
   permisos del navegador se niegan. `preload.js` solo expone `ESQUEMA_HOST` y `esquemaEscritorio.enviar`; `ipcMain` solo atiende al
   marco principal de la ventana propia con origen `esquema://ui/`. Lo de Chromium va en `<carpeta de Esquema>/electron`.
-- **Igual que en Mac:** mismas acciones (`ACCIONES`), mismos scripts con el Python portátil (`herramientas/preparar.sh`, huella fija),
+- **Igual que en Mac:** mismas acciones (las mismas declaradas, registradas y del host), mismos scripts con el Python portátil (`herramientas/preparar.sh`, huella fija),
   misma config validada, guardados en orden, guardar al cerrar (cerrar la ventana cierra la app), menú (Archivo, Edición, Ver,
   Ayuda; deshacer/rehacer con `registerAccelerator: false` porque el atajo lo atiende la interfaz), exportar con `dialog`, copiar
   con `clipboard`.
@@ -554,7 +586,7 @@ desconocidos en `config.json`, abrir algo que no sea https, pasar a `bin/proyect
   instaló, solo desde los Releases de este repo y verificados con su `.sha256`; sin empaquetar no busca. Al abrir (15 s después) y
   cada 6 h con `revisarCadaRato`, recién con el idioma elegido.
 - **Pruebas:** `pruebas/arranque.mjs` abre la app de verdad con Xvfb (HOME temporal, carpeta e IA ficticias): idioma primero,
-  config, abrir/guardar, cambio de afuera, conflicto, archivo nuevo, rutas fuera de la carpeta, IA sin herramientas, menú,
+  las acciones declaradas cargadas, config, abrir/guardar, cambio de afuera, conflicto, archivo nuevo, rutas fuera de la carpeta, IA sin herramientas, menú,
   navegación y protocolo; con `ELECTRON=dist/linux-unpacked/esquema APP=1` prueba la empaquetada. **Windows no se puede probar
   aquí:** pídelo a la comunidad con un issue `probar`.
 

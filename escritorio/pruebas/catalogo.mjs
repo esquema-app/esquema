@@ -16,7 +16,8 @@ process.env.XDG_CONFIG_HOME = TMP;  // la carpeta de Esquema de la prueba (datos
 process.env.APPDATA = TMP;
 const require = createRequire(import.meta.url);
 const { crear } = require("../src/catalogo.js");
-const { Procesador } = require("../src/servicios.js");
+const { crearProcesador } = require("../src/procesador.js");  // pieza «host-escritorio»
+const Procesador = crearProcesador({ python: "python3", recursos: RAIZ, id: "esquema", datos: path.join(TMP, "esquema") });
 const problemas = [];
 const revisar = (c, m) => { if (!c) problemas.push(m); };
 

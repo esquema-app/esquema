@@ -92,6 +92,16 @@ class Carpeta(unittest.TestCase):
         self.assertGreaterEqual(r["omitidos"], 3)
         self.assertEqual(r["manifiestos"]["package.json"]["name"], "ejemplo")
         self.assertNotIn("token", json.dumps(r["manifiestos"]))
+        # La acción declarada «estructura»: la carpeta llega en la entrada (la pone la app); sin carpeta, no hay nada que listar.
+        self.assertEqual(correr("carpeta.py", "estructura", entrada({"carpeta": p}))["archivos"], r["archivos"])
+        self.assertEqual(correr("carpeta.py", "estructura", entrada({"carpeta": ""}))["error"], "Elige una carpeta primero")
+
+    def test_proyecto_sin_carpeta(self):
+        # Sin carpeta abierta la app manda carpeta "": solo SIN_CARPETA corre; lo demás nunca usa otra carpeta.
+        r = correr("proyecto.py", "abrir", entrada({"carpeta": ""}))
+        self.assertEqual((r["ok"], r["error"], r["orden"]), (False, "Elige una carpeta primero", "abrir"))
+        r = correr("proyecto.py", "detectar", entrada({"carpeta": "", "texto": "Como persona quiero grabar para no olvidar."}))
+        self.assertNotEqual(r.get("error"), "Elige una carpeta primero")
 
     def test_no_sigue_enlaces(self):
         p = proyecto()
