@@ -7,15 +7,15 @@ Uso: estado.py <salida.json>   → {config, ias, version, plantillas, tipos, pro
 import sys
 
 import comun
+import catalogo
 import ia
-import plantillas
 import proyecto
 import tipos
 
 
 def estado():
     recientes = proyecto.para_interfaz(proyecto.recientes())
-    return {"config": comun.config(), "ias": ia.lista(), "version": comun.VERSION, "plantillas": plantillas.listar(), "tipos": tipos.incluidos(),
+    return {"config": comun.config(), "ias": ia.lista(), "version": comun.VERSION, "plantillas": catalogo.listar("plantillas"), "tipos": tipos.incluidos(),
             "proyectos": recientes}
 
 

@@ -28,8 +28,10 @@ Reglas que importan: código, comentarios y textos en español (todo texto nuevo
 `ui/idiomas/en.json`); **nunca subas documentos reales ni datos personales**; el motor y la interfaz sin dependencias; Python solo con
 biblioteca estándar; lo que Esquema escribe tiene que seguir siendo Mermaid que GitHub muestra (lo propio va en `%% esquema:`).
 
-**Archivos de piezas:** `bin/nucleo.py`, `bin/ia.py` y `ui/i18n.js` vienen de [Pieza](https://github.com/pieza-app/pieza) (están en
-`piezas.json`, con el aviso de la MPL-2.0). No los cambies aquí: propón el cambio en Pieza y llega a Esquema con «Pieza al día».
+**Archivos de piezas:** `bin/nucleo.py`, `bin/ia.py`, `bin/trabajos.py`, `bin/catalogo.py`, `bin/contenido.py`, `ui/i18n.js`,
+`ui/host.js`, `ui/tema.*`, `ui/componentes.*`, `ui/bienvenida.*`, la app de Mac en `app/Sources/Pieza*/` y la de Windows y Linux en
+`escritorio/src/` (salvo `main.js`) vienen de [Pieza](https://github.com/pieza-app/pieza) (están en `piezas.json`, con el aviso de la
+MPL-2.0). No los cambies aquí: propón el cambio en Pieza y llega a Esquema con «Pieza al día».
 
 Los aportes entran con la licencia del proyecto, [AGPL-3.0](LICENSE).
 
@@ -42,7 +44,7 @@ Todo entra por pull request y lo junta alguien que mantiene el proyecto: nadie p
 - **Motor:** que la compatibilidad con Mermaid siga (los ejemplos de `pruebas/compat/` se leen y se escriben igual), que no baje el
   rendimiento (`node pruebas/motor.mjs` y, si toca el acomodo, `herramientas/comparar_mermaid.mjs`) y que todo texto se escape.
 - **Interfaz:** que funcione con teclado, a 390 px y en claro y oscuro, y que los textos tengan traducción.
-- **Plantillas:** que pasen `python3 bin/plantillas.py validar`, que el nombre y la descripción digan lo que son y que no traigan datos
+- **Plantillas:** que pasen `python3 bin/catalogo.py validar plantillas plantillas/*/*.json`, que el nombre y la descripción digan lo que son y que no traigan datos
   de nadie.
 - **Traducciones:** que una persona que hable el idioma revise el texto.
 
@@ -65,13 +67,16 @@ Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
   Code and comments are in Spanish; UI text needs its English entry in `ui/idiomas/en.json`; never commit real documents or personal data.
   If your change is visible, also update the README, the page (`docs/`), screenshots and `CHANGELOG.md`, or say so in the
   pull request and we'll do it.
-- **Piece files:** `bin/nucleo.py`, `bin/ia.py` and `ui/i18n.js` come from [Pieza](https://github.com/pieza-app/pieza) (listed in
+- **Piece files:** `bin/nucleo.py`, `bin/ia.py`, `bin/trabajos.py`, `bin/catalogo.py`, `bin/contenido.py`, `ui/i18n.js`, `ui/host.js`,
+  `ui/tema.*`, `ui/componentes.*`, `ui/bienvenida.*`, `app/Sources/Pieza*/` and `escritorio/src/` (except `main.js`) come from [Pieza](https://github.com/pieza-app/pieza) (listed in
   `piezas.json`, MPL-2.0 notice included). Don't change them here: propose the change in Pieza and it arrives through «Pieza al día».
 - **Review:** everything goes through a pull request and a maintainer merges it. Contributions are licensed under AGPL-3.0.
   We also check that the README, the page and the docs still describe the app as it is.
 - **Security issues:** don't open a public issue; report them privately as explained in [SECURITY.md](SECURITY.md).
 
 ## Aportar con los flujos de Pieza
+
+Aportamos con los flujos de Pieza: en Claude Code se instalan solos al abrir el repo; con otra IA, sigue `AGENTS.md`.
 
 Esta app es parte de la familia de [Pieza](https://github.com/pieza-app/pieza). Instala sus flujos (crear, revisar aportes y las
 reglas de seguridad) en tu IA:

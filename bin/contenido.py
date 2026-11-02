@@ -1,12 +1,21 @@
-"""Lo que la persona agrega a un proyecto (texto pegado o archivos): leerlo, saber qué es y partirlo. Solo biblioteca estándar.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+"""Pieza «contenido»: leer lo que la persona agrega (un archivo o texto pegado) solo con la biblioteca estándar.
 
-- `extraer(nombre, datos)`: el texto de un .md, .txt, .pdf (con texto), .docx, .odt, .epub o .html, como Markdown sencillo
-  (los títulos con #). Lo que no se puede leer sin programas extra (.doc, .pages, .rtf, un PDF escaneado) da un aviso claro: «pega el
-  texto». Los archivos son de afuera: tamaño máximo, zip con tope, XML sin entidades, y nada se ejecuta.
-- `detectar(texto, nombre)`: historia de usuario, libro o documento (acta, especificación, artículo, apunte…), con las razones.
-  Es una heurística barata; la IA lo confirma o lo corrige en su primera respuesta.
-- `partir_capitulos(texto)`: los capítulos de un libro sin IA (encabezados, «Capítulo N», partes), saltándose el índice.
-- `id_historia(texto, existentes)`: «HU-123», «PROJ-12», «#45» (issue de GitHub) o el siguiente «HU-001».
+    import contenido
+    try:
+        r = contenido.extraer("libro.epub", datos)       # bytes → {texto, titulo, formato, recortado}
+        r = contenido.extraer_archivo("/ruta/acta.docx") # lo mismo, leyendo el archivo con su tope
+    except contenido.NoSePuede as e:
+        e.codigo, e.plantilla, e.valores               # para traducir; str(e) es la frase en español
+    partes = contenido.partir_capitulos(r["texto"])     # [{n, titulo, archivo, texto}] sin IA
+
+- Formatos: .md, .txt, .pdf (con texto: flujos sin comprimir o FlateDecode), .docx, .odt, .epub y .html, como Markdown sencillo (los
+  títulos con #). Lo que no se puede leer sin programas extra (.doc, .pages, .rtf, un PDF escaneado o con clave) da una frase clara.
+- **Los archivos son de afuera:** tamaño máximo; un .docx/.odt/.epub (zip) con tope de partes y de bytes descomprimidos que se cuenta
+  AL LEER (no se confía en lo que declara el zip: una «zip bomba» se corta); XML sin DOCTYPE ni entidades (nada de «mil millones de
+  risas»); PDF con tope por flujo y en total; nada se ejecuta y ningún enlace se abre.
 """
 import html
 import html.parser
@@ -17,9 +26,14 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
+import nucleo
+
 MAX_ARCHIVO = 25 * 1024 * 1024     # por archivo que se agrega
 MAX_TEXTO = 3_000_000              # caracteres de texto que se guardan (un libro largo cabe)
-MAX_ZIP = 80 * 1024 * 1024         # lo que puede descomprimirse de un .docx / .epub / .odt
+MAX_ZIP = 80 * 1024 * 1024         # lo que puede descomprimirse de un .docx / .epub / .odt (en total, contado al leer)
+MAX_PARTE = 40 * 1024 * 1024       # una parte de adentro, descomprimida
+MAX_PARTES = 5000                  # partes de un zip
+MAX_PDF = 60 * 1024 * 1024         # lo que se descomprime de un PDF, en total
 LEE = (".md", ".markdown", ".txt", ".text", ".pdf", ".docx", ".odt", ".epub", ".html", ".htm")
 NO_LEE = {".doc": "Word antiguo (.doc)", ".pages": "Pages", ".rtf": "RTF", ".mobi": "Mobi", ".azw": "Kindle", ".azw3": "Kindle", ".odp": "una presentación",
           ".pptx": "una presentación", ".key": "una presentación de Keynote", ".xlsx": "una planilla", ".xls": "una planilla"}
@@ -36,8 +50,35 @@ def extension(nombre):
     return n[i:] if i > 0 else ""
 
 
+#: Frases en español (claves de traducción) con {app}: la interfaz hace Tp(plantilla, valores).
+FRASES = {
+    "grande": "Ese archivo es muy grande (más de 25 MB). Divídelo o pega el texto.",
+    "formato": "{app} no lee ese formato sin programas extra. Guárdalo como .docx, PDF o texto, o copia el texto y pégalo aquí.",
+    "desconocido": "No sé leer ese tipo de archivo. Copia el texto y pégalo aquí.",
+    "vacio": "Ese archivo no tiene texto que pueda leer. Copia el texto y pégalo aquí.",
+    "raro": "Ese archivo trae algo raro adentro y no lo abro.",
+    "danado": "Ese archivo está dañado o no es lo que dice su nombre.",
+    "grande_adentro": "Ese archivo es demasiado grande por dentro.",
+    "no_pdf": "Ese archivo no es un PDF.",
+    "pdf_clave": "Ese PDF tiene clave. Ábrelo, copia el texto y pégalo aquí.",
+    "pdf_sin_texto": "No pude leer el texto de este PDF (puede ser escaneado o usar letras especiales). Ábrelo, copia el texto y pégalo aquí.",
+    "epub_indice": "Ese EPUB está dañado: no encuentro su índice.",
+}
+
+
 class NoSePuede(ValueError):
-    """Un archivo que Esquema no sabe leer sin dependencias: el mensaje dice qué hacer."""
+    """Un archivo que no se puede leer sin dependencias: la frase dice qué hacer. `codigo`, `plantilla` y `valores` para traducir."""
+
+    def __init__(self, codigo):
+        try:
+            app = nucleo.app()["nombre"]
+        except RuntimeError:
+            app = "La app"
+        self.codigo, self.plantilla, self.valores = codigo, FRASES[codigo], {"app": app}
+        super().__init__(self.plantilla.replace("{app}", app))
+
+    def como_dict(self):
+        return {"ok": False, "codigo": self.codigo, "plantilla": self.plantilla, "valores": self.valores, "error": str(self)}
 
 
 # ───────────── Leer cada formato ─────────────
@@ -58,20 +99,48 @@ def _limpiar(t):
 
 
 def _xml(datos):
-    """XML de un archivo de afuera: sin DOCTYPE ni entidades (nada de «mil millones de risas»)."""
-    if b"<!DOCTYPE" in datos[:4096].upper() and b"<!ENTITY" in datos.upper():
-        raise NoSePuede("Ese archivo trae algo raro adentro y no lo abro.")
-    return ET.fromstring(datos)
+    """XML de un archivo de afuera: sin DOCTYPE ni entidades en ninguna parte (nada de «mil millones de risas» ni entidades
+    externas). Un XML mal formado es un archivo dañado."""
+    if re.search(rb"<!\s*(DOCTYPE|ENTITY)", datos, re.I) or re.search(rb"<\x00!\x00", datos):
+        raise NoSePuede("raro")
+    try:
+        return ET.fromstring(datos)
+    except ET.ParseError:
+        raise NoSePuede("danado") from None
+
+
+class _Zip:
+    """Un zip de afuera que se lee con topes contados al descomprimir: lo que declara cada parte puede mentir."""
+
+    def __init__(self, datos):
+        try:
+            self.z = zipfile.ZipFile(io.BytesIO(datos))
+            partes = self.z.infolist()
+        except (zipfile.BadZipFile, ValueError, OSError):
+            raise NoSePuede("danado") from None
+        if len(partes) > MAX_PARTES or sum(i.file_size for i in partes) > MAX_ZIP:
+            raise NoSePuede("grande_adentro")
+        self.leido = 0
+
+    def read(self, nombre):
+        """Lanza KeyError si no está (como zipfile)."""
+        info = self.z.getinfo(nombre)
+        if info.file_size > MAX_PARTE:
+            raise NoSePuede("grande_adentro")
+        tope = min(MAX_PARTE, MAX_ZIP - self.leido)
+        try:
+            with self.z.open(info) as f:
+                datos = f.read(tope + 1)
+        except (zipfile.BadZipFile, NotImplementedError, RuntimeError, OSError, EOFError, zlib.error):
+            raise NoSePuede("danado") from None
+        if len(datos) > tope:
+            raise NoSePuede("grande_adentro")
+        self.leido += len(datos)
+        return datos
 
 
 def _zip(datos):
-    try:
-        z = zipfile.ZipFile(io.BytesIO(datos))
-    except zipfile.BadZipFile:
-        raise NoSePuede("Ese archivo está dañado o no es lo que dice su nombre.") from None
-    if sum(i.file_size for i in z.infolist()) > MAX_ZIP:
-        raise NoSePuede("Ese archivo es demasiado grande por dentro.")
-    return z
+    return _Zip(datos)
 
 
 class _HTML(html.parser.HTMLParser):
@@ -132,12 +201,12 @@ def _docx(datos):
     try:
         raiz = _xml(z.read("word/document.xml"))
     except KeyError:
-        raise NoSePuede("Ese .docx no tiene texto que pueda leer.") from None
+        raise NoSePuede("vacio") from None
     titulo = ""
     try:
         core = _xml(z.read("docProps/core.xml"))
         titulo = next((x.text or "" for x in core.iter() if x.tag.endswith("}title")), "").strip()
-    except (KeyError, ET.ParseError):
+    except (KeyError, NoSePuede):
         pass
     lineas = []
     cuerpo = raiz.find(W + "body")
@@ -183,7 +252,7 @@ def _odt(datos):
     try:
         raiz = _xml(z.read("content.xml"))
     except KeyError:
-        raise NoSePuede("Ese .odt no tiene texto que pueda leer.") from None
+        raise NoSePuede("vacio") from None
     T = "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}"
     lineas = []
     for el in raiz.iter():
@@ -201,8 +270,8 @@ def _epub(datos):
         cont = _xml(z.read("META-INF/container.xml"))
         opf_ruta = next(x.get("full-path") for x in cont.iter() if x.tag.endswith("rootfile"))
         opf = _xml(z.read(opf_ruta))
-    except (KeyError, StopIteration, ET.ParseError):
-        raise NoSePuede("Ese EPUB está dañado: no encuentro su índice.") from None
+    except (KeyError, StopIteration, TypeError, AttributeError):
+        raise NoSePuede("epub_indice") from None
     base = opf_ruta.rsplit("/", 1)[0] + "/" if "/" in opf_ruta else ""
     titulo = next(("".join(x.itertext()).strip() for x in opf.iter() if x.tag.endswith("}title")), "")
     manifiesto = {x.get("id"): x.get("href") for x in opf.iter() if x.tag.endswith("}item")}
@@ -319,10 +388,10 @@ def _pdf_texto_flujo(cont):
 
 def _pdf(datos):
     if not datos.startswith(b"%PDF"):
-        raise NoSePuede("Ese archivo no es un PDF.")
+        raise NoSePuede("no_pdf")
     if b"/Encrypt" in datos:
-        raise NoSePuede("Ese PDF tiene clave. Ábrelo, copia el texto y pégalo aquí.")
-    textos = []
+        raise NoSePuede("pdf_clave")
+    textos, total = [], 0
     for m in _PDF_FLUJO.finditer(datos):
         dic = m.group(1)
         if any(x in dic for x in (b"/Image", b"/XObject", b"/FontFile", b"/Metadata", b"/XRef", b"/ObjStm")):
@@ -334,9 +403,12 @@ def _pdf(datos):
         crudo = datos[ini:fin].rstrip(b"\r\n")
         if b"/FlateDecode" in dic:
             try:
-                crudo = zlib.decompressobj().decompress(crudo, 20 * 1024 * 1024)
+                crudo = zlib.decompressobj().decompress(crudo, min(20 * 1024 * 1024, MAX_PDF - total + 1))
             except zlib.error:
                 continue
+            total += len(crudo)
+            if total > MAX_PDF:
+                raise NoSePuede("grande_adentro")
         elif b"/Filter" in dic:
             continue  # otros filtros (imágenes, LZW…): no son texto que sepamos leer
         if b"BT" in crudo and (b"Tj" in crudo or b"TJ" in crudo):
@@ -344,7 +416,7 @@ def _pdf(datos):
     t = _limpiar("\n".join(textos))
     letras = sum(1 for c in t if c.isalpha() or c.isspace())
     if len(t) < 40 or letras / max(1, len(t)) < 0.75:
-        raise NoSePuede("No pude leer el texto de este PDF (puede ser escaneado o usar letras especiales). Ábrelo, copia el texto y pégalo aquí.")
+        raise NoSePuede("pdf_sin_texto")
     # Párrafos: las líneas cortadas por el ancho de la página se juntan.
     return re.sub(r"(?<=[a-záéíóúñ,;])\n(?=[a-záéíóúñ])", " ", t), ""
 
@@ -353,10 +425,10 @@ def extraer(nombre, datos):
     """{texto, titulo, formato}. NoSePuede con un mensaje claro si no se puede leer sin programas extra."""
     ext = extension(nombre)
     if len(datos) > MAX_ARCHIVO:
-        raise NoSePuede("Ese archivo es muy grande (más de 25 MB). Divídelo o pega el texto.")
+        raise NoSePuede("grande")
     if ext in NO_LEE:
         # (Una frase fija, para que se traduzca entera; el nombre del archivo ya va al lado.)
-        raise NoSePuede("Esquema no lee ese formato sin programas extra. Guárdalo como .docx, PDF o texto, o copia el texto y pégalo aquí.")
+        raise NoSePuede("formato")
     if ext in (".pdf",):
         texto, titulo = _pdf(datos)
     elif ext == ".docx":
@@ -370,78 +442,19 @@ def extraer(nombre, datos):
     elif ext in (".md", ".markdown", ".txt", ".text", "") and b"\x00" not in datos[:4096].replace(b"\x00\x00", b""):
         texto, titulo = _limpiar(_decodificar(datos)), ""
     else:
-        raise NoSePuede("No sé leer ese tipo de archivo. Copia el texto y pégalo aquí.")
+        raise NoSePuede("desconocido")
     if not texto.strip():
-        raise NoSePuede("Ese archivo no tiene texto que pueda leer. Copia el texto y pégalo aquí.")
+        raise NoSePuede("vacio")
     return {"texto": texto[:MAX_TEXTO], "recortado": len(texto) > MAX_TEXTO, "titulo": titulo[:120], "formato": ext.lstrip(".") or "txt"}
 
-
-# ───────────── ¿Qué es? ─────────────
-RE_COMO = re.compile(r"(?im)^\W*(como|en mi rol de)\s+(un|una|el|la)?\s*\S.{0,120}?\b(quiero|necesito|deseo)\b.{2,300}?\b(para|de modo que|con el fin de|así)\b")
-RE_AS_A = re.compile(r"(?im)^\W*as\s+an?\s+\S.{0,120}?\bi\s+(want|need|would like)\b.{2,300}?\bso\s+that\b")
-RE_CRITERIOS = re.compile(r"(?im)^\W*(criterios? de aceptaci[oó]n|acceptance criteria|definition of done|definici[oó]n de (hecho|terminado))\b")
-RE_GWT = re.compile(r"(?im)^\W*(dado|given)\b.{3,}\n(?:.*\n){0,3}\W*(cuando|when)\b")
-RE_HU = re.compile(r"\b(HU|US|HDU)[-_ ]?(\d{1,6})\b")
-RE_JIRA_URL = re.compile(r"https?://[\w.-]+/browse/([A-Z][A-Z0-9]{1,9}-\d{1,6})\b")
-RE_GH_ISSUE = re.compile(r"https?://github\.com/([\w.-]+)/([\w.-]+)/(issues|pull)/(\d{1,7})\b")
-RE_JIRA = re.compile(r"\b([A-Z][A-Z]{1,9}-\d{1,6})\b")
-RE_CAPITULO = re.compile(r"(?im)^\W{0,4}(cap[ií]tulo|chapter|parte|part|libro|book)\s+([0-9]{1,3}|[ivxlc]{1,8}|primer[oa]?|segund[oa]|tercer[oa]?|uno|dos|tres|one|two|three)\b.*$")
-RE_INDICE = re.compile(r"(?im)^\W{0,4}(índice|indice|tabla de contenidos?|contenidos?|table of contents|contents)\s*$")
-RE_ISBN = re.compile(r"(?i)\bISBN(?:-1[03])?:?\s*[0-9][0-9 -]{8,16}[0-9Xx]\b")
-SUBTIPOS = (
-    ("acta", re.compile(r"(?im)\b(acta|minuta de reuni[oó]n|asistentes|participantes|acuerdos|meeting notes|attendees|action items)\b")),
-    ("especificacion", re.compile(r"(?im)\b(especificaci[oó]n|requisitos? (funcionales|no funcionales)|requirements?|alcance|scope|RF-\d+)\b")),
-    ("articulo", re.compile(r"(?im)\b(resumen|abstract|introducci[oó]n|conclusi[oó]n|referencias|bibliograf[ií]a)\b")),
-)
-
-
-def detectar(texto, nombre="", formato=""):
-    """{tipo: historia | libro | documento, subtipo, razones: [...], titulo}. Las razones son frases cortas para la persona."""
-    t = texto or ""
-    cabeza = t[:20_000]
-    puntos = {"historia": 0, "libro": 0, "documento": 1}
-    razones = {"historia": [], "libro": [], "documento": []}
-
-    def suma(tipo, n, razon):
-        puntos[tipo] += n
-        if razon not in razones[tipo]:
-            razones[tipo].append(razon)
-
-    if RE_COMO.search(cabeza) or RE_AS_A.search(cabeza):
-        suma("historia", 4, "Dice «Como … quiero … para …»")
-    if RE_CRITERIOS.search(cabeza):
-        suma("historia", 3, "Trae criterios de aceptación")
-    if RE_GWT.search(cabeza):
-        suma("historia", 2, "Tiene escenarios Dado / Cuando / Entonces")
-    if RE_HU.search(cabeza[:3000]) or RE_JIRA_URL.search(cabeza):
-        suma("historia", 2, "Tiene el número de un ticket")
-    if RE_GH_ISSUE.search(cabeza):
-        suma("historia", 2, "Es un issue de GitHub")
-    capitulos = len({m.group(0).strip().lower() for m in RE_CAPITULO.finditer(t)})
-    if capitulos >= 3:
-        suma("libro", 3 + min(capitulos, 10) // 3, "Tiene capítulos")
-    if RE_INDICE.search(cabeza):
-        suma("libro", 2, "Tiene un índice")
-    if RE_ISBN.search(t[:60_000]):
-        suma("libro", 4, "Tiene ISBN")
-    if formato == "epub":
-        suma("libro", 5, "Es un libro electrónico (EPUB)")
-    if len(t) > 80_000:
-        suma("libro", 3 if len(t) > 200_000 else 2, "Es un texto largo")
-    if len(t) < 6_000 and capitulos < 3 and puntos["libro"] < 5:
-        puntos["libro"] = min(puntos["libro"], 1)
-    subtipo = ""
-    for nombre_sub, rx in SUBTIPOS:
-        n = len(rx.findall(cabeza))
-        if n >= 2:
-            subtipo = nombre_sub
-            suma("documento", 1, {"acta": "Parece un acta de reunión", "especificacion": "Parece una especificación", "articulo": "Parece un artículo o apunte"}[nombre_sub])
-            break
-    tipo = max(("historia", "libro", "documento"), key=lambda k: (puntos[k], k == "documento"))
-    if tipo == "documento" and not razones["documento"]:
-        razones["documento"].append("Un texto corto o de otro tipo")
-    return {"tipo": tipo, "subtipo": subtipo if tipo == "documento" else "", "razones": razones[tipo][:4], "puntos": puntos,
-            "titulo": titulo_de(t, nombre)}
+def extraer_archivo(ruta, nombre=None):
+    """Como extraer(), leyendo el archivo con su tope (nunca entero si es más grande que MAX_ARCHIVO)."""
+    try:
+        with open(ruta, "rb") as f:
+            datos = f.read(MAX_ARCHIVO + 1)
+    except OSError:
+        raise NoSePuede("danado") from None
+    return extraer(nombre or ruta, datos)
 
 
 def titulo_de(texto, nombre=""):
@@ -463,37 +476,9 @@ def _corto(t):
     return t[:100].rstrip(" ,.;:") or ""
 
 
-def id_historia(texto, existentes=()):
-    """El id de una historia: el que trae (HU-12, PROJ-7, #45 de GitHub) o el siguiente HU-001."""
-    cabeza = (texto or "")[:3000]
-    for rx, f in ((RE_HU, lambda m: f"HU-{int(m.group(2))}"), (RE_JIRA_URL, lambda m: m.group(1)), (RE_GH_ISSUE, lambda m: f"#{m.group(4)}")):
-        m = rx.search(cabeza)
-        if m:
-            return f(m)
-    primera = next((l for l in cabeza.split("\n") if l.strip()), "")
-    m = RE_JIRA.search(primera)
-    if m and not re.fullmatch(r"(UTF|ISO|RFC|SHA|AES|TLS|COVID|MP|HTTP)-\d+", m.group(1)):
-        return m.group(1)
-    usados = {int(m.group(1)) for x in existentes for m in [re.match(r"hu-(\d+)", str(x).lower())] if m}
-    return f"HU-{(max(usados) + 1) if usados else 1:03d}"
-
-
-def enlace_ticket(texto):
-    """La URL del ticket o issue (si la trae), para dejarla en el documento. Esquema no la abre."""
-    for rx in (RE_GH_ISSUE, RE_JIRA_URL):
-        m = rx.search((texto or "")[:5000])
-        if m:
-            return m.group(0)
-    return ""
-
-
-def solo_enlace(texto):
-    """¿La persona pegó solo un enlace (sin el texto del ticket)?"""
-    t = (texto or "").strip()
-    return bool(re.fullmatch(r"https?://\S+", t))
-
 
 # ───────────── Capítulos (sin IA) ─────────────
+RE_CAPITULO = re.compile(r"(?im)^\W{0,4}(cap[ií]tulo|chapter|parte|part|libro|book)\s+([0-9]{1,3}|[ivxlc]{1,8}|primer[oa]?|segund[oa]|tercer[oa]?|uno|dos|tres|one|two|three)\b.*$")
 MIN_CAPITULO = 400        # caracteres: menos que esto se junta con el siguiente (títulos de un índice, portadillas)
 MAX_CAPITULOS = 80
 TROZO = 18_000            # sin encabezados: partes de este tamaño, cortadas en un párrafo

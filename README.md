@@ -148,7 +148,13 @@ irm https://raw.githubusercontent.com/esquema-app/esquema/main/instalar.ps1 | ie
 > **Ejecutar de todas formas**. El código de cada versión está en este repo y cada descarga tiene su `.sha256` en el Release.
 
 Las versiones nuevas se avisan **dentro de la app** (Ajustes → Actualizaciones): se bajan solo desde los Releases de este repo, se
-verifica su huella y la app se cierra y vuelve a abrir sola, sin perder lo que estabas escribiendo.
+verifica su huella y la app se cierra y vuelve a abrir sola, sin perder lo que estabas escribiendo (nunca en medio de un guardado
+o mientras tu IA trabaja). Tu carpeta, tus ajustes y tu idioma quedan como estaban.
+
+**Permisos y conexión:** Esquema no pide permisos del sistema (ni cámara, ni micrófono, ni avisos, ni el Llavero): solo abre la
+carpeta que eliges. Por su cuenta solo se conecta a GitHub, para buscar y bajar versiones nuevas de este repo (al abrir y cada 6
+horas) y, cuando abres «Nuevo» → «Comunidad», las plantillas del catálogo. Nunca manda nada tuyo. Tu IA se conecta a su proveedor
+con tu cuenta, y «Publicar en la wiki» usa tu git.
 
 ## Estado
 
@@ -163,6 +169,8 @@ Lo planificado (BPMN, estados, ER, gantt, mapa mental) está en [AGENTS.md](AGEN
 - **Comparte una plantilla** sin programar: descríbela con palabras en
   [«Proponer una plantilla»](https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml) y la armamos (CC0).
 - **Conversa** en [Discussions](https://github.com/esquema-app/esquema/discussions): dudas, ideas y lo que documentaste.
+- **Cuéntanos algo desde la app:** Ajustes → Acerca de → «Enviar comentarios» abre GitHub con tu mensaje listo (algo falla, una
+  idea u otro); lo revisas y lo publicas tú. Nunca se incluye nada tuyo.
 - **Aporta:** prueba en Windows o Linux, traduce o toma una
   [tarea de bienvenida](https://github.com/esquema-app/esquema/labels/good%20first%20issue). Detalle en [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -245,7 +253,8 @@ Your files stay yours: plain `.md`/`.mmd` in the folder you choose. Esquema-only
 **Website, downloads and live demo:** [esquema-app.github.io/esquema](https://esquema-app.github.io/esquema/?lang=en). **Community
 templates** (CC0) come from [esquema-catalogo](https://github.com/esquema-app/esquema-catalogo) under “New” → “Community”; propose one in
 plain words with the [template form](https://github.com/esquema-app/esquema-catalogo/issues/new?template=plantilla.yml). Questions and
-ideas: [Discussions](https://github.com/esquema-app/esquema/discussions); good first issues are labeled
+ideas: [Discussions](https://github.com/esquema-app/esquema/discussions), or from the app: Settings → About → “Send feedback” opens GitHub
+with your message ready for you to review and post (nothing of yours is included); good first issues are labeled
 [`good first issue`](https://github.com/esquema-app/esquema/labels/good%20first%20issue).
 
 **Install** (free, no account; each installer downloads the latest GitHub Release, checks its SHA-256 and installs for your user only):
@@ -256,10 +265,16 @@ ideas: [Discussions](https://github.com/esquema-app/esquema/discussions); good f
 
 The apps are **not signed** (no Apple/Microsoft certificates). The Mac installer removes the quarantine after checking the hash; if you
 downloaded the zip by hand, right-click Esquema.app → **Open**. On Windows, “Windows protected your PC” → **More info** → **Run anyway**.
-Updates are offered inside the app (Settings → Updates), only from this repo's Releases and verified by hash.
+Updates are offered inside the app (Settings → Updates), only from this repo's Releases and verified by hash; your folder, settings
+and language stay as they were. **Permissions and network:** no system permissions (no camera, microphone, notifications or
+Keychain), only the folder you pick. On its own Esquema only talks to GitHub: to check for and download new versions of this repo
+(at launch and every 6 hours) and, when you open “New” → “Community”, the catalog templates. It never sends anything of yours; your
+AI talks to its provider with your account, and “Publish to the wiki” uses your git.
 
 Run the web preview with `cd ui && python3 -m http.server 8765`, test with `bash pruebas/correr.sh`. Licensed under [AGPL-3.0](LICENSE).
 
 ---
 
-[![Hecho con Pieza](https://pieza-app.github.io/pieza/sello.svg)](https://pieza-app.github.io/pieza/) · Las piezas comunes (tu IA, idiomas, actualizaciones…) viven en [Pieza](https://github.com/pieza-app/pieza).
+[![Hecho con Pieza](https://pieza-app.github.io/pieza/sello.svg)](https://pieza-app.github.io/pieza/) · Las piezas comunes (tu IA, idiomas, actualizaciones, la app nativa…) viven en [Pieza](https://github.com/pieza-app/pieza).
+
+[![Made with Pieza](https://pieza-app.github.io/pieza/sello-en.svg)](https://pieza-app.github.io/pieza/) · The shared pieces (your AI, languages, updates, the native app…) live in [Pieza](https://github.com/pieza-app/pieza).

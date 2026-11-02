@@ -1,0 +1,309 @@
+{
+ "formato": 1,
+ "acciones": {
+  "abrirArchivo": {
+   "script": "carpeta.py",
+   "args": [
+    "leer"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "ruta": {
+     "tipo": "rutaRelativa",
+     "extensiones": [
+      ".md",
+      ".mmd"
+     ],
+     "requerido": true
+    }
+   },
+   "inyectar": {
+    "carpeta": "carpetaActual"
+   },
+   "responde": "archivoAbierto",
+   "eco": [
+    "ruta"
+   ],
+   "vigilar": "lee",
+   "limite": 30,
+   "pieza": "app"
+  },
+  "catalogoInstalados": {
+   "script": "catalogo.py",
+   "args": [
+    "listar"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "tipo": {
+     "tipo": "texto",
+     "max": 31
+    }
+   },
+   "responde": "catalogoInstalados",
+   "limite": 30,
+   "pieza": "catalogo"
+  },
+  "catalogoQuitar": {
+   "script": "catalogo.py",
+   "args": [
+    "quitar"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "tipo": {
+     "tipo": "texto",
+     "max": 31
+    },
+    "id": {
+     "tipo": "texto",
+     "max": 60
+    }
+   },
+   "responde": "catalogoQuitado",
+   "cola": "escritura",
+   "limite": 30,
+   "pieza": "catalogo"
+  },
+  "catalogoUltima": {
+   "script": "catalogo.py",
+   "args": [
+    "ultima"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "tipo": {
+     "tipo": "texto",
+     "max": 31
+    }
+   },
+   "responde": "catalogoUltima",
+   "limite": 30,
+   "pieza": "catalogo"
+  },
+  "crearReadme": {
+   "script": "asistente.py",
+   "args": [
+    "readme"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "descripcion": {
+     "tipo": "texto",
+     "max": 4000,
+     "recortar": true
+    },
+    "estructura": {
+     "tipo": "bool"
+    },
+    "anterior": {
+     "tipo": "texto",
+     "max": 200000,
+     "recortar": true
+    },
+    "pedido": {
+     "tipo": "texto",
+     "max": 2000,
+     "recortar": true
+    }
+   },
+   "inyectar": {
+    "carpeta": "carpetaActual",
+    "idioma": "idiomaUI"
+   },
+   "responde": "readmeListo",
+   "limite": 900,
+   "pieza": "app"
+  },
+  "dibujar": {
+   "script": "asistente.py",
+   "args": [
+    "dibujar"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "pedido": {
+     "tipo": "texto",
+     "max": 3000,
+     "recortar": true
+    },
+    "tipo": {
+     "tipo": "enum",
+     "valores": [
+      "auto",
+      "flujo",
+      "secuencia",
+      "arquitectura"
+     ]
+    },
+    "actual": {
+     "tipo": "texto",
+     "max": 60000,
+     "recortar": true
+    }
+   },
+   "inyectar": {
+    "idioma": "idiomaUI"
+   },
+   "responde": "dibujoListo",
+   "limite": 900,
+   "pieza": "app"
+  },
+  "estructura": {
+   "script": "carpeta.py",
+   "args": [
+    "estructura"
+   ],
+   "entrada": "archivo",
+   "inyectar": {
+    "carpeta": "carpetaActual"
+   },
+   "responde": "estructuraLista",
+   "limite": 60,
+   "pieza": "app"
+  },
+  "guardarArchivo": {
+   "script": "carpeta.py",
+   "args": [
+    "guardar"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "ruta": {
+     "tipo": "rutaRelativa",
+     "extensiones": [
+      ".md",
+      ".mmd"
+     ],
+     "requerido": true
+    },
+    "texto": {
+     "tipo": "texto",
+     "max": 2097152,
+     "requerido": true
+    },
+    "nuevo": {
+     "tipo": "bool"
+    }
+   },
+   "inyectar": {
+    "carpeta": "carpetaActual"
+   },
+   "responde": "archivoGuardado",
+   "eco": [
+    "ruta"
+   ],
+   "cola": "escritura",
+   "vigilar": "escribe",
+   "maximo": 16777216,
+   "limite": 30,
+   "pieza": "app"
+  },
+  "listaIA": {
+   "script": "ia.py",
+   "args": [
+    "lista"
+   ],
+   "entrada": null,
+   "datos": {},
+   "responde": "iaLista",
+   "limite": 30,
+   "pieza": "ia"
+  },
+  "probarIA": {
+   "script": "ia.py",
+   "args": [
+    "probar"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "ia": {
+     "tipo": "enum",
+     "valores": [
+      "claude",
+      "codex",
+      "gemini"
+     ]
+    }
+   },
+   "responde": "iaProbada",
+   "limite": 150,
+   "pieza": "ia"
+  },
+  "proyecto": {
+   "script": "proyecto.py",
+   "args": [
+    "$orden"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "orden": {
+     "tipo": "enum",
+     "valores": [
+      "abrir",
+      "leer",
+      "preparar",
+      "generar",
+      "guardar",
+      "version",
+      "versiones",
+      "ver",
+      "restaurar",
+      "vincular",
+      "mover",
+      "destinos",
+      "pasar",
+      "codigo",
+      "codigo_leer",
+      "codigo_guardar",
+      "arbol",
+      "documentar",
+      "trabajo",
+      "detener",
+      "quitar",
+      "detectar",
+      "agregar",
+      "crear",
+      "responder",
+      "continuar",
+      "borrar",
+      "recuperar",
+      "historia_estado",
+      "historia_cierre",
+      "estudiar",
+      "incongruencias",
+      "wiki_preparar",
+      "wiki_publicar"
+     ]
+    },
+    "*": "pasar"
+   },
+   "inyectar": {
+    "carpeta": "carpetaActual"
+   },
+   "responde": "proyectoRespuesta",
+   "eco": [
+    "orden"
+   ],
+   "progreso": "proyectoProgreso",
+   "limite": {
+    "segun": "orden",
+    "valores": {
+     "documentar": "trabajo",
+     "agregar": "trabajo",
+     "responder": "trabajo",
+     "continuar": "trabajo",
+     "historia_cierre": "trabajo",
+     "estudiar": "trabajo",
+     "incongruencias": "trabajo",
+     "generar": "trabajo",
+     "crear": 600,
+     "wiki_preparar": 600,
+     "wiki_publicar": 600
+    },
+    "otro": 300
+   },
+   "pieza": "app"
+  }
+ }
+}

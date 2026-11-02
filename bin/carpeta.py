@@ -3,9 +3,10 @@
 
 Uso (el último argumento siempre es el JSON de salida):
   carpeta.py listar <carpeta> <salida.json>          → {ok, carpeta: {nombre, ruta}, archivos: [{ruta, tamano}]}
-  carpeta.py leer <entrada.json> <salida.json>       entrada {carpeta, ruta}           → {ok, ruta, texto}
-  carpeta.py guardar <entrada.json> <salida.json>    entrada {carpeta, ruta, texto, nuevo?} → {ok, ruta}
+  carpeta.py leer <entrada.json> <salida.json>       entrada {carpeta, ruta}           → {ok, ruta, texto}   (acción declarada abrirArchivo)
+  carpeta.py guardar <entrada.json> <salida.json>    entrada {carpeta, ruta, texto, nuevo?} → {ok, ruta}   (acción declarada guardarArchivo)
   carpeta.py estructura <carpeta> <salida.json>      → {ok, archivos: [rutas], omitidos, manifiestos}
+  carpeta.py estructura <entrada.json {carpeta}> <salida.json>   lo mismo, con la carpeta que pone la app (acción declarada)
 
 Nunca borra ni mueve nada. Solo abre y escribe .md y .mmd dentro de la carpeta elegida (comun.ruta_en).
 """
@@ -41,7 +42,15 @@ def listar(carpeta):
     return {"ok": True, "carpeta": {"nombre": os.path.basename(base) or base, "ruta": base}, "archivos": archivos}
 
 
+def _sin_carpeta(entrada):
+    """La carpeta la pone la app (la actual; "" si no hay una abierta). Nunca una relativa: se leería la carpeta de trabajo."""
+    c = entrada.get("carpeta")
+    return not (isinstance(c, str) and os.path.isabs(c) and os.path.isdir(c))
+
+
 def leer(entrada):
+    if _sin_carpeta(entrada):
+        return {"ok": False, "ruta": entrada.get("ruta"), "error": "Elige una carpeta primero."}
     try:
         ruta = comun.ruta_en(entrada.get("carpeta", ""), entrada.get("ruta"))
     except ValueError as e:
@@ -58,6 +67,8 @@ def leer(entrada):
 
 def guardar(entrada):
     rel = entrada.get("ruta")
+    if _sin_carpeta(entrada):
+        return {"ok": False, "ruta": rel, "error": "Elige una carpeta primero."}
     texto = entrada.get("texto")
     if not isinstance(texto, str) or len(texto.encode("utf-8")) > comun.MAXIMO_ARCHIVO:
         return {"ok": False, "ruta": rel, "error": "No pude guardar: el texto no es válido o es demasiado grande."}
@@ -130,7 +141,11 @@ def main(args):
     if orden == "listar":
         r = listar(dato)
     elif orden == "estructura":
-        r = estructura(dato)
+        if os.path.isfile(dato):  # la acción declarada «estructura»: la carpeta la pone la app en la entrada (nunca la interfaz)
+            c = (comun.leer_json(dato, {}) or {}).get("carpeta")
+            r = estructura(c) if isinstance(c, str) and c else {"ok": False, "error": "Elige una carpeta primero"}
+        else:
+            r = estructura(dato)
     else:
         entrada = comun.leer_json(dato, {}) or {}
         r = leer(entrada) if orden == "leer" else guardar(entrada)

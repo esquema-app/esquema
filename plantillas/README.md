@@ -3,7 +3,7 @@
 Una plantilla es **solo datos**: un JSON con el texto de un diagrama (Mermaid) o de un documento (Markdown), su nombre y su
 descripción en cada idioma. Nunca ejecuta nada. Las incluidas viven aquí (`plantillas/<categoria>/<id>.json`); las de la comunidad,
 en el [catálogo](https://github.com/esquema-app/esquema-catalogo) `esquema-app/esquema-catalogo` (mismo formato, con un `index.json`
-que arma `plantilla_formato.indice`) y se descargan desde «Nuevo» → «Comunidad».
+que arma su `herramientas/generar_indice.py`; la app lo baja y lo valida con la pieza «catálogo») y se descargan desde «Nuevo» → «Comunidad».
 
 ```json
 {
@@ -31,6 +31,6 @@ que arma `plantilla_formato.indice`) y se descargan desde «Nuevo» → «Comuni
 | `contenido` | El texto por idioma, hasta 20.000 caracteres. Mermaid del [subconjunto que Esquema dibuja](../AGENTS.md#subconjunto-de-mermaid). Íconos de arquitectura con `%% esquema: {"iconos": {…}}`. |
 | `autor`, `etiquetas` | Opcionales. |
 
-Validar: `python3 bin/plantillas.py validar plantillas/*/*.json`. La misma regla está en `bin/plantilla_formato.py` (que es el mismo
+Validar: `python3 bin/catalogo.py validar plantillas plantillas/*/*.json`. La misma regla está en `bin/plantilla_formato.py` (que es el mismo
 archivo en el catálogo) y en `ui/app.js` (`validarPlantilla`), con casos compartidos en `pruebas/casos.json`.
 Usa siempre datos ficticios.

@@ -26,7 +26,6 @@ import unicodedata
 import asistente
 import comun
 import ia
-import ia_vivo
 import inventario as inv
 import proyecto as P
 import trabajos
@@ -512,10 +511,10 @@ def correr(e, t):
             # Lo mismo que mostró «Ver lo que se envía» (preparar) para esta tarea.
             _, _, ps, _ = P.piezas({"carpeta": e["carpeta"], "docs": e.get("docs"), "tarea": d["tarea"], "pedido": d.get("pedido", "")})
             leer = codigo if d.get("a_fondo", True) and ia.puede_leer() else None
-            texto, error = ia_vivo.preguntar_vivo(prompt_explorar(d, L, perfil, ps, esquema, solo_faltan, leer), timeout=TIEMPO_EXPLORAR,
+            texto, error = ia.preguntar_vivo(prompt_explorar(d, L, perfil, ps, esquema, solo_faltan, leer), timeout=TIEMPO_EXPLORAR,
                                              leer=leer, no_leer=P.NO_LEER, al_evento=al_evento, detener=t.detenido)
             inv.registrar_lecturas(pid, codigo, [r for r in t.x.get("vistos", []) if r not in vistos_antes])
-            if ia_vivo.detenido(error):
+            if ia.detenido(error):
                 return t.terminar("detenido")
             if error:
                 return t.terminar("error", error)
@@ -563,8 +562,8 @@ def correr(e, t):
                     t.leyo(p["ruta"])
             inv.registrar_lecturas(pid, codigo, [c[0] for c in claves])
             otros = [x for x in plan["documentos"] if x["ruta"] != doc["ruta"]] + [{"ruta": x, "titulo": ""} for x in sorted(existentes - {x["ruta"] for x in plan["documentos"]}) if x != P.GLOSARIO]
-            texto, error = ia_vivo.preguntar_vivo(prompt_documento(d, plan, doc, otros, claves, nombre), timeout=TIEMPO_DOCUMENTO, detener=t.detenido)
-            if ia_vivo.detenido(error):
+            texto, error = ia.preguntar_vivo(prompt_documento(d, plan, doc, otros, claves, nombre), timeout=TIEMPO_DOCUMENTO, detener=t.detenido)
+            if ia.detenido(error):
                 t.poner_item(doc["ruta"], estado="cola")
                 return
             md = limpiar_respuesta_doc(texto, doc["titulo"]) if not error else None
@@ -726,9 +725,4 @@ def detener(e):
     t = trabajos.Trabajo.cargar(e.get("id"))
     if t.x.get("proyecto") != base:
         raise ValueError("Ese trabajo es de otro proyecto.")
-    if trabajos.estado_real(t.x) != "corriendo":
-        return {"ok": True, "trabajo": t.vista()}
-    comun.carpeta_privada(trabajos.carpeta())
-    with open(t.ruta_detener(), "w", encoding="utf-8") as f:
-        f.write(trabajos.ahora())
-    return {"ok": True, "deteniendo": True, "trabajo": t.vista()}
+    return trabajos.detener(t.x["id"])  # pieza «trabajos»: la marca que el trabajo revisa con t.detenido()
