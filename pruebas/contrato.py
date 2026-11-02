@@ -187,7 +187,7 @@ if escritorio:
     problemas += [f"Windows/Linux llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(llamadas_e - funciones_ui)]
     problemas += [f'Windows/Linux nunca responde "{f}"' for f in sorted(respuestas_app - llamadas_e - respuestas_declaradas)]
     if not tiene(host_js, r"contextIsolation: true", r"sandbox: true", r"nodeIntegration: false", r"webviewTag: false", r"ipcMain\.on\(id, alMensaje\)",
-                 r"e\.sender !== ventana\.webContents", r"e\.senderFrame !== e\.sender\.mainFrame", r"startsWith\(ORIGEN\)", r'"will-navigate"',
+                 r"e\.sender === ventana\.webContents", r"if \(!principal && !otra\) return", r"e\.senderFrame !== e\.sender\.mainFrame", r"startsWith\(ORIGEN\)", r'"will-navigate"',
                  r"setWindowOpenHandler", r"setPermissionRequestHandler", r'u\.protocol === "https:"'):
         problemas.append("Windows/Linux: la pieza «host-escritorio» tiene que dar la ventana con sandbox y el puente solo para el marco principal propio (host.js)")
     if re.search(r"new BrowserWindow|ipcMain|webPreferences|preload:", escritorio):

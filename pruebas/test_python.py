@@ -143,6 +143,14 @@ class Carpeta(unittest.TestCase):
         r = correr("carpeta.py", "guardar", entrada({"carpeta": p, "ruta": "x.md", "texto": "x" * (comun.MAXIMO_ARCHIVO + 1)}))
         self.assertFalse(r["ok"])
 
+    def test_ruta_en_sin_carpeta(self):
+        # nucleo 0.7.1: una base vacía, relativa o que no existe nunca cae en la carpeta de trabajo del script.
+        p = proyecto()
+        self.assertEqual(comun.ruta_en(p, "docs/nuevo/x.md"), os.path.join(os.path.realpath(p), "docs", "nuevo", "x.md"))
+        for mala in ["", ".", "docs", os.path.join(p, "no-existe"), None]:
+            with self.assertRaises(ValueError, msg=mala):
+                comun.ruta_en(mala, "x.md")
+
     def test_gitignore(self):
         i = comun.Ignorados()
         ruta = os.path.join(TMP, "gi")
