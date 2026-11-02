@@ -95,6 +95,10 @@ class Carpeta(unittest.TestCase):
         # La acción declarada «estructura»: la carpeta llega en la entrada (la pone la app); sin carpeta, no hay nada que listar.
         self.assertEqual(correr("carpeta.py", "estructura", entrada({"carpeta": p}))["archivos"], r["archivos"])
         self.assertEqual(correr("carpeta.py", "estructura", entrada({"carpeta": ""}))["error"], "Elige una carpeta primero")
+        # Igual que «leer» y «guardar»: nunca una carpeta relativa (sería la carpeta de trabajo) ni una que no existe.
+        for mala in [".", "bin", os.path.join(p, "no-existe"), 3, None]:
+            r = correr("carpeta.py", "estructura", entrada({"carpeta": mala}))
+            self.assertEqual((r["ok"], r["error"], "archivos" in r), (False, "Elige una carpeta primero", False), mala)
 
     def test_proyecto_sin_carpeta(self):
         # Sin carpeta abierta la app manda carpeta "": solo SIN_CARPETA corre; lo demás nunca usa otra carpeta.
