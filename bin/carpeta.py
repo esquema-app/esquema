@@ -143,7 +143,7 @@ def main(args):
     elif orden == "estructura":
         if os.path.isfile(dato):  # la acción declarada «estructura»: la carpeta la pone la app en la entrada (nunca la interfaz)
             c = (comun.leer_json(dato, {}) or {}).get("carpeta")
-            r = estructura(c) if isinstance(c, str) and c else {"ok": False, "error": "Elige una carpeta primero"}
+            r = {"ok": False, "error": "Elige una carpeta primero"} if _sin_carpeta({"carpeta": c}) else estructura(c)
         else:
             r = estructura(dato)
     else:
