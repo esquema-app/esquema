@@ -41,8 +41,12 @@ necesitan control total del computador; o encabezados que GitHub Pages no deja c
 - Las apps: la ventana solo carga la interfaz que viene dentro (Mac: solo archivos de `ui/`; Windows y Linux: `esquema://ui/`, con
   `sandbox` y `contextIsolation`, sin Node en la página) y el puente solo atiende a su marco principal. Lo que manda la interfaz
   nunca arma comandos (va en un JSON de entrada), sus rutas se revisan antes de llegar a `bin/` (que las vuelve a revisar) y la
-  carpeta solo cambia con el selector del sistema. Electron va con versión exacta, `package-lock.json` y sin scripts de
-  instalación. Las actualizaciones se bajan solo de los Releases de `esquema-app/esquema` y se instalan si su SHA-256 coincide.
+  carpeta solo cambia con el selector del sistema. La ventana, el puente, los scripts y las actualizaciones los pone la app nativa
+  genérica de [Pieza](https://github.com/pieza-app/pieza) (`host-mac` y `host-escritorio`, iguales en las dos): cada acción que
+  solo corre un script se declara con sus datos y su tipo, y la app la rechaza si no calza; todo script tiene **límite de tiempo**
+  (corta también lo que lanzó) y uno largo solo sigue mientras late; al salir no queda nada corriendo. Electron va con versión
+  exacta, `package-lock.json` y sin scripts de instalación. Las actualizaciones se bajan solo de los Releases de
+  `esquema-app/esquema`, se instalan si su SHA-256 coincide y nunca en medio de un guardado o de un script.
 - Los scripts solo abren y guardan `.md` y `.mmd` dentro de la carpeta elegida (rutas relativas, sin `..`, sin seguir enlaces que
   salgan de ella) y escriben de una vez (archivo temporal + reemplazo). Lo que manda la interfaz llega en un JSON de entrada, nunca
   como argumento de un comando.

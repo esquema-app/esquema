@@ -1065,6 +1065,16 @@
   "{app} no lee ese formato sin programas extra. Guárdalo como .docx, PDF o texto, o copia el texto y pégalo aquí.": "{app} can't read that format without extra programs. Save it as .docx, PDF or text, or copy the text and paste it here.",
   "Eso no es válido.": "That isn't valid.",
   "Llegó dañado. Intenta de nuevo.": "It arrived damaged. Please try again.",
-  "Ya no está en el catálogo. Vuelve a abrirlo.": "It's no longer in the catalog. Open it again."
+  "Ya no está en el catálogo. Vuelve a abrirlo.": "It's no longer in the catalog. Open it again.",
+  "No entendí lo que pediste. Intenta de nuevo.": "I didn't understand that request. Try again.",
+  "Falta algo para hacer esto.": "Something is missing to do this.",
+  "Tardó demasiado y lo detuve. Intenta de nuevo.": "It took too long, so I stopped it. Try again.",
+  "Salir de {app}": "Quit {app}",
+  "Sitio de {app}": "{app} website",
+  "Acerca de {app}": "About {app}",
+  "Ocultar {app}": "Hide {app}",
+  "Espera a que termine lo que está haciendo y vuelve a intentarlo.": "Wait until it finishes what it's doing and try again.",
+  "Dejó de avanzar y lo detuve. Intenta de nuevo.": "It stopped making progress, so I stopped it. Try again.",
+  "Elige una carpeta primero.": "Choose a folder first."
  }
 }

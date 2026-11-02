@@ -944,7 +944,7 @@
     if (c.estado === "error") return `<div class="vacio"><p data-sin-traducir>${esc(c.error || tr("No pude conectarme. Revisa tu conexión."))}</p><button class="pz-boton" data-accion="explorar">Reintentar</button></div>`;
     const lista = catalogoFiltrado();
     const estado = (p) => c.bajando[p.id] ? frase("Descargando…", {}, "small") : enMisPlantillas(p) ? frase("En tus plantillas", {}, "small") : frase("Toca para descargarla", {}, "small");
-    return `<div class="plantillas">${lista.map((p) => `<button class="plantilla" data-catalogo="${esc(p.id)}" aria-pressed="${n.elegida === p.id}" ${c.bajando[p.id] ? "aria-busy=\"true\"" : ""} data-sin-traducir><span class="previa">${previaPlantilla(p)}</span><span class="info"><b>${esc(textoDe(p.nombre))}</b><small>${esc(textoDe(p.descripcion))}</small>${p.autor ? frase("por {x}", { x: p.autor }, "small") : ""}<span class="estado-catalogo">${estado(p)}</span></span></button>`).join("")}</div>
+    return `${c.aviso ? `<p class="aviso-catalogo" role="status" data-sin-traducir>${esc(c.aviso)}</p>` : ""}<div class="plantillas">${lista.map((p) => `<button class="plantilla" data-catalogo="${esc(p.id)}" aria-pressed="${n.elegida === p.id}" ${c.bajando[p.id] ? "aria-busy=\"true\"" : ""} data-sin-traducir><span class="previa">${previaPlantilla(p)}</span><span class="info"><b>${esc(textoDe(p.nombre))}</b><small>${esc(textoDe(p.descripcion))}</small>${p.autor ? frase("por {x}", { x: p.autor }, "small") : ""}<span class="estado-catalogo">${estado(p)}</span></span></button>`).join("")}</div>
       ${!lista.length ? `<div class="vacio">${q ? frase("Aún no hay una plantilla de «{x}».", { x: q }, "p") : `<p>Todavía no hay plantillas de la comunidad en esta categoría.</p>`}${q ? `<button class="pz-boton pz-principal" data-accion="dibujame-busqueda">${ic("chispa")} Pídesela a tu IA</button>` : ""}</div>` : ""}
       <p class="proponer"><button class="enlace" data-enlace="${ENLACES.proponer}">¿Hiciste una buena? Compártela con la comunidad</button></p>`;
   }
@@ -1404,7 +1404,8 @@
      *  {ok: false, codigo, plantilla, error} (`plantilla`: la frase en español, que aquí se traduce). */
     catalogoListo(r) {
       const lista = r.ok && Array.isArray(r.plantillas) ? r.plantillas.filter((p) => p && typeof p === "object" && !validarPlantilla(sinIndice(p)).length) : [];
-      E.catalogo = r.ok ? { estado: "listo", plantillas: lista, bajando: {} } : { estado: "error", error: errorCatalogo(r), plantillas: [], bajando: {} };
+      // Sin conexión, la pieza devuelve la última lista validada (sin_conexion: true): se ve, y se avisa que no se puede descargar.
+      E.catalogo = r.ok ? { estado: "listo", plantillas: lista, bajando: {}, aviso: r.sin_conexion ? errorCatalogo(r) : "" } : { estado: "error", error: errorCatalogo(r), plantillas: [], bajando: {} };
       if (E.nuevo?.fuente === "comunidad") pintar();
     },
     /** Respuesta a `descargarPlantilla` (pieza «catálogo»): {ok, id, plantilla} (revisada y guardada en la carpeta de Esquema) o
@@ -1531,7 +1532,8 @@
   }
 
   /** El error de la pieza «catálogo» en el idioma elegido: su `plantilla` (frase en español con marcadores) o `error`. */
-  const errorCatalogo = (r) => (typeof r?.plantilla === "string" && r.plantilla ? Tp(r.plantilla, r.valores || {}) : typeof r?.error === "string" ? tr(r.error) : "");
+  /** La frase de un error de la pieza «catálogo» (0.2: en `frase`; `plantilla` es la plantilla descargada), ya traducida. */
+  const errorCatalogo = (r) => (typeof r?.frase === "string" && r.frase ? Tp(r.frase, r.valores || {}) : typeof r?.error === "string" ? tr(r.error) : "");
 
   /** Una entrada del índice del catálogo sin lo propio del índice (ruta, huella y tamaño): la plantilla tal cual. */
   const sinIndice = (p) => Object.fromEntries(Object.entries(p).filter(([k]) => !["ruta", "sha256", "tamano"].includes(k)));
