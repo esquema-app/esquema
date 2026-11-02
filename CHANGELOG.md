@@ -5,6 +5,9 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Escribir en documentos largos es más fluido:** mientras escribes, la vista vuelve a armar solo el párrafo que cambió; los
+  diagramas no se redibujan. · *Typing in long documents is smoother: while you type, the preview rebuilds only the paragraph that
+  changed; diagrams aren't redrawn.*
 - **Por dentro, la misma app de la familia:** Esquema para Mac, Windows y Linux ahora usa la app nativa común de Pieza. En Mac hay
   un menú Ayuda (sitio y código). Tu carpeta, tus ajustes y tu idioma siguen donde estaban. · *Under the hood, the same app as the
   rest of the family: Esquema for Mac, Windows and Linux now uses Pieza's shared native app. On Mac there's a Help menu (website and
