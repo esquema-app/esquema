@@ -4,7 +4,7 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 [Releases](https://github.com/esquema-app/esquema/releases).
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
-## Sin publicar · Unreleased
+## 0.2.0 · 2026-11-02
 - **Escribir en documentos largos es más fluido:** mientras escribes, la vista vuelve a armar solo el párrafo que cambió; los
   diagramas no se redibujan. · *Typing in long documents is smoother: while you type, the preview rebuilds only the paragraph that
   changed; diagrams aren't redrawn.*
