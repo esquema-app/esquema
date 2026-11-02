@@ -1,7 +1,7 @@
 {
   "name": "esquema",
   "productName": "Esquema",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Diagramas y documentación que GitHub ya entiende: Mermaid en texto o dibujado, con tu propia IA.",
   "homepage": "https://esquema-app.github.io/esquema/",
   "license": "AGPL-3.0-only",
