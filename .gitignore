@@ -37,3 +37,6 @@ __pycache__/
 .terminos-privados
 capturas/
 .DS_Store
+
+# Pieza: archivos de la raíz que usa la app
+!/acciones.json

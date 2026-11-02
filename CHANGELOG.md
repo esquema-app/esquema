@@ -5,6 +5,39 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar · Unreleased
+- **Por dentro, la misma app de la familia:** Esquema para Mac, Windows y Linux ahora usa la app nativa común de Pieza. En Mac hay
+  un menú Ayuda (sitio y código). Tu carpeta, tus ajustes y tu idioma siguen donde estaban. · *Under the hood, the same app as the
+  rest of the family: Esquema for Mac, Windows and Linux now uses Pieza's shared native app. On Mac there's a Help menu (website and
+  source code). Your folder, settings and language stay where they were.*
+- **Documentar un proyecto grande ya no tiene tope de una hora:** sigue mientras avance; si se queda pegado (tu IA dejó de
+  responder), se detiene solo en menos de un minuto y «Seguir donde quedó» lo retoma sin repetir lo hecho. Al cerrar Esquema no
+  queda nada corriendo por detrás. Lo demás que no usa tu IA se corta a los 5 minutos en vez de esperar una hora. · *Documenting a
+  large project no longer stops at one hour: it keeps going while it makes progress; if it gets stuck (your AI stopped answering),
+  it stops by itself in under a minute and «Pick up where it left off» resumes it without redoing anything. Nothing keeps running in
+  the background after you quit Esquema. Everything else that doesn't use your AI stops after 5 minutes instead of waiting an hour.*
+- **Sin conexión, las plantillas de la comunidad se siguen viendo:** la galería muestra las últimas que bajaste, con un aviso; para
+  descargar una nueva hace falta conexión. Una plantilla del catálogo con algo que no es del formato ya no entra. «Mostrar la
+  carpeta» la muestra elegida en el Finder o en el explorador. · *Offline, community templates still show: the gallery lists the
+  last ones you saw, with a notice; downloading a new one needs a connection. A catalog template with anything outside the format
+  no longer gets in. «Show folder» shows it selected in Finder or your file manager.*
+- **Más avisos en tu idioma y archivos más seguros:** si una plantilla de la comunidad no se puede descargar o un archivo que
+  agregas no se puede leer, el aviso sale en el idioma que elegiste. Los Word, EPUB y PDF que agregas se leen con topes más
+  estrictos (contados al abrirlos), así un archivo armado para llenar la memoria no la llena. · *More notices in your language and
+  safer files: if a community template can't be downloaded or a file you add can't be read, the notice shows in the language you
+  chose. Word, EPUB and PDF files you add are read with stricter limits (counted while opening them), so a file built to fill up
+  memory can't.*
+- **Enviar comentarios desde la app:** en Ajustes → Acerca de, «Enviar comentarios» abre GitHub con tu mensaje listo (algo falla,
+  una idea u otro); lo revisas y lo publicas tú. «Acerca de» vuelve a tener el enlace al catálogo de plantillas. Los avisos con
+  botón («Deshacer», «Revisar», «Responder») se ven igual que los demás, y si un archivo cambió en el disco, Esc ya no elige por
+  ti. · *Send feedback from the app: in Settings → About, «Send feedback» opens GitHub with your message ready (something's wrong,
+  an idea or other); you review and post it yourself. «About» links to the template catalog again. Notices with a button (Undo,
+  Review, Answer) look like the rest, and if a file changed on disk, Esc no longer chooses for you.*
+- **Diálogos más cómodos con el teclado:** el foco entra al diálogo, Tab no se escapa, Esc o un clic fuera lo cierran y el foco
+  vuelve a donde estabas. Los avisos esperan su turno en vez de taparse. En Ajustes, una IA queda elegida recién cuando su prueba
+  sale bien, la actualización muestra su avance con una barra y «Acerca de» suma «Cómo aportar». · *Friendlier dialogs from the
+  keyboard: focus moves into the dialog, Tab stays inside, Esc or a click outside closes it and focus goes back to where you were.
+  Notices wait their turn instead of covering each other. In Settings, an AI is chosen only once its test passes, updates show
+  their progress with a bar and «About» adds «How to contribute».*
 - **Agregar información:** pega notas, un correo o lo que salió de una reunión y tu IA lo ordena en la documentación: crea lo
   nuevo, completa lo que ya existe y corrige lo que cambió. Antes de guardar ves cada cambio agrupado (Nuevo, Se completa, Se
   modifica), con el porqué y la frase de donde salió; lo que cambia algo que ya estaba solo se guarda si lo confirmas. Si tu IA no

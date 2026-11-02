@@ -102,8 +102,22 @@ else bien("config solo guarda claves y valores conocidos (nunca la carpeta)");
 const modo = fs.statSync(DATOS).mode & 0o777, modoConfig = fs.statSync(path.join(DATOS, "config.json")).mode & 0o777;
 if (modo !== 0o700 || modoConfig !== 0o600) falla(`la carpeta de Esquema no es privada (${modo.toString(8)}, ${modoConfig.toString(8)})`);
 
+// Pieza «host-escritorio»: las acciones declaradas (acciones.json) cargan todas, y lo propio de Esquema queda registrado.
+{
+  const h = await app.evaluate(() => ({ errores: global.esquemaPruebas.host.acciones.errores, declaradas: global.esquemaPruebas.host.acciones.declaradas(), todas: global.esquemaPruebas.host.acciones.todas() }));
+  const faltan = ["proyecto", "dibujar", "crearReadme", "estructura", "abrirArchivo", "guardarArchivo", "probarIA"].filter((a) => !h.declaradas.includes(a));
+  const sinAtender = ["elegirCarpeta", "abrirProyecto", "abrirArchivo", "guardarArchivo", "papelera", "exportar", "catalogoPlantillas", "descargarPlantilla", "buscarActualizacion", "actualizar", "copiar", "abrirEnlace", "config", "listo"].filter((a) => !h.todas.includes(a));
+  if (h.errores.length || faltan.length || sinAtender.length) falla("acciones del host: " + JSON.stringify({ errores: h.errores, faltan, sinAtender }));
+  // Sin carpeta abierta, una orden que la necesita no corre sobre otra: «Elige una carpeta primero» (con su orden de vuelta).
+  await enviar("proyecto", { orden: "abrir", carpeta: CASA });
+  const sin = await esperarR("proyectoRespuesta");
+  if (sin?.ok !== false || sin.orden !== "abrir" || sin.error !== "Elige una carpeta primero") falla("proyecto sin carpeta: " + JSON.stringify(sin));
+  else bien("acciones declaradas cargadas; sin carpeta, proyecto no usa la que manda la interfaz");
+  await v.evaluate(() => { window._r.proyectoRespuesta = []; });
+}
+
 // La carpeta (como si se hubiera elegido con el selector del sistema) y el estado.
-await app.evaluate((_e, p) => { global.esquemaPruebas.Config.guardarCarpeta(p); return global.esquemaPruebas.enviarEstado(); }, fs.realpathSync(PROYECTO));
+await app.evaluate((_e, p) => { global.esquemaPruebas.usarCarpeta(p); return global.esquemaPruebas.enviarEstado(); }, fs.realpathSync(PROYECTO));
 const estado = await esperarR("estado");
 const rutas = (estado?.archivos || []).map((a) => a.ruta).sort();
 if (JSON.stringify(rutas) !== JSON.stringify(["README.md", "docs/flujo.mmd"])) falla("el estado no trae los archivos de la carpeta: " + JSON.stringify(rutas));
@@ -140,10 +154,10 @@ const otroDeAfuera = deAfuera + "    D --> F[Otra vez de afuera]\n";
 fs.writeFileSync(path.join(PROYECTO, "docs", "flujo.mmd"), otroDeAfuera);
 await esperarR("archivoCambiado", 2, 8000);
 await espera(300);
-if (!(await E("!!E.confirmar"))) falla("con cambios sin guardar no preguntó");
+if (!(await v.evaluate(() => !!document.querySelector("[data-pz-confirmar]")))) falla("con cambios sin guardar no preguntó");
 else {
   await v.screenshot({ path: path.join(salida, "2-conflicto.png") });
-  await v.click('[data-accion="confirmar-si"]');
+  await v.click('[data-pz-confirmar="si"]');
   await espera(300);
   if ((await E('E.docs["docs/flujo.mmd"].texto')) !== otroDeAfuera) falla("«Usar la del disco» no dejó el texto de afuera");
   else bien("con cambios sin guardar pregunta con cuál quedarse");
@@ -234,7 +248,7 @@ const headCodigo = gitR("rev-parse", "HEAD").trim();
 {
   const nc = await cuantas("carpetaElegida");
   await enviar("config", { bienvenida: true });  // al volver a mandar el estado, no se repite la bienvenida
-  await app.evaluate((_e, p) => global.esquemaPruebas.Config.guardarCarpeta(p), fs.realpathSync(REPO));
+  await app.evaluate((_e, p) => global.esquemaPruebas.usarCarpeta(p), fs.realpathSync(REPO));
   await enviar("abrirProyecto", { indice: 99 });  // no existe: la carpeta se pone por config, como el selector
   await esperarR("carpetaElegida", nc + 1);
   await app.evaluate(() => global.esquemaPruebas.enviarEstado());
@@ -280,7 +294,7 @@ const headCodigo = gitR("rev-parse", "HEAD").trim();
   if (gitD("status", "--porcelain").trim()) falla("quedaron cambios sin versión después de restaurar: " + gitD("status", "--porcelain"));
   if (fs.existsSync(path.join(DOCS, ".versiones"))) falla("con git, las versiones no deberían quedar como copias");
   await v.evaluate(() => window.Esquema._probar((E) => { E.panel = null; }));
-  await app.evaluate((_e, p) => global.esquemaPruebas.Config.guardarCarpeta(p), fs.realpathSync(PROYECTO));
+  await app.evaluate((_e, p) => global.esquemaPruebas.usarCarpeta(p), fs.realpathSync(PROYECTO));
   await app.evaluate(() => global.esquemaPruebas.enviarEstado());
   await espera(800);
   await v.evaluate(() => window.Esquema._pruebas.abrir("docs/flujo.mmd"));

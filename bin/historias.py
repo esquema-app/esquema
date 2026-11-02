@@ -26,9 +26,9 @@ import traceback
 import asistente
 import comun
 import contenido as C
+import detectar as DT
 import documentar as D
 import ia
-import ia_vivo
 import inventario as inv
 import proyecto as P
 import trabajos
@@ -209,7 +209,7 @@ def nuevo(e, texto, titulo, enlace, fuentes):
     """Crea el trabajo de una HU nueva (todavía no corre)."""
     L = P.lugares(e)
     existentes = [n for n in os.listdir(os.path.join(L["dir_docs"], CARPETA))] if os.path.isdir(os.path.join(L["dir_docs"], CARPETA)) else []
-    id_hu = C.id_historia(texto, existentes)
+    id_hu = DT.id_historia(texto, existentes)
     titulo = re.sub(r"^\W*" + re.escape(id_hu) + r"\W*", "", titulo or "", flags=re.I).strip() or titulo
     base = C.slug(id_hu.replace("#", "issue-"), 20) or "hu"
     ruta = f"{CARPETA}/{base}-{C.slug(titulo, 40) or 'historia'}.md"
@@ -248,10 +248,10 @@ def correr(e, t):
             elif ev.get("t") == "busca":
                 t.busco(ev.get("patron", ""))
 
-        texto, error = ia_vivo.preguntar_vivo(prompt_analizar(d, c, leer), timeout=TIEMPO, leer=leer, no_leer=P.NO_LEER, al_evento=al_evento, detener=t.detenido)
+        texto, error = ia.preguntar_vivo(prompt_analizar(d, c, leer), timeout=TIEMPO, leer=leer, no_leer=P.NO_LEER, al_evento=al_evento, detener=t.detenido)
         if leer:
             inv.registrar_lecturas(pid, leer, [r for r in t.x.get("vistos", []) if r not in vistos_antes])
-        if ia_vivo.detenido(error):
+        if ia.detenido(error):
             return t.terminar("detenido")
         if error:
             t.poner_item(d["ruta"], estado="fallo", error=error)
@@ -550,8 +550,8 @@ def correr_cierre(e, t):
         t.etapa("comparar")
         indice = "\n".join(f"{doc['ruta']} — {doc['titulo']}" for doc in (x or {}).get("documentos", []) if doc["tipo"] != "fuente")
         elementos = "\n".join(f"{el['id']} — {el['nombre']} ({el['tipo']})" for el in (x or {}).get("elementos", [])[:300])
-        texto, error = ia_vivo.preguntar_vivo(prompt_cierre(d, original[:60_000], commits, dif, archivos, docs, elementos, indice), timeout=TIEMPO, detener=t.detenido)
-        if ia_vivo.detenido(error):
+        texto, error = ia.preguntar_vivo(prompt_cierre(d, original[:60_000], commits, dif, archivos, docs, elementos, indice), timeout=TIEMPO, detener=t.detenido)
+        if ia.detenido(error):
             return t.terminar("detenido")
         if error:
             return t.terminar("error", error)

@@ -2,9 +2,9 @@
  "formato": 1,
  "piezas": {
   "nucleo": {
-   "version": "0.6.0",
+   "version": "0.7.0",
    "archivos": {
-    "bin/nucleo.py": "3254be100d75d3a066b9a3ae0a7bbf9badcdef822d809756981a9345055f13a0"
+    "bin/nucleo.py": "071763cbcacedee9bb55db8704a6098b8f68346f549bbd7ce6befa86a295a3fb"
    },
    "ficha": {
     "requiere": [],
@@ -13,9 +13,9 @@
    }
   },
   "ia": {
-   "version": "0.4.0",
+   "version": "0.6.3",
    "archivos": {
-    "bin/ia.py": "4da328270059d3e6f354b30a0f84d75a442b76b252f72a417fb2d09d84486f8e"
+    "bin/ia.py": "36d6df8fb3097e149e15174406e7d8fd82a4a4c9cac4b2ba8b2505ecb4dcdfef"
    },
    "ficha": {
     "requiere": [
@@ -23,12 +23,43 @@
     ],
     "permisos": {},
     "red": []
+   },
+   "acciones": {
+    "probarIA": {
+     "script": "ia.py",
+     "args": [
+      "probar"
+     ],
+     "entrada": "archivo",
+     "datos": {
+      "ia": {
+       "tipo": "enum",
+       "valores": [
+        "claude",
+        "codex",
+        "gemini"
+       ]
+      }
+     },
+     "responde": "iaProbada",
+     "limite": 150
+    },
+    "listaIA": {
+     "script": "ia.py",
+     "args": [
+      "lista"
+     ],
+     "entrada": null,
+     "datos": {},
+     "responde": "iaLista",
+     "limite": 30
+    }
    }
   },
   "i18n": {
-   "version": "0.2.0",
+   "version": "0.3.1",
    "archivos": {
-    "ui/i18n.js": "9cdae929afea783542af322018e47730e400cbee90777717d7c1ecd422d89180"
+    "ui/i18n.js": "3f4d071fd5b2b137cb0a6413e4d1e588ae79081a61f21e3f7d240cf3cf55bce9"
    },
    "ficha": {
     "requiere": [],
@@ -37,10 +68,10 @@
    }
   },
   "bienvenida": {
-   "version": "0.2.0",
+   "version": "0.3.0",
    "archivos": {
-    "ui/bienvenida.js": "4a38f4e5a30400d298004dc185cab982d25ebdb8fafe1fe96ff35c9eb6aac23d",
-    "ui/bienvenida.css": "55240fa5fbe4f62849f2a93d25f4409f3a710bd95fb3b9d09bf3028b918f260e"
+    "ui/bienvenida.js": "2110ab5ab733b73a0dcb452ed2d4d0bffcd6f8d0c8a93d3820ca06518d4dae87",
+    "ui/bienvenida.css": "bd2b48b585f7cb12f50fac16d94db361c0d6f878c0587a6b8da4ad85ed7d5613"
    },
    "ficha": {
     "requiere": [
@@ -51,10 +82,10 @@
    }
   },
   "actualizaciones": {
-   "version": "0.2.0",
+   "version": "0.3.0",
    "archivos": {
-    "app/Sources/PiezaActualizaciones/Actualizaciones.swift": "99130798812ee9640d0252d3bf6f5d45d681d5fcf33ae490d115f74cbb7fff3c",
-    "escritorio/src/actualizaciones.js": "48ac04b4e6f7fbd7c8ba3ad5604ac7de33ba71f41d2b8065cae01c59fd9bfdc1"
+    "app/Sources/PiezaActualizaciones/Actualizaciones.swift": "ab8c92a4ce314a388cbc0975f7b25d4fb4a8ad6fdbca6da60e3bcb0a4426e144",
+    "escritorio/src/actualizaciones.js": "be9616838586bf45cb52215a4978c568d1f8a472c396dbd19637941181c16dc0"
    },
    "ficha": {
     "requiere": [],
@@ -65,6 +96,189 @@
      "objects.githubusercontent.com",
      "release-assets.githubusercontent.com"
     ]
+   }
+  },
+  "host-ui": {
+   "version": "0.2.0",
+   "archivos": {
+    "ui/host.js": "cdca43b52982db53c3c018b807a8df0bc9282c9ff61b4ecee8037ddc3e5521aa"
+   },
+   "ficha": {
+    "requiere": [],
+    "permisos": {},
+    "red": []
+   }
+  },
+  "tema": {
+   "version": "0.2.1",
+   "archivos": {
+    "ui/tema.css": "1d43c1cf027fafcbd282bd90bc87ae3937059f247fb823cd1aab2a26f7c9363e",
+    "ui/tema.js": "b679ecb7bc80556b70e3f3fe768f0e3af0086bdf44c0d73ed0867da6a8f33f6e"
+   },
+   "ficha": {
+    "requiere": [],
+    "permisos": {},
+    "red": []
+   }
+  },
+  "componentes": {
+   "version": "0.3.0",
+   "archivos": {
+    "ui/componentes.js": "310712e40f69b674f5d64fc723ccd2dbf2ad114f6ac68ee72a598cf4c36bb76a",
+    "ui/componentes.css": "101586f0fa7aa509f42b626de378c5ad32d176da5a4c0ad85b081a47908fe56f"
+   },
+   "ficha": {
+    "requiere": [
+     "i18n",
+     "tema"
+    ],
+    "permisos": {},
+    "red": []
+   }
+  },
+  "trabajos": {
+   "version": "0.2.0",
+   "archivos": {
+    "bin/trabajos.py": "33021fbea093b5a6f64bb8bd7176f01fdc1416c97c1a54e937674fa4eb13fd2e",
+    "app/Sources/PiezaTrabajos/LectorProgreso.swift": "7361eb8f02ba7fe42c5526e7e44bcea24d4f1f45bedf1090d6e16dbab6890b07",
+    "escritorio/src/progreso.js": "2be79eec61aad1debcc4ce7dd91255d5d494c096ae9d6d1fece3acc46d1afbff"
+   },
+   "ficha": {
+    "requiere": [
+     "nucleo"
+    ],
+    "permisos": {},
+    "red": []
+   }
+  },
+  "contenido": {
+   "version": "0.1.0",
+   "archivos": {
+    "bin/contenido.py": "88a453c785156587195344e160d15f5a9ff26fbcf934b9a203264e0436beed09"
+   },
+   "ficha": {
+    "requiere": [
+     "nucleo"
+    ],
+    "permisos": {},
+    "red": []
+   }
+  },
+  "catalogo": {
+   "version": "0.2.0",
+   "archivos": {
+    "bin/catalogo.py": "f4e14039756ecb69c3d8f4737cfc1a479e5a61e5aa38bc64ee739d40af7b593b",
+    "app/Sources/PiezaCatalogo/Catalogo.swift": "d46098aa918179363492e76a5712ff17ff802e66dd5bc2c57bdbea8868878ba7",
+    "escritorio/src/catalogo.js": "c76eddcffec1f533cec82e1eebace3642955f1eea52eb4c33f80510fcc56dc96"
+   },
+   "ficha": {
+    "requiere": [
+     "nucleo"
+    ],
+    "permisos": {},
+    "red": [
+     "raw.githubusercontent.com"
+    ]
+   },
+   "acciones": {
+    "catalogoInstalados": {
+     "script": "catalogo.py",
+     "args": [
+      "listar"
+     ],
+     "entrada": "archivo",
+     "datos": {
+      "tipo": {
+       "tipo": "texto",
+       "max": 31
+      }
+     },
+     "responde": "catalogoInstalados",
+     "limite": 30
+    },
+    "catalogoQuitar": {
+     "script": "catalogo.py",
+     "args": [
+      "quitar"
+     ],
+     "entrada": "archivo",
+     "datos": {
+      "tipo": {
+       "tipo": "texto",
+       "max": 31
+      },
+      "id": {
+       "tipo": "texto",
+       "max": 60
+      }
+     },
+     "responde": "catalogoQuitado",
+     "cola": "escritura",
+     "limite": 30
+    },
+    "catalogoUltima": {
+     "script": "catalogo.py",
+     "args": [
+      "ultima"
+     ],
+     "entrada": "archivo",
+     "datos": {
+      "tipo": {
+       "tipo": "texto",
+       "max": 31
+      }
+     },
+     "responde": "catalogoUltima",
+     "limite": 30
+    }
+   }
+  },
+  "host-mac": {
+   "version": "0.2.0",
+   "archivos": {
+    "app/Sources/PiezaHost/Host.swift": "83e0a0092cd3996cfe35b8377b8c8c06975fb0feb9675c3196fcc44a63269e10",
+    "app/Sources/PiezaHost/Procesador.swift": "732f71a12976724889ba389bd3f34bc042ffc4f99a5c76b3fae8dbe9a1e04132",
+    "app/Sources/PiezaHost/Enchufe.swift": "7687d04c080e560be52d90b26d36e7cfad665f8792b2887b98f5214194038d4e",
+    "app/Sources/PiezaHost/Puente.swift": "84625abeaab9558d7c7ce15816653ad0ab438a9da40458ceee8ee2a57a1b6202",
+    "app/Sources/PiezaHost/Carpeta.swift": "60676fa9a24d09105577ae1ab06bad3f379805490334e6e47afedb114292aa22",
+    "app/Sources/PiezaHost/Sistema.swift": "ec7219eee6a8b7678ce795572cd9225b1407200aa042e686bb7c833849df1277"
+   },
+   "ficha": {
+    "requiere": [
+     "nucleo",
+     "host-ui"
+    ],
+    "permisos": {
+     "mac": [
+      {
+       "clave": "Notificaciones",
+       "por": "solo si la app usa Notificaciones: macOS pregunta cuando la app lo pide (pedirPermiso), nunca al abrir"
+      },
+      {
+       "clave": "Llavero",
+       "por": "solo si la app usa Secretos: los tokens quedan en el Llavero de la persona, solo en este Mac"
+      }
+     ]
+    },
+    "red": []
+   }
+  },
+  "host-escritorio": {
+   "version": "0.2.0",
+   "archivos": {
+    "escritorio/src/host.js": "66672428706bcbc7561978642277ef0bdf76a10d9ca7e64d6ce6669a2d837c6d",
+    "escritorio/src/enchufe.js": "15b71d09e7cdab30420036e15e690f1021e010be3a4f0f895315a774067acec3",
+    "escritorio/src/procesador.js": "4a8fd61b1927f8ae9e9687a9db458bc8d3dbece7690f27e60e5043e20e668a79",
+    "escritorio/src/preload.js": "1fa4254de5ba4c5c8688515ed55f5c516177292020513920f399a76cd3e2c751",
+    "escritorio/src/vigilante.js": "db11b708c018d6a4ae3b3e7fa71c0eaed5ae10fd0a6e26ce861b35885f349dce"
+   },
+   "ficha": {
+    "requiere": [
+     "nucleo",
+     "host-ui"
+    ],
+    "permisos": {},
+    "red": []
    }
   }
  }

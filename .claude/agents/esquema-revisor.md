@@ -28,7 +28,7 @@ aporta hace algo mejor de lo que hacíamos, anótalo como aprendizaje para quien
 - Acción nueva del puente: en `pruebas/puente.json`, en `simular()` y avisada para Mac y Electron (`pruebas/contrato.py`).
 
 **Plantillas (`plantillas/<categoria>/<id>.json`)**
-- `python3 bin/plantillas.py validar …` → ✓; el archivo se llama como su `id` y va en la carpeta de su categoría; el diagrama no
+- `python3 bin/catalogo.py validar plantillas …` → ✓; el archivo se llama como su `id` y va en la carpeta de su categoría; el diagrama no
   tiene errores en español ni en inglés; nada de datos reales.
 
 **Idiomas (`ui/idiomas/<código>.json`)**

@@ -834,6 +834,10 @@ def generar(e):
         return {"ok": False, "tarea": tarea, "error": "Cuéntame qué quieres documentar."}
     # Revisión a fondo: la IA lee la carpeta del código por su cuenta (solo leer, sin secretos) y tiene más tiempo.
     leer = lugares(e)["codigo"] if e.get("a_fondo") and tarea in A_FONDO else None
+    # «generar» es "limite": "trabajo" en app.json (sin tope del host mientras lata): no es un Trabajo, así que late solo mientras
+    # espera a la IA; el tope lo pone ia.preguntar (timeout).
+    import trabajos
+    trabajos.mantener_vivo()
     texto, error = ia.preguntar(prompt(e, tarea, docs, ps), timeout=2400 if leer else 900, leer=leer, no_leer=NO_LEER)
     if error:
         return {"ok": False, "tarea": tarea, "error": ia.frase(error), "codigo": error["codigo"]}
@@ -1226,10 +1230,13 @@ ORDENES = {"abrir": abrir, "leer": leer, "preparar": preparar, "generar": genera
            "responder": _agregar("responder"), "continuar": _agregar("continuar"), "borrar": _agregar("borrar"), "recuperar": _agregar("recuperar"),
            "historia_estado": _agregar("historia_estado"), "historia_cierre": _agregar("historia_cierre"), "estudiar": _agregar("estudiar"),
            "incongruencias": _agregar("incongruencias"), "wiki_preparar": _wiki("preparar"), "wiki_publicar": _wiki("publicar")}
-#: Las órdenes largas: las apps les pasan ESQUEMA_PROGRESO y mandan sus eventos a la interfaz (`proyectoProgreso`). La misma lista
-#: en Ventana.ordenesConProgreso (Mac) y ORDENES_CON_PROGRESO (main.js); pruebas/contrato.py lo revisa.
+#: Las órdenes largas: cuentan cómo van con ESQUEMA_PROGRESO (la acción declarada «proyecto» de app.json lo pasa siempre; las
+#: demás órdenes no escriben nada ahí). Sus eventos llegan a la interfaz como `proyectoProgreso`.
+#: En app.json, «proyecto» tiene su límite por orden: estas y «generar» son "trabajo" (sin tope mientras laten: pieza «trabajos»),
+#: crear y la wiki 600 s y lo demás 300 s.
 CON_PROGRESO = ("documentar", "agregar", "crear", "responder", "continuar", "historia_cierre", "estudiar", "incongruencias")
-#: Las que se pueden pedir sin una carpeta abierta (crear un proyecto Libro desde cero). Ventana.ordenesSinCarpeta / ORDENES_SIN_CARPETA.
+#: Las que se pueden pedir sin una carpeta abierta (crear un proyecto Libro desde cero): la app manda carpeta "" y aquí se quita.
+#: Las demás, sin carpeta, responden «Elige una carpeta primero».
 SIN_CARPETA = ("detectar", "crear")
 
 
@@ -1238,7 +1245,11 @@ def main(args):
         print(__doc__)
         return 2
     entrada = comun.leer_json(args[1], {}) or {}
-    if isinstance(entrada, dict) and args[0] in SIN_CARPETA and not entrada.get("carpeta"):
+    if isinstance(entrada, dict) and not entrada.get("carpeta"):
+        # La carpeta la pone siempre la app (la actual, o "" si no hay una abierta); la interfaz nunca la manda.
+        if args[0] not in SIN_CARPETA:
+            comun.responder(args[2], {"ok": False, "error": "Elige una carpeta primero", "orden": args[0]})
+            return 0
         entrada.pop("carpeta", None)
     try:
         r = ORDENES[args[0]](entrada if isinstance(entrada, dict) else {})

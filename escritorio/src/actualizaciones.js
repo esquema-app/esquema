@@ -13,7 +13,7 @@
 //
 //   const { crear } = require("./actualizaciones");
 //   const act = crear({ app, net, repo: "ana-app/ana", nombre: "Ana" });
-//   const r = await act.revisar();          // {hay, version, notas, sinConexion, texto, valores}
+//   const r = await act.revisar();          // {hay, version, notas, sinConexion, texto, valores, desarrollo}
 //   await act.instalar((avance) => ventana.llamar("actualizacionProgreso", avance));
 "use strict";
 const crypto = require("crypto");
@@ -169,7 +169,7 @@ function crear(opciones) {
     },
     _fin(hay, sinConexion = false, version = "", notas = "") {
       // `disponible` (lo que la app manda en su estado) tiene la misma forma que la respuesta: la interfaz usa una sola función.
-      act.disponible = { hay, version: hay ? version : "", notas: hay ? notas : "", texto: hay && version ? TEXTOS.version : "", valores: { v: hay ? version : "" } };
+      act.disponible = { hay, version: hay ? version : "", notas: hay ? notas : "", texto: hay && version ? TEXTOS.version : "", valores: { v: hay ? version : "" }, desarrollo: false };
       return { ...act.disponible, sinConexion };
     },
     /** Un aviso de avance con la forma estándar ({paso, codigo, texto, valores, total}). `codigo` es una clave de TEXTOS. */

@@ -3,7 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 /* Pieza «bienvenida»: lo mínimo para el paso del idioma y los puntos de avance. Sus colores son variables PROPIAS (--bv-acento,
    --bv-linea, --bv-panel, --bv-texto-suave): cada app las define en su CSS con lo que signifiquen allá (en una app «--suave» es
-   un fondo y en otra un texto). Sin definirlas, unos neutros. Botones de 44 px o más, a 390 px en una columna. */
+   un fondo y en otra un texto). Sin definirlas, unos neutros (con la pieza «tema» ya están conectadas). Botones de 44 px o más,
+   a 390 px en una columna. Los botones de los pasos usan las clases de «componentes» (.pz-pie, .pz-boton, .pz-principal,
+   .pz-izq); si la app no la usa, lo de abajo los dibuja con :where() (especificidad 0: componentes.css y la app les ganan). */
 .pieza-bv .pasos-bv { display: flex; gap: 6px; margin-bottom: 18px; }
 .pieza-bv .pasos-bv i { height: 4px; flex: 1; border-radius: 99px; background: var(--bv-linea, #d6d6d6); }
 .pieza-bv .pasos-bv i.hecho { background: var(--bv-acento, #2f5bd3); }
@@ -23,3 +25,10 @@
 .pieza-bv .nota-idioma { text-align: center; color: var(--bv-texto-suave, #666); font-size: 14px; margin-top: 18px; }
 .pieza-bv .nota-idioma span[lang] { display: block; }
 @media (max-width: 420px) { .pieza-bv .opciones-idioma { grid-template-columns: 1fr; } }
+:where(.pieza-bv .pz-pie) { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+:where(.pieza-bv .pz-izq) { margin-right: auto; }
+:where(.pieza-bv .pz-boton) { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 6px 14px;
+  border: 1px solid var(--bv-linea, #d6d6d6); border-radius: 8px; background: var(--bv-panel, transparent); color: inherit; font: inherit; cursor: pointer; }
+:where(.pieza-bv .pz-boton.pz-principal) { background: var(--bv-acento, #2f5bd3); border-color: var(--bv-acento, #2f5bd3); color: var(--bv-sobre-acento, #fff); font-weight: 600; }
+:where(.pieza-bv .pz-boton[disabled]) { opacity: .5; cursor: default; }
+@media (pointer: coarse), (max-width: 760px) { :where(.pieza-bv .pz-boton) { min-height: 44px; } :where(.pieza-bv .pz-pie .pz-boton) { flex: 1 1 auto; } }
