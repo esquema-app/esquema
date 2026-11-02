@@ -10,7 +10,8 @@ Un trabajo deja TODO en disco a medida que avanza, así nada se pierde si se cie
   lector de progreso, `LectorProgreso` en Swift o `lectorProgreso` en Electron, para pasarlo a la interfaz):
   {"t": "estado", "trabajo": <vista>} en cada cambio de estado y {"t": "lee" | "busca", …} por cada archivo que lee la IA;
 - un «latido» cada pocos segundos: si el estado dice «corriendo» y el latido es viejo, el proceso murió (la app se cerró) y el
-  trabajo queda «interrumpido», listo para «Seguir» (lo ya hecho no se repite);
+  trabajo queda «interrumpido», listo para «Seguir» (lo ya hecho no se repite). El mismo latido toca el archivo que dice
+  <ID>_LATIDO (lo pone el host para una acción con «limite»: "trabajo"): si deja de latir, el host lo corta;
 - «Detener» (`detener(id)`) deja el archivo trabajos/<id>.detener: el trabajo lo ve con t.detenido(), corta la IA y queda «detenido».
 - «esperando»: el trabajo le preguntó algo a la persona (t.esperar(preguntas)) y terminó su proceso; todo queda en disco y la
   respuesta lo retoma (t.seguir()). Un trabajo que espera no se borra con los viejos.
@@ -56,6 +57,30 @@ def id_valido(i):
 
 
 _lock_progreso = threading.Lock()
+
+
+def latir_host():
+    """Le dice al host que el script sigue vivo (si lo pidió con <ID>_LATIDO: una acción con «limite»: "trabajo"). Sin eso,
+    el host corta el script a los 45 s sin latido. Lo llama solo el hilo de `Trabajo.latir()`; para algo largo sin trabajo,
+    `mantener_vivo()`."""
+    ruta = nucleo.entorno("LATIDO")
+    if not ruta:
+        return
+    try:
+        with open(ruta, "a", encoding="utf-8"):
+            pass
+        os.utime(ruta, None)
+    except OSError:
+        pass
+
+
+def mantener_vivo():
+    """Un hilo que late para el host mientras el script corre (algo largo que no es un Trabajo, en una acción "trabajo")."""
+    def latido():
+        while True:
+            latir_host()
+            time.sleep(LATIDO)
+    threading.Thread(target=latido, daemon=True).start()
 
 
 def emitir(evento):
@@ -212,6 +237,7 @@ class Trabajo:
                 with self._lock:
                     self.x["latido"] = time.time()
                     self.guardar(emitir_estado=False)
+                latir_host()
                 time.sleep(LATIDO)
         threading.Thread(target=latido, daemon=True).start()
 
@@ -226,11 +252,12 @@ class Trabajo:
 def _error(error):
     """(texto en español, error_ia o None): un error de la IA llega como {codigo, plantilla, valores} (pieza «ia»)."""
     if isinstance(error, dict):
-        ia_ = {"codigo": str(error.get("codigo", "")), "plantilla": str(error.get("plantilla", "")),
-               "valores": {str(k): str(v)[:300] for k, v in (error.get("valores") or {}).items()}}
+        valores = error.get("valores") if isinstance(error.get("valores"), dict) else {}
+        ia_ = {"codigo": str(error.get("codigo") or ""), "plantilla": str(error.get("plantilla") or ""),
+               "valores": {str(k): ("" if v is None else str(v))[:300] for k, v in valores.items()}}
         texto = ia_["plantilla"]
         for k, v in ia_["valores"].items():
-            texto = texto.replace("{" + k + "}", v)
+            texto = texto.replace("{" + k + "}", str(v))
         return texto.strip()[:600], ia_
     return str(error or "")[:600], None
 

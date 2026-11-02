@@ -20,12 +20,30 @@ public enum Enchufe {
         public let eco: [String]
         public let despues: [String]
         public let enFila: Bool
-        public let limite: Int
+        /// Segundos (1 a 3600), "trabajo" o {segun, valores, otro}: ver `limite(para:)`.
+        public let limites: Any
+        /// Bytes que puede pesar la entrada (5 MB salvo que la acción diga «maximo», hasta 50 MB).
+        public let maximo: Int
+        /// "lee" | "escribe": el vigilante de la carpeta conoce el texto (así no avisa lo que escribió la app). nil: nada.
+        public let vigilar: String?
+
+        /// El límite de esta vez: segundos, o nil = "trabajo" (sin tope mientras el script lata; pieza «trabajos»).
+        public func limite(para entrada: [String: Any]) -> Int? {
+            var l = limites
+            if let d = limites as? [String: Any] {
+                let v = (d["segun"] as? String).flatMap { entrada[$0] as? String }
+                l = (v.flatMap { (d["valores"] as? [String: Any])?[$0] }) ?? d["otro"] ?? 120
+            }
+            if l as? String == "trabajo" { return nil }
+            return Texto.entero(l) ?? 120
+        }
     }
 
     static let tipos: Set<String> = ["texto", "enum", "bool", "entero", "rutaRelativa", "base64", "lista"]
     static let prohibidos: Set<String> = ["__proto__", "constructor", "prototype"]
     public static let maximoEntrada = 5 * 1024 * 1024
+    /// «maximo» de una acción como mucho.
+    public static let topeEntrada = 50 * 1024 * 1024
     static let nombre = "[A-Za-z][A-Za-z0-9]{0,60}"
     static let campo = "[A-Za-z_]\\w{0,60}"
 
@@ -51,7 +69,8 @@ public enum Enchufe {
                 pasarResto: (a["datos"] as? [String: Any])?["*"] as? String == "pasar",
                 porArchivo: a["entrada"] as? String == "archivo", inyectar: a["inyectar"] as? [String: String] ?? [:],
                 responde: a["responde"] as? String, progreso: a["progreso"] as? String, eco: a["eco"] as? [String] ?? [],
-                despues: a["despues"] as? [String] ?? [], enFila: a["cola"] as? String == "escritura", limite: Texto.entero(a["limite"]) ?? 120)
+                despues: a["despues"] as? [String] ?? [], enFila: a["cola"] as? String == "escritura", limites: a["limite"] ?? 120,
+                maximo: Texto.entero(a["maximo"]) ?? maximoEntrada, vigilar: a["vigilar"] as? String)
         }
         return (acciones, errores)
     }
@@ -68,13 +87,19 @@ public enum Enchufe {
         guard let lista = argsCrudos as? [Any], let args = lista as? [String], args.count == lista.count else {
             return e + ["\(donde): «args» es una lista de textos"]
         }
+        var maximo = maximoEntrada
+        if let m = a["maximo"] {
+            if let n = Texto.entero(m), (1...topeEntrada).contains(n) { maximo = n } else {
+                e.append("\(donde): «maximo» (bytes de la entrada) es un entero hasta \(topeEntrada)")
+            }
+        }
         for (c, regla) in datos {
             if c == "*" {
                 if regla as? String != "pasar" { e.append("\(donde): «*» solo puede ser \"pasar\"") }
                 continue
             }
             if !Texto.calza(c, campo) || prohibidos.contains(c) { e.append("\(donde): campo raro «\(c)»") }
-            e += erroresRegla("\(donde): «\(c)»", regla)
+            e += erroresRegla("\(donde): «\(c)»", regla, maximo: maximo)
         }
         for arg in args {
             if arg.hasPrefix("$") {
@@ -97,7 +122,14 @@ public enum Enchufe {
         let entrada = a["entrada"]
         if !porArchivo.isEmpty, entrada as? String != "archivo" { e.append("\(donde): \(porArchivo.sorted().joined(separator: ", ")) no van en args: necesita \"entrada\": \"archivo\"") }
         if let x = entrada, !(x is NSNull), x as? String != "archivo" { e.append("\(donde): «entrada» es \"archivo\" o null") }
-        guard let limite = Texto.entero(a["limite"]), (1...3600).contains(limite) else { return e + ["\(donde): «limite» (segundos) es obligatorio, entre 1 y 3600"] }
+        e += erroresLimite(donde, a["limite"], datos)
+        if let v = a["vigilar"] {
+            let ruta = (datos["ruta"] as? [String: Any])?["tipo"] as? String, texto = (datos["texto"] as? [String: Any])?["tipo"] as? String
+            let s = v as? String
+            if !(s == "lee" || s == "escribe") || ruta != "rutaRelativa" || (s == "escribe" && texto != "texto") {
+                e.append("\(donde): «vigilar» es \"lee\" o \"escribe\", con «ruta» (rutaRelativa) en datos (y «texto» para escribe)")
+            }
+        }
         if let r = a["responde"], !(r is NSNull), !((r as? String).map { Texto.calza($0, nombre) } ?? false) { e.append("\(donde): «responde» es el nombre de una función") }
         if let r = a["progreso"], !((r as? String).map { Texto.calza($0, nombre) } ?? false) { e.append("\(donde): «progreso» es el nombre de una función") }
         for (k, patron) in [("eco", campo), ("despues", nombre)] {
@@ -109,19 +141,36 @@ public enum Enchufe {
         return e
     }
 
-    static func erroresRegla(_ donde: String, _ regla: Any) -> [String] {
+    static func limiteOk(_ x: Any?) -> Bool {
+        if x as? String == "trabajo" { return true }
+        return Texto.entero(x).map { (1...3600).contains($0) } ?? false
+    }
+
+    /// «limite»: segundos (1 a 3600), "trabajo" (sin tope, mientras lata: pieza «trabajos») o según el valor de un campo enum:
+    /// {"segun": "orden", "valores": {"documentar": "trabajo", "leer": 60}, "otro": 120}.
+    static func erroresLimite(_ donde: String, _ limite: Any?, _ datos: [String: Any]) -> [String] {
+        let malo = ["\(donde): «limite» es obligatorio: segundos (1 a 3600), \"trabajo\" o {\"segun\": campo, \"valores\": {…}, \"otro\": …}"]
+        guard let l = limite as? [String: Any] else { return limiteOk(limite) ? [] : malo }
+        guard Set(l.keys).isSubset(of: ["segun", "valores", "otro"]), let segun = l["segun"] as? String,
+              let regla = datos[segun] as? [String: Any], regla["tipo"] as? String == "enum",
+              let permitidos = regla["valores"] as? [Any], let valores = l["valores"] as? [String: Any], limiteOk(l["otro"]),
+              valores.allSatisfy({ k, v in permitidos.contains { ($0 as? String) == k } && limiteOk(v) }) else { return malo }
+        return []
+    }
+
+    static func erroresRegla(_ donde: String, _ regla: Any, maximo: Int = maximoEntrada) -> [String] {
         guard let r = regla as? [String: Any], let tipo = r["tipo"] as? String, tipos.contains(tipo) else { return ["\(donde): tipo desconocido"] }
         var e: [String] = []
         switch tipo {
         case "texto":
-            if !((Texto.entero(r["max"]).map { $0 > 0 && $0 <= maximoEntrada }) ?? false) { e.append("\(donde): un texto necesita «max»") }
+            if !((Texto.entero(r["max"]).map { $0 > 0 && $0 <= maximo }) ?? false) { e.append("\(donde): un texto necesita «max»") }
         case "enum":
             let v = r["valores"] as? [Any] ?? []
             if v.isEmpty || !v.allSatisfy({ ($0 as? String).map { Texto.calza($0, "[\\w.-]+") } ?? false }) { e.append("\(donde): un enum necesita «valores» (textos simples)") }
         case "entero":
             for k in ["min", "max"] where r[k] != nil && Texto.entero(r[k]) == nil { e.append("\(donde): «min»/«max» son enteros") }
         case "base64":
-            if !((Texto.entero(r["maxBytes"]).map { $0 > 0 && $0 <= maximoEntrada }) ?? false) { e.append("\(donde): base64 necesita «maxBytes»") }
+            if !((Texto.entero(r["maxBytes"]).map { $0 > 0 && $0 <= maximo }) ?? false) { e.append("\(donde): base64 necesita «maxBytes»") }
         case "rutaRelativa":
             if let x = r["extensiones"], !((x as? [Any]).map { $0.allSatisfy { ($0 as? String).map { Texto.calza($0, "\\.\\w{1,10}") } ?? false } } ?? false) {
                 e.append("\(donde): «extensiones» es una lista como [\".md\"]")
@@ -129,7 +178,7 @@ public enum Enchufe {
         case "lista":
             if r["max"] != nil, !((Texto.entero(r["max"]).map { $0 > 0 && $0 <= 10000 }) ?? false) { e.append("\(donde): «max» de una lista es un entero") }
             if let de = r["de"] {
-                if (de as? [String: Any])?["tipo"] as? String == "lista" { e.append("\(donde): una lista de listas no") } else { e += erroresRegla(donde + " (cada uno)", de) }
+                if (de as? [String: Any])?["tipo"] as? String == "lista" { e.append("\(donde): una lista de listas no") } else { e += erroresRegla(donde + " (cada uno)", de, maximo: maximo) }
             }
         default: break
         }
@@ -165,8 +214,19 @@ public enum Enchufe {
         guard JSONSerialization.isValidJSONObject(entrada), let d = try? JSONSerialization.data(withJSONObject: entrada) else {
             return .falla(campo: "*", codigo: "invalido")
         }
-        if d.count > maximoEntrada { return .falla(campo: "*", codigo: "grande") }
+        if d.count > a.maximo { return .falla(campo: "*", codigo: "grande") }
         return .ok(entrada)
+    }
+
+    /// Los campos de «eco» que se pueden devolver aunque los datos no pasen: solo los que son válidos por sí solos (así la
+    /// interfaz sabe a qué orden responde el error, y nunca vuelve algo que no calza con su regla).
+    public static func ecoValido(_ a: Accion, _ datos: [String: Any]) -> [String: Any] {
+        var r: [String: Any] = [:]
+        for k in a.eco {
+            guard let regla = a.datos[k], let v = datos[k], !(v is NSNull), let x = valor(regla, v) else { continue }
+            r[k] = x
+        }
+        return r
     }
 
     public static func valor(_ r: [String: Any], _ v: Any) -> Any? {

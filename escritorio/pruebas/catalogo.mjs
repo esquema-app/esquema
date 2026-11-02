@@ -52,9 +52,11 @@ revisar((await C.descargar("plantillas", "no-existe")).codigo === "no_esta", "se
 revisar(!(await C.descargar("plantillas", "../../config")).ok, "se aceptó un id con ruta");
 trampa = "dañada";
 const danada = await C.descargar("plantillas", id);
-revisar(danada.codigo === "danado" && danada.plantilla === "Llegó dañado. Intenta de nuevo." && danada.id === id, "una plantilla con otra huella no se rechazó: " + JSON.stringify(danada));
+revisar(danada.codigo === "danado" && danada.frase === "Llegó dañado. Intenta de nuevo." && danada.id === id, "una plantilla con otra huella no se rechazó: " + JSON.stringify(danada));
 trampa = "redireccion";
-revisar(!(await C.descargar("plantillas", id)).ok && !(await C.listar("plantillas")).ok, "una redirección no se rechazó");
+// Una redirección no se sigue: descargar falla y la lista es la última validada (pieza «catálogo» 0.2: sin_conexion), nunca la otra.
+const tras = await C.listar("plantillas");
+revisar(!(await C.descargar("plantillas", id)).ok && (!tras.ok || (tras.sin_conexion === true && tras.frase === "No pude conectarme. Revisa tu conexión.")), "una redirección no se rechazó");
 trampa = "enorme";
 revisar(!(await C.listar("plantillas")).ok, "un índice de más de 1 MB no se rechazó");
 

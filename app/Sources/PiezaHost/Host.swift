@@ -26,6 +26,10 @@ public enum Host {
         /// Enlaces del menú Ayuda (solo https).
         public var sitio: String?
         public var codigo: String?
+        /// false: sin menú Ayuda aunque haya `sitio` o `codigo` (la app pone el suyo o no quiere ninguno).
+        public var menuAyuda: Bool
+        /// La app muestra avisos del sistema (Notificaciones): el host se encarga de que tocar uno abra la ventana desde el arranque.
+        public var avisos: Bool
         /// El objeto `window.<App>` de la interfaz (pieza «host-ui»). Sin él: el id con mayúscula («ana» → «Ana»).
         public var global: String?
         /// El script que arma el estado al abrir (si existe en bin/). nil: ninguno.
@@ -37,10 +41,11 @@ public enum Host {
         public var python: URL?
 
         public init(ancho: CGFloat = 1280, alto: CGFloat = 800, minAncho: CGFloat = 720, minAlto: CGFloat = 520, sitio: String? = nil,
-                    codigo: String? = nil, global: String? = nil, estadoScript: String? = "estado.py", cerrarSale: Bool = false,
-                    recursos: URL? = nil, python: URL? = nil) {
+                    codigo: String? = nil, menuAyuda: Bool = true, avisos: Bool = false, global: String? = nil, estadoScript: String? = "estado.py",
+                    cerrarSale: Bool = false, recursos: URL? = nil, python: URL? = nil) {
             self.ancho = ancho; self.alto = alto; self.minAncho = minAncho; self.minAlto = minAlto
-            self.sitio = sitio; self.codigo = codigo; self.global = global; self.estadoScript = estadoScript
+            self.sitio = sitio; self.codigo = codigo; self.menuAyuda = menuAyuda; self.avisos = avisos
+            self.global = global; self.estadoScript = estadoScript
             self.cerrarSale = cerrarSale; self.recursos = recursos; self.python = python
         }
     }
@@ -141,9 +146,12 @@ public final class Delegado: NSObject, NSApplicationDelegate {
     public func applicationDidFinishLaunching(_ aviso: Notification) {
         Host.prepararDatos()
         let p = Puente.shared
+        // Antes de lo de la app: si la app se abrió tocando un aviso, ese toque ya tiene quién lo atienda (la app puede poner otro).
+        if Host.opciones.avisos { Notificaciones.preparar() }
         preparar(p)
         p.instalarMenus()
         p.aplicarApariencia()
+        if let c = p.carpeta, let v = p.vigilante, let u = c.actual() { v.empezar(u) }
         p.mostrar()
         // En el primer uso lo primero es elegir el idioma: lo que corre solo espera a que esté elegido.
         if Idioma.elegido { p.iniciarTareas() }
@@ -161,6 +169,9 @@ public final class Delegado: NSObject, NSApplicationDelegate {
         Puente.shared.guardarTodo()
         Puente.shared.esperarLibre(segundos: 3) { _ in
             Puente.shared.antesDeSalir?()
+            Puente.shared.vigilante?.detener()
+            // Lo que siga corriendo se corta (un trabajo queda «interrumpido» y se sigue al volver): nada queda huérfano.
+            Procesador.cortarTodo()
             NSApp.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater

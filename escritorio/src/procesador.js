@@ -6,7 +6,10 @@
 //   · Lo que manda la interfaz va en el archivo de entrada, nunca como argumento (cualquier programa ve los argumentos).
 //   · Un secreto (la llave de un conector) va por la entrada estándar: nunca en un archivo, un argumento ni el entorno.
 //   · Ninguna variable <ID>_* de afuera llega al script: solo las que pone el host (<ID>_RECURSOS, <ID>_DATOS…).
-//   · Todo tiene límite de tiempo: al cumplirse se corta el script y lo que haya lanzado (su grupo de procesos).
+//   · Todo tiene límite de tiempo: al cumplirse se corta el script y lo que haya lanzado (su grupo de procesos). Un trabajo largo
+//     ({latido: true}, «limite»: "trabajo") no tiene tope, pero tiene que latir (pieza «trabajos»: <ID>_LATIDO): si deja de latir,
+//     se corta igual.
+//   · Al salir de la app se corta lo que siga corriendo (cortarTodo): un trabajo queda «interrumpido» y se sigue después.
 //   · Entrada y salida viven en una carpeta temporal propia (0700) que se borra al terminar.
 "use strict";
 const fs = require("fs");
@@ -18,6 +21,7 @@ const { SCRIPT, leerJSON } = require("./enchufe");
 const ES_WIN = process.platform === "win32";
 const TEXTOS = {
   limite: "Tardó demasiado y lo detuve. Intenta de nuevo.",
+  latido: "Dejó de avanzar y lo detuve. Intenta de nuevo.",
   fallo: "No pude terminar. Intenta de nuevo.",
 };
 const MAX_SALIDA_ESTANDAR = 1024 * 1024;
@@ -32,13 +36,18 @@ const VARIABLE = /^[A-Z][A-Z0-9_]{0,60}$/;
  * @param {function} [o.t]     traducir (para `error`, que leen las interfaces de antes)
  * @param {function} [o.lectorProgreso]  pieza «trabajos» (progreso.js): lectorProgreso(aviso, {prefijo})
  * @param {number} [o.gracia]  segundos entre pedir que termine y cortarlo (3)
+ * @param {object} [o.latido]  {muerto: 45, primero: 120, revisar: 5} segundos: un trabajo sin latido por más de `muerto` se corta
  */
-function crearProcesador({ python, recursos, id, datos, t = (x) => x, lectorProgreso = null, gracia = 3, registro = console.error }) {
+function crearProcesador({ python, recursos, id, datos, t = (x) => x, lectorProgreso = null, gracia = 3, registro = console.error, latido: tiempos = {} }) {
   const P = id.toUpperCase() + "_";
+  const L = { muerto: 45, primero: 120, revisar: 5, ...tiempos };
+  const vivos = new Set();
   const yo = {
     enCurso: 0,
-    /** Lo de bajo nivel: devuelve {respuesta, salidaEstandar, porLimite}. */
-    correr(script, args = [], { secreto = null, progreso = null, limite = 120, entorno = {}, entrada = null } = {}) {
+    /** Detiene todo lo que sigue corriendo (y lo que lanzó). Lo llama el host al salir. */
+    cortarTodo() { for (const p of vivos) matar(p, "SIGTERM"); },
+    /** Lo de bajo nivel: devuelve {respuesta, salidaEstandar, porLimite}. `latido: true`: sin tope mientras el script lata. */
+    correr(script, args = [], { secreto = null, progreso = null, limite = 120, latido = false, entorno = {}, entrada = null } = {}) {
       return new Promise((fin) => {
         const falla = (error, extra = {}) => ({ respuesta: { ok: false, error, ...extra }, salidaEstandar: "", porLimite: false });
         if (typeof script !== "string" || !SCRIPT.test(script)) return fin(falla("script raro"));
@@ -60,18 +69,26 @@ function crearProcesador({ python, recursos, id, datos, t = (x) => x, lectorProg
         Object.assign(env, { [P + "RECURSOS"]: recursos, [P + "DATOS"]: datos, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1", PYTHONDONTWRITEBYTECODE: "1" });
         const lector = progreso && lectorProgreso ? lectorProgreso(progreso, { prefijo: id }) : null;
         if (lector) env[P + "PROGRESO"] = lector.ruta;
-        let p, out = "", err = "", porLimite = false, terminado = false, reloj = null, corte = null;
+        // Un trabajo late tocando este archivo (trabajos.latir_host): el host mira cuándo fue la última vez.
+        const archivoLatido = path.join(dir, "latido");
+        if (latido) {
+          try { fs.writeFileSync(archivoLatido, "", { mode: 0o600, flag: "wx" }); } catch {}
+          env[P + "LATIDO"] = archivoLatido;
+        }
+        let p, out = "", err = "", porLimite = false, terminado = false, reloj = null, corte = null, vigia = null;
         yo.enCurso++;
         const terminar = () => {
           if (terminado) return;
           terminado = true;
-          clearTimeout(reloj); clearTimeout(corte);
+          clearTimeout(reloj); clearTimeout(corte); clearInterval(vigia);
+          vivos.delete(p);
           yo.enCurso--;
           if (lector) lector.terminar();
           let r = porLimite ? null : leerJSON(salida, null);
           if (!r && err && !porLimite) registro(`${id}: ${script}`, err.slice(-600));
           borrar(dir);
-          if (porLimite) r = { ok: false, codigo: "limite", texto: TEXTOS.limite, valores: { s: segundos }, error: t(TEXTOS.limite) };
+          if (porLimite && latido) r = { ok: false, codigo: "limite", texto: TEXTOS.latido, valores: {}, error: t(TEXTOS.latido) };
+          else if (porLimite) r = { ok: false, codigo: "limite", texto: TEXTOS.limite, valores: { s: segundos }, error: t(TEXTOS.limite) };
           else if (!r || typeof r !== "object" || Array.isArray(r)) r = { ok: false, codigo: "fallo", texto: TEXTOS.fallo, valores: {}, error: t(TEXTOS.fallo) };
           fin({ respuesta: r, salidaEstandar: out, porLimite });
         };
@@ -83,16 +100,30 @@ function crearProcesador({ python, recursos, id, datos, t = (x) => x, lectorProg
             stdio: [secreto !== null ? "pipe" : "ignore", secreto !== null ? "pipe" : "ignore", "pipe"],
           });
         } catch (e) { yo.enCurso--; terminado = true; borrar(dir); if (lector) lector.terminar(); return fin(falla(e.message)); }
+        vivos.add(p);
         p.stderr.on("data", (d) => { if (err.length < 4000) err += d; });
         if (p.stdout) p.stdout.on("data", (d) => { if (out.length < MAX_SALIDA_ESTANDAR) out += d; });
         p.on("error", (e) => { err += String(e && e.message); terminar(); });
         p.on("close", terminar);
         if (secreto !== null) { p.stdin.on("error", () => {}); p.stdin.end(String(secreto)); }
-        reloj = setTimeout(() => {
+        const cortar = () => {
+          if (porLimite) return;
           porLimite = true;
           matar(p, "SIGTERM");
           corte = setTimeout(() => matar(p, "SIGKILL"), gracia * 1000);
-        }, segundos * 1000);
+        };
+        if (latido) {
+          // Sin tope, pero si el archivo del latido no se tocó hace más de `muerto` (el primero tiene `primero`), se corta.
+          const inicio = Date.now();
+          vigia = setInterval(() => {
+            let tocado = inicio;
+            try { tocado = fs.statSync(archivoLatido).mtimeMs; } catch {}
+            const ultimo = Math.max(tocado, inicio + (L.primero - L.muerto) * 1000);
+            if (Date.now() - ultimo > L.muerto * 1000) { clearInterval(vigia); cortar(); }
+          }, L.revisar * 1000);
+        } else {
+          reloj = setTimeout(cortar, segundos * 1000);
+        }
       });
     },
     /** El JSON de salida del script (o {ok: false, codigo, texto, error}). */

@@ -98,7 +98,23 @@
     "orden"
    ],
    "progreso": "proyectoProgreso",
-   "limite": 3600,
+   "limite": {
+    "segun": "orden",
+    "valores": {
+     "documentar": "trabajo",
+     "agregar": "trabajo",
+     "responder": "trabajo",
+     "continuar": "trabajo",
+     "historia_cierre": "trabajo",
+     "estudiar": "trabajo",
+     "incongruencias": "trabajo",
+     "generar": "trabajo",
+     "crear": 600,
+     "wiki_preparar": 600,
+     "wiki_publicar": 600
+    },
+    "otro": 300
+   },
    "scriptDeLaApp": true
   },
   "dibujar": {
@@ -180,6 +196,70 @@
    },
    "responde": "estructuraLista",
    "limite": 60,
+   "scriptDeLaApp": true
+  },
+  "abrirArchivo": {
+   "script": "carpeta.py",
+   "args": [
+    "leer"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "ruta": {
+     "tipo": "rutaRelativa",
+     "extensiones": [
+      ".md",
+      ".mmd"
+     ],
+     "requerido": true
+    }
+   },
+   "inyectar": {
+    "carpeta": "carpetaActual"
+   },
+   "responde": "archivoAbierto",
+   "eco": [
+    "ruta"
+   ],
+   "vigilar": "lee",
+   "limite": 30,
+   "scriptDeLaApp": true
+  },
+  "guardarArchivo": {
+   "script": "carpeta.py",
+   "args": [
+    "guardar"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "ruta": {
+     "tipo": "rutaRelativa",
+     "extensiones": [
+      ".md",
+      ".mmd"
+     ],
+     "requerido": true
+    },
+    "texto": {
+     "tipo": "texto",
+     "max": 2097152,
+     "requerido": true
+    },
+    "nuevo": {
+     "tipo": "bool"
+    }
+   },
+   "inyectar": {
+    "carpeta": "carpetaActual"
+   },
+   "responde": "archivoGuardado",
+   "eco": [
+    "ruta"
+   ],
+   "cola": "escritura",
+   "vigilar": "escribe",
+   "maximo": 16777216,
+   "limite": 30,
    "scriptDeLaApp": true
   }
  }

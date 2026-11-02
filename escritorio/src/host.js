@@ -25,6 +25,7 @@ const { pathToFileURL } = require("url");
 const { Readable } = require("stream");
 const E = require("./enchufe");
 const { crearProcesador, crearFila } = require("./procesador");
+const { Vigilante } = require("./vigilante");
 
 const ES_WIN = process.platform === "win32";
 const TEMAS = { sistema: "system", claro: "light", oscuro: "dark" };
@@ -38,9 +39,15 @@ const TIPOS_MEDIOS = { ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "vide
   ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json" };
 const TROZO = 4 << 20;
 
+/** Lo que devuelve un inyector cuando falta algo, con su propio texto (en español, con marcadores): `host.falta("Elige una
+ *  carpeta primero.")`. El host responde {ok: false, codigo: "falta", texto, valores, error} sin correr el script. */
+class Falta {
+  constructor(texto, valores = {}) { this.texto = String(texto || TEXTOS.falta); this.valores = E.esObjeto(valores) ? valores : {}; }
+}
+
 function crearHost(op = {}) {
   const electron = op.electron || require("electron");
-  const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, nativeTheme, net, protocol, session, shell } = electron;
+  const { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, nativeTheme, net, protocol, safeStorage, session, shell } = electron;
 
   const RECURSOS = op.recursos || (app.isPackaged ? recursosEmpaquetados(process.resourcesPath) : path.resolve(__dirname, "..", ".."));
   const a = E.leerApp(RECURSOS);
@@ -56,14 +63,19 @@ function crearHost(op = {}) {
   const idioma = E.crearIdioma({ config, recursos: RECURSOS, elegidoDe: op.idiomaElegido || null });
   const t = (x) => idioma.t(x);
   const procesador = crearProcesador({ python: op.python || pythonDe(RECURSOS, app.isPackaged), recursos: RECURSOS, id, datos: DATOS, t,
-    lectorProgreso: op.lectorProgreso || null });
+    lectorProgreso: op.lectorProgreso || null, latido: op.latido || {} });
   const fila = crearFila();
   const { acciones: declaradas, errores } = E.cargarAcciones(RECURSOS);
   for (const e of errores) console.error(`${nombre}: ${e}`);
   const registradas = new Map();
   const internas = new Map();
   const medios = new Map();
-  const inyectores = { idiomaUI: () => idioma.codigo, carpetaDatos: () => DATOS, ...(op.inyectar || {}) };
+  const inyectores = { idiomaUI: () => idioma.codigo, carpetaDatos: () => DATOS };
+  // La carpeta que elige la persona (op.carpeta) y su vigilante (op.vigilar): ver más abajo. Lo que inyecta la app gana.
+  const carpeta = op.carpeta ? crearCarpeta(op.carpeta === true ? {} : op.carpeta) : null;
+  const vigilante = op.vigilar ? crearVigilante(op.vigilar === true ? {} : op.vigilar) : null;
+  if (carpeta) inyectores.carpetaActual = () => carpeta.actual() || new Falta(carpeta.textoFalta);
+  Object.assign(inyectores, op.inyectar || {});
   const ventanaOp = { ancho: 1280, alto: 800, minAncho: 720, minAlto: 520, alCerrar: "salir", fondo: { claro: "#f7f7f5", oscuro: "#1c1c1e" }, ...(op.ventana || {}) };
   let ventana = null, lista = false, saliendo = false, tareas = false, ocupadas = 0;
 
@@ -85,19 +97,30 @@ function crearHost(op = {}) {
     const v = E.validarDatos(def, datos);
     const eco = (entrada) => Object.fromEntries((def.eco || []).filter((k) => entrada && Object.hasOwn(entrada, k)).map((k) => [k, entrada[k]]));
     const responder = (r, entrada) => { if (def.responde) llamar(def.responde, { ...r, ...eco(entrada) }); return r; };
-    if (!v.ok) return responder({ ok: false, codigo: "datos", campo: v.campo, texto: TEXTOS.datos, valores: {}, error: t(TEXTOS.datos) }, {});
+    // Aunque los datos no pasen, vuelve el eco que sí es válido (la interfaz sabe a qué orden responde el error).
+    if (!v.ok) return responder({ ok: false, codigo: "datos", campo: v.campo, texto: TEXTOS.datos, valores: {}, error: t(TEXTOS.datos) }, E.ecoValido(def, datos));
     const entrada = v.entrada;
     for (const [campo, fuente] of Object.entries(def.inyectar || {})) {
       const f = inyectores[fuente];
       const valor = typeof f === "function" ? await f(entrada) : undefined;
-      if (valor === undefined || valor === null) return responder({ ok: false, codigo: "falta", campo, texto: TEXTOS.falta, valores: {}, error: t(TEXTOS.falta) }, entrada);
+      if (valor === undefined || valor === null || valor instanceof Falta) {
+        const x = valor instanceof Falta ? valor : new Falta(TEXTOS.falta);
+        return responder({ ok: false, codigo: "falta", campo, texto: x.texto, valores: x.valores, error: idioma.f(x.texto, x.valores) }, entrada);
+      }
       entrada[campo] = valor;
     }
-    const opciones = { limite: def.limite };
+    const limite = E.limiteDe(def, entrada);
+    const opciones = limite === "trabajo" ? { latido: true } : { limite };
     if (def.progreso) opciones.progreso = (eventos) => llamar(def.progreso, { eventos });
     const tarea = async () => {
       const args = E.armarArgs(def, entrada);
+      // «vigilar»: el vigilante conoce el texto que la app escribe ANTES de escribirlo (y el que lee, al leerlo).
+      const ruta = def.vigilar && vigilante && typeof entrada.ruta === "string" ? entrada.ruta : null;
+      const antes = ruta !== null ? vigilante.conocidos.get(ruta) : undefined;
+      if (ruta !== null && def.vigilar === "escribe") vigilante.conocer(ruta, entrada.texto);
       const r = def.entrada === "archivo" ? await procesador.conEntrada(def.script, args, entrada, opciones) : await procesador.correrJSON(def.script, args, opciones);
+      if (ruta !== null && def.vigilar === "lee" && r.ok && typeof r.texto === "string") vigilante.conocer(ruta, r.texto);
+      if (ruta !== null && def.vigilar === "escribe" && !r.ok) vigilante.conocer(ruta, antes);
       responder(r, entrada);
       for (const x of def.despues || []) if (x !== nombreAccion) await despachar(x, {});
       return r;
@@ -155,8 +178,7 @@ function crearHost(op = {}) {
     internas.set("buscarActualizacion", async () => llamar("actualizacionRevisada", await act.revisar().catch(() => ({ hay: false, sinConexion: true }))));
     internas.set("actualizar", async () => {
       // La interfaz guarda todo justo antes de pedirlo: se espera. Nunca en medio de un guardado o de un script.
-      await esperarLibre(5000);
-      if (ocupada()) return llamar("actualizacionProgreso", { paso: "error", codigo: "ocupada", texto: "Espera a que termine lo que está haciendo y vuelve a intentarlo.", valores: {}, total: 3 });
+      if (!(await esperarLibre(5000))) return llamar("actualizacionProgreso", { paso: "error", codigo: "ocupada", texto: "Espera a que termine lo que está haciendo y vuelve a intentarlo.", valores: {}, total: 3 });
       await act.instalar((p) => llamar("actualizacionProgreso", p));
     });
   }
@@ -171,10 +193,12 @@ function crearHost(op = {}) {
   }
   /** Algo se cortaría si la app se cierra: un guardado en la fila, un script corriendo o algo que la app marcó (ocupar/soltar). */
   const ocupada = () => fila.pendientes > 0 || procesador.enCurso > 0 || ocupadas > 0;
+  /** Espera (hasta `ms`) a que no quede nada: la fila, un script corriendo ni lo que marcó la app. true si quedó libre. */
   async function esperarLibre(ms) {
     const limite = Date.now() + ms;
     await new Promise((r) => setTimeout(r, 300));
-    while ((fila.pendientes > 0 || ocupadas > 0) && Date.now() < limite) await new Promise((r) => setTimeout(r, 100));
+    while (ocupada() && Date.now() < limite) await new Promise((r) => setTimeout(r, 100));
+    return !ocupada();
   }
 
   // ───────────── Diálogos del sistema (para las acciones propias de la app) ─────────────
@@ -208,6 +232,109 @@ function crearHost(op = {}) {
       return destino;
     },
   };
+  /** Muestra el archivo (o la carpeta) en el explorador del sistema. Solo rutas que la app ya revisó (host.dentro). */
+  function mostrarEnCarpeta(absoluta) {
+    if (typeof absoluta !== "string" || !path.isAbsolute(absoluta) || !fs.existsSync(absoluta)) return false;
+    shell.showItemInFolder(absoluta);
+    return true;
+  }
+
+  // ───────────── La carpeta de la persona (op.carpeta) ─────────────
+  /** {clave: "carpeta"}: la clave de config (en app.json con "interfaz": false) donde queda la ruta para los scripts. En Windows
+   *  y Linux no hay marcador del sistema: se guarda la ruta real (sin enlaces) y, si ya no existe, actual() es null. */
+  function crearCarpeta({ clave = "carpeta", titulo, boton, falta = "Elige una carpeta primero." } = {}) {
+    const c = {
+      clave,
+      textoFalta: falta,
+      /** La carpeta elegida, si todavía existe (ruta real), o null. */
+      actual() {
+        const r = config.texto(clave);
+        if (!r || !path.isAbsolute(r)) return null;
+        try { return fs.statSync(r).isDirectory() ? fs.realpathSync(r) : null; } catch { return null; }
+      },
+      /** La deja como la actual (una ruta que eligió la persona o que la app leyó de lo suyo, nunca de la interfaz). */
+      usar(ruta) {
+        let real;
+        try { real = fs.realpathSync(ruta); if (!fs.statSync(real).isDirectory()) return null; } catch { return null; }
+        config.guardar({ [clave]: real }, { desdeInterfaz: false });
+        if (vigilante) vigilante.empezar(real);
+        return real;
+      },
+      /** El selector del sistema; null si la persona cancela. */
+      async elegir(o = {}) {
+        const r = await dialogos.carpeta({ titulo: o.titulo || (titulo && t(titulo)), boton: o.boton || (boton && t(boton)), desde: c.actual() });
+        return r ? c.usar(r) : null;
+      },
+      olvidar() { config.guardar({ [clave]: "" }, { desdeInterfaz: false }); if (vigilante) vigilante.detener(); },
+    };
+    return c;
+  }
+
+  /** {extensiones: [".md"], alCambiar(base, host)}: avisa `archivoCambiado {ruta, texto}` cuando un archivo conocido cambia afuera. */
+  function crearVigilante({ extensiones = null, alCambiar = null, alCambiarArchivo = null, espera, maximo } = {}) {
+    return new Vigilante({
+      extensiones, espera, maximo,
+      alCambiarArchivo: alCambiarArchivo ? (r, x) => alCambiarArchivo(r, x, host) : (ruta, texto) => llamar("archivoCambiado", { ruta, texto }),
+      alCambiar: alCambiar ? (base) => alCambiar(base, host) : null,
+    });
+  }
+
+  // ───────────── Secretos (safeStorage: DPAPI en Windows, el llavero del sistema en Linux; nunca en texto plano) ─────────────
+  /** `host.secretos("conexiones")`: cada nombre es un archivo propio (0600) en la carpeta de datos con los valores cifrados. En
+   *  Linux sin llavero (gnome-keyring, kwallet…) Electron cae a "basic_text", que no protege nada: ahí no se guarda nada. */
+  function secretos(nombreSecretos = "secretos", { archivo } = {}) {
+    if (!/^[a-z][a-z0-9-]{0,30}$/.test(nombreSecretos)) throw new Error("secretos: nombre raro");
+    const ruta = path.join(DATOS, archivo && /^\.?[\w-][\w.-]{0,59}$/.test(archivo) ? archivo : `.${nombreSecretos}.json`);
+    const CUENTA = /^[\w.@-]{1,100}$/;
+    const todos = () => { const d = E.leerJSON(ruta, {}, 1024 * 1024); return E.esObjeto(d) ? d : {}; };
+    const s = {
+      get disponible() {
+        if (!safeStorage || !safeStorage.isEncryptionAvailable()) return false;
+        try { return process.platform !== "linux" || safeStorage.getSelectedStorageBackend() !== "basic_text"; } catch { return true; }
+      },
+      guardar(cuenta, valor) {
+        if (!CUENTA.test(String(cuenta)) || typeof valor !== "string" || !valor || valor.length > 100000 || !s.disponible) return false;
+        const d = todos();
+        d[cuenta] = safeStorage.encryptString(valor).toString("base64");
+        preparar();
+        E.escribirAtomico(ruta, JSON.stringify(d));
+        return true;
+      },
+      leer(cuenta) {
+        const c = CUENTA.test(String(cuenta)) ? todos()[cuenta] : null;
+        if (typeof c !== "string" || !s.disponible) return null;
+        try { return safeStorage.decryptString(Buffer.from(c, "base64")); } catch { return null; }
+      },
+      borrar(cuenta) {
+        const d = todos();
+        if (!CUENTA.test(String(cuenta)) || !Object.hasOwn(d, cuenta)) return;
+        delete d[cuenta];
+        E.escribirAtomico(ruta, JSON.stringify(d));
+      },
+    };
+    return s;
+  }
+
+  // ───────────── Notificaciones (avisos del sistema) ─────────────
+  const avisos = new Map();
+  const notificaciones = {
+    get soportado() { return !!Notification && Notification.isSupported(); },
+    /** En Windows y Linux no hay permiso que pedir: true si el sistema puede mostrarlas. */
+    async pedirPermiso() { return notificaciones.soportado; },
+    /** Un aviso ya (`id`: para quitarlo o saber cuál tocó la persona). Nada antes de elegir el idioma. */
+    mostrar({ id = "aviso", titulo, texto, silencioso = false } = {}) {
+      if (!idioma.elegido || !notificaciones.soportado || !/^[\w.-]{1,60}$/.test(String(id)) || typeof titulo !== "string") return false;
+      notificaciones.quitar(id);
+      const n = new Notification({ title: titulo.slice(0, 200), body: String(texto || "").slice(0, 1000), silent: silencioso === true, icon: ventanaOp.icono || undefined });
+      n.on("click", () => { mostrar(); if (op.alTocarAviso) op.alTocarAviso(id, host); });
+      n.on("close", () => { if (avisos.get(id) === n) avisos.delete(id); });
+      avisos.set(id, n);
+      n.show();
+      return true;
+    },
+    quitar(id) { const n = avisos.get(id); if (n) { avisos.delete(id); try { n.close(); } catch {} } },
+  };
+
   /** A la Papelera del sistema (se puede recuperar). Solo rutas que la app ya revisó (host.dentro). */
   async function papelera(absoluta) {
     if (typeof absoluta !== "string" || !path.isAbsolute(absoluta)) return false;
@@ -269,6 +396,9 @@ function crearHost(op = {}) {
     if (op.guardarAlSalir !== false) llamar("menu", { accion: "guardar" });
     await esperarLibre(3000);
     try { if (op.antesDeSalir) await op.antesDeSalir(host); } catch (e) { console.error(`${nombre}:`, e); }
+    if (vigilante) vigilante.detener();
+    // Lo que siga corriendo se corta (un trabajo queda «interrumpido» y se sigue al volver): nada queda huérfano.
+    procesador.cortarTodo();
     app.exit(0);
   }
 
@@ -279,8 +409,8 @@ function crearHost(op = {}) {
   }
   function menuBase() {
     const ayuda = [];
-    if (op.sitio) ayuda.push({ label: idioma.f("Sitio de {app}", { app: nombre }), click: () => abrirEnlace(op.sitio) });
-    if (op.codigo) ayuda.push({ label: t("Código"), click: () => abrirEnlace(op.codigo) });
+    if (op.ayuda !== false && op.sitio) ayuda.push({ label: idioma.f("Sitio de {app}", { app: nombre }), click: () => abrirEnlace(op.sitio) });
+    if (op.ayuda !== false && op.codigo) ayuda.push({ label: t("Código"), click: () => abrirEnlace(op.codigo) });
     return [
       { label: t("Archivo"), submenu: [item("Ajustes…", "ajustes", "CmdOrCtrl+,"), { type: "separator" },
         { label: idioma.f("Salir de {app}", { app: nombre }), accelerator: "CmdOrCtrl+Q", click: () => salir() }] },
@@ -355,6 +485,7 @@ function crearHost(op = {}) {
       registrarSesion();
       aplicarTema();
       armarMenu();
+      if (carpeta && vigilante) { const c = carpeta.actual(); if (c) vigilante.empezar(c); }
       crearVentana();
       if (idioma.elegido) iniciarTareas();
     });
@@ -382,6 +513,8 @@ function crearHost(op = {}) {
     },
     inyectores,
     llamar, despachar, alMensaje, enviarEstado, estado, mostrar, salir, iniciar, iniciarTareas, aplicarTema, armarMenu, abrirEnlace, copiar, papelera,
+    mostrarEnCarpeta, carpeta, vigilante, secretos, notificaciones, esperarLibre,
+    falta: (texto, valores) => new Falta(texto, valores),
     dentro: E.dentro,
     ocupar() { ocupadas++; }, soltar() { ocupadas = Math.max(0, ocupadas - 1); }, ocupada,
     ventana: () => ventana,
@@ -443,4 +576,4 @@ function nombreArchivo(valor, ext) {
   return n;
 }
 
-module.exports = { crearHost, servirArchivo, nombreArchivo, globalDe, TEXTOS };
+module.exports = { crearHost, servirArchivo, nombreArchivo, globalDe, TEXTOS, Falta };

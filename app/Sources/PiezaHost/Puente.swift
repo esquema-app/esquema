@@ -30,9 +30,80 @@ public final class Puente: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     private var tareasIniciadas = false
     private var medios: Medios?
 
-    /// Valores que pone el host, nunca la interfaz (`inyectar` de una acción): `idiomaUI`, `carpetaDatos` y los de la app
-    /// (`puente.inyectores["carpetaActual"] = { _ in Carpeta.actual()?.path }`). nil = no corre (responde codigo «falta»).
+    /// Valores que pone el host, nunca la interfaz (`inyectar` de una acción): `idiomaUI`, `carpetaDatos`, `carpetaActual` (con
+    /// `carpeta`) y los de la app (`puente.inyectores["proyecto"] = { _ in … }`). nil = no corre (responde codigo «falta»); una
+    /// `Falta("Elige una carpeta primero.")`, lo mismo con ese texto.
     public var inyectores: [String: @MainActor (Datos) -> Any?] = [:]
+    /// Lo que devuelve un inyector cuando falta algo, con su texto (en español, con marcadores; la interfaz lo traduce).
+    public struct Falta {
+        public let texto: String
+        public let valores: [String: String]
+        public init(_ texto: String, _ valores: [String: String] = [:]) { self.texto = texto; self.valores = valores }
+    }
+    /// La carpeta que elige la persona (con marcador: la sigue aunque la mueva). Con ella, el inyector `carpetaActual`.
+    public var carpeta: CarpetaElegida? {
+        didSet {
+            guard let c = carpeta else { return }
+            // Lo que la app ya puso gana (p. ej. "" sin carpeta, para que su script decida).
+            if inyectores["carpetaActual"] == nil {
+                inyectores["carpetaActual"] = { _ -> Any? in
+                    if let u = c.actual() { return u.path }
+                    return Falta(c.textoFalta)
+                }
+            }
+            c.alCambiar = { [unowned self] u in if let u { self.vigilante?.empezar(u) } else { self.vigilante?.detener() } }
+        }
+    }
+    /// El vigilante de la carpeta (avisa `archivoCambiado` cuando un archivo conocido cambia afuera). Las acciones con
+    /// «vigilar» le dicen qué texto leyó o escribió la app.
+    public var vigilante: Vigilante?
+    /// Las actualizaciones (pieza «actualizaciones»): el host atiende buscarActualizacion y actualizar, las revisa cada rato con
+    /// el idioma elegido y suma `actualizacion` al estado.
+    public var actualizaciones: Actualizador? {
+        didSet { if actualizaciones != nil { registrarActualizaciones() } }
+    }
+
+    /// Las funciones de la pieza «actualizaciones» (el host no la importa: así una app sin ella compila igual).
+    ///     p.actualizaciones = .init(revisar: Actualizaciones.revisar, revisarCadaRato: Actualizaciones.revisarCadaRato,
+    ///         seguir: Actualizaciones.seguir, instalar: Actualizaciones.instalar, aviso: Actualizaciones.aviso,
+    ///         disponible: { Actualizaciones.disponible })
+    public struct Actualizador {
+        public var revisar: @MainActor (@escaping @MainActor ([String: Any]) -> Void) -> Void
+        public var revisarCadaRato: @MainActor (@escaping @MainActor ([String: Any]) -> Void) -> Void
+        public var seguir: @MainActor (@escaping @MainActor ([String: Any]) -> Void) -> Void
+        public var instalar: @MainActor (@escaping @MainActor (Bool, String) -> Void) -> Void
+        public var aviso: @MainActor (String, String) -> [String: Any]
+        public var disponible: @MainActor () -> [String: Any]
+        public init(revisar: @escaping @MainActor (@escaping @MainActor ([String: Any]) -> Void) -> Void,
+                    revisarCadaRato: @escaping @MainActor (@escaping @MainActor ([String: Any]) -> Void) -> Void,
+                    seguir: @escaping @MainActor (@escaping @MainActor ([String: Any]) -> Void) -> Void,
+                    instalar: @escaping @MainActor (@escaping @MainActor (Bool, String) -> Void) -> Void,
+                    aviso: @escaping @MainActor (String, String) -> [String: Any],
+                    disponible: @escaping @MainActor () -> [String: Any]) {
+            self.revisar = revisar; self.revisarCadaRato = revisarCadaRato; self.seguir = seguir
+            self.instalar = instalar; self.aviso = aviso; self.disponible = disponible
+        }
+    }
+
+    private func registrarActualizaciones() {
+        internas["buscarActualizacion"] = { [unowned self] _ in
+            guard let act = self.actualizaciones else { return }
+            act.revisar { r in self.llamar("actualizacionRevisada", r) }
+        }
+        internas["actualizar"] = { [unowned self] _ in
+            // La interfaz guarda todo justo antes de pedirlo: se espera. Nunca en medio de un guardado o de un script.
+            self.esperarLibre(segundos: 5) { libre in
+                guard let act = self.actualizaciones else { return }
+                guard libre else {
+                    self.llamar("actualizacionProgreso", ["paso": "error", "codigo": "ocupada", "texto": "Espera a que termine lo que está haciendo y vuelve a intentarlo.",
+                                                          "valores": [String: String](), "total": 3])
+                    return
+                }
+                act.seguir { self.llamar("actualizacionProgreso", $0) }
+                act.instalar { ok, codigo in if !ok { self.llamar("actualizacionProgreso", act.aviso("error", codigo)) } }
+            }
+        }
+    }
     /// Suma lo propio al estado antes de mandarlo (llama `listo` con el estado final).
     public var estado: (@MainActor (Datos, @escaping @MainActor (Datos) -> Void) -> Void)?
     /// Lo que corre solo (revisar actualizaciones…), una vez y recién con el idioma elegido.
@@ -81,9 +152,13 @@ public final class Puente: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
 
     public var acciones: [String] { Array(Set(registradas.keys).union(internas.keys).union(declaradas.keys)).sorted() }
 
-    /// Hacia la interfaz: `window.<App>.<funcion>(json)`. Solo nombres de función simples y JSON.
+    /// Hacia la interfaz: `window.<App>.<funcion>(json)`. Solo nombres de función simples y JSON. No devuelve nada (así
+    /// `guard … else { return p.llamar(…) }` compila en una acción); para saber si se pudo mandar, `intentarLlamar`.
+    public func llamar(_ funcion: String, _ datos: Any) { intentarLlamar(funcion, datos) }
+
+    /// Lo mismo que `llamar`, y dice si se mandó (false: la interfaz aún no está lista, o el nombre o los datos no sirven).
     @discardableResult
-    public func llamar(_ funcion: String, _ datos: Any) -> Bool {
+    public func intentarLlamar(_ funcion: String, _ datos: Any) -> Bool {
         let global = Host.opciones.global ?? Texto.global(Host.id)
         guard lista, let web, Texto.calza(funcion, Enchufe.nombre), Texto.calza(global, "[A-Z][A-Za-z0-9]{0,40}"),
               JSONSerialization.isValidJSONObject(["x": datos]),
@@ -105,13 +180,13 @@ public final class Puente: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     public func ocupar() { ocupadas += 1 }
     public func soltar() { ocupadas = max(0, ocupadas - 1) }
 
-    /// Espera (hasta `segundos`) a que no quede nada en la fila ni marcado; `listo(true)` si quedó libre.
+    /// Espera (hasta `segundos`) a que no quede nada en la fila, ningún script corriendo ni nada marcado; `listo(true)` si quedó libre.
     public func esperarLibre(segundos: Double, _ listo: @escaping @MainActor (Bool) -> Void) {
         let limite = Date().addingTimeInterval(segundos)
         func revisar() {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 Task { @MainActor in
-                    let libre = Fila.pendientes == 0 && Puente.shared.ocupadas == 0
+                    let libre = !Puente.shared.ocupada
                     if libre || Date() >= limite { listo(libre) } else { revisar() }
                 }
             }
@@ -122,6 +197,7 @@ public final class Puente: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
     public func iniciarTareas() {
         guard !tareasIniciadas else { return }
         tareasIniciadas = true
+        if let act = actualizaciones { act.revisarCadaRato { [unowned self] r in self.llamar("actualizacionRevisada", r) } }
         tareas?()
     }
 
@@ -229,26 +305,38 @@ public final class Puente: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
             for k in a.eco { if let v = entrada[k] { x[k] = v } }
             self.llamar(f, x)
         }
-        func error(_ codigo: String, _ campo: String, _ texto: String, _ entrada: Datos) {
-            responder(["ok": false, "codigo": codigo, "campo": campo, "texto": texto, "valores": Datos(), "error": Idioma.t(texto)], entrada)
+        func error(_ codigo: String, _ campo: String, _ texto: String, _ valores: [String: String], _ entrada: Datos) {
+            responder(["ok": false, "codigo": codigo, "campo": campo, "texto": texto, "valores": valores, "error": Idioma.f(texto, valores)], entrada)
         }
         var entrada: Datos
         switch Enchufe.validar(a, datos) {
-        case .falla(let campo, _): return error("datos", campo, "No entendí lo que pediste. Intenta de nuevo.", [:])
+        // Aunque los datos no pasen, vuelve el eco que sí es válido (la interfaz sabe a qué orden responde el error).
+        case .falla(let campo, _): return error("datos", campo, "No entendí lo que pediste. Intenta de nuevo.", [:], Enchufe.ecoValido(a, datos))
         case .ok(let e): entrada = e
         }
         for (campo, fuente) in a.inyectar {
-            guard let f = inyectores[fuente], let v = f(entrada), !(v is NSNull) else {
-                return error("falta", campo, "Falta algo para hacer esto.", entrada)
-            }
+            let v: Any? = inyectores[fuente].flatMap { $0(entrada) }
+            if let f = v as? Falta { return error("falta", campo, f.texto, f.valores, entrada) }
+            guard let v, !(v is NSNull) else { return error("falta", campo, "Falta algo para hacer esto.", [:], entrada) }
             entrada[campo] = v
         }
         let args = Enchufe.armarArgs(a, entrada)
+        let limite = a.limite(para: entrada)
         var progreso: (@MainActor ([[String: Any]]) -> Void)? = nil
         if let p = a.progreso { progreso = { [unowned self] eventos in self.llamar(p, ["eventos": eventos]) } }
         let final = entrada
         let tarea: Fila.Tarea = { [unowned self] listo in
-            Procesador.correr(a.script, args, entrada: a.porArchivo ? final : nil, limite: a.limite, progreso: progreso) { r in
+            // «vigilar»: el vigilante conoce el texto que la app escribe ANTES de escribirlo (y el que lee, al leerlo).
+            let v = a.vigilar == nil ? nil : self.vigilante
+            let ruta: String? = v == nil ? nil : (final["ruta"] as? String)
+            let antes = ruta.flatMap { v?.conocidos[$0] }
+            if let v, let ruta, a.vigilar == "escribe" { v.conocer(ruta, final["texto"] as? String) }
+            Procesador.correr(a.script, args, entrada: a.porArchivo ? final : nil, limite: limite ?? 3600, latido: limite == nil, progreso: progreso) { r in
+                if let v, let ruta {
+                    let ok = r.respuesta["ok"] as? Bool == true
+                    if a.vigilar == "lee", ok, let t = r.respuesta["texto"] as? String { v.conocer(ruta, t) }
+                    if a.vigilar == "escribe", !ok { v.conocer(ruta, antes) }
+                }
                 responder(r.respuesta, final)
                 for x in a.despues where x != a.nombre { self.despachar(x, [:]) }
                 listo()
@@ -269,6 +357,7 @@ public final class Puente: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
             b["idioma"] = Idioma.codigo
             b["plataforma"] = "mac"
             if b["config"] == nil { b["config"] = Config.leer() }
+            if let act = self.actualizaciones { b["actualizacion"] = act.disponible() }
             if let extra = self.estado { extra(b) { self.llamar("estado", $0) } } else { self.llamar("estado", b) }
         }
         if let s = Host.opciones.estadoScript, Texto.calza(s, "\\w+\\.py"),
@@ -298,6 +387,14 @@ public final class Puente: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
         guard let t = valor as? String, !t.isEmpty, t.utf8.count <= 50 * 1024 * 1024 else { return false }
         NSPasteboard.general.clearContents()
         return NSPasteboard.general.setString(t, forType: .string)
+    }
+
+    /// Muestra el archivo (o la carpeta) en el Finder, elegido. Solo rutas que la app ya revisó (Enchufe.dentro).
+    @discardableResult
+    public func mostrarEnFinder(_ u: URL) -> Bool {
+        guard u.isFileURL, FileManager.default.fileExists(atPath: u.path) else { return false }
+        NSWorkspace.shared.activateFileViewerSelecting([u])
+        return true
     }
 
     /// A la Papelera (se puede recuperar). Solo rutas que la app ya revisó (Enchufe.dentro).
@@ -382,8 +479,8 @@ public final class Puente: NSObject, NSWindowDelegate, WKScriptMessageHandler, W
         ventanaMenu.addItem(withTitle: Idioma.t("Zoom"), action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
         principal.addItem(m.submenu(ventanaMenu))
         var ayuda: [NSMenuItem] = []
-        if let s = Host.opciones.sitio { ayuda.append(m.nativo(Idioma.f("Sitio de {app}", ["app": Host.nombre]), traducir: false) { Puente.shared.abrirEnlace(s) }) }
-        if let c = Host.opciones.codigo { ayuda.append(m.nativo("Código") { Puente.shared.abrirEnlace(c) }) }
+        if Host.opciones.menuAyuda, let s = Host.opciones.sitio { ayuda.append(m.nativo(Idioma.f("Sitio de {app}", ["app": Host.nombre]), traducir: false) { Puente.shared.abrirEnlace(s) }) }
+        if Host.opciones.menuAyuda, let c = Host.opciones.codigo { ayuda.append(m.nativo("Código") { Puente.shared.abrirEnlace(c) }) }
         if !ayuda.isEmpty { principal.addItem(m.menu("Ayuda", ayuda)) }
         NSApp.windowsMenu = ventanaMenu
         NSApp.mainMenu = principal

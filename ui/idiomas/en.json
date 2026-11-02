@@ -1073,6 +1073,8 @@
   "Sitio de {app}": "{app} website",
   "Acerca de {app}": "About {app}",
   "Ocultar {app}": "Hide {app}",
-  "Espera a que termine lo que está haciendo y vuelve a intentarlo.": "Wait until it finishes what it's doing and try again."
+  "Espera a que termine lo que está haciendo y vuelve a intentarlo.": "Wait until it finishes what it's doing and try again.",
+  "Dejó de avanzar y lo detuve. Intenta de nuevo.": "It stopped making progress, so I stopped it. Try again.",
+  "Elige una carpeta primero.": "Choose a folder first."
  }
 }

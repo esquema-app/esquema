@@ -834,6 +834,10 @@ def generar(e):
         return {"ok": False, "tarea": tarea, "error": "Cuéntame qué quieres documentar."}
     # Revisión a fondo: la IA lee la carpeta del código por su cuenta (solo leer, sin secretos) y tiene más tiempo.
     leer = lugares(e)["codigo"] if e.get("a_fondo") and tarea in A_FONDO else None
+    # «generar» es "limite": "trabajo" en app.json (sin tope del host mientras lata): no es un Trabajo, así que late solo mientras
+    # espera a la IA; el tope lo pone ia.preguntar (timeout).
+    import trabajos
+    trabajos.mantener_vivo()
     texto, error = ia.preguntar(prompt(e, tarea, docs, ps), timeout=2400 if leer else 900, leer=leer, no_leer=NO_LEER)
     if error:
         return {"ok": False, "tarea": tarea, "error": ia.frase(error), "codigo": error["codigo"]}
@@ -1228,6 +1232,8 @@ ORDENES = {"abrir": abrir, "leer": leer, "preparar": preparar, "generar": genera
            "incongruencias": _agregar("incongruencias"), "wiki_preparar": _wiki("preparar"), "wiki_publicar": _wiki("publicar")}
 #: Las órdenes largas: cuentan cómo van con ESQUEMA_PROGRESO (la acción declarada «proyecto» de app.json lo pasa siempre; las
 #: demás órdenes no escriben nada ahí). Sus eventos llegan a la interfaz como `proyectoProgreso`.
+#: En app.json, «proyecto» tiene su límite por orden: estas y «generar» son "trabajo" (sin tope mientras laten: pieza «trabajos»),
+#: crear y la wiki 600 s y lo demás 300 s.
 CON_PROGRESO = ("documentar", "agregar", "crear", "responder", "continuar", "historia_cierre", "estudiar", "incongruencias")
 #: Las que se pueden pedir sin una carpeta abierta (crear un proyecto Libro desde cero): la app manda carpeta "" y aquí se quita.
 #: Las demás, sin carpeta, responden «Elige una carpeta primero».

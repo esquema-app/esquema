@@ -8,7 +8,10 @@ import Foundation
 ///  · Lo que manda la interfaz va en el archivo de entrada, nunca como argumento (cualquier programa ve los argumentos).
 ///  · Un secreto (la llave de un conector) va por la entrada estándar: nunca en un archivo, un argumento ni el entorno.
 ///  · Ninguna variable <ID>_* de afuera llega al script: solo las que pone el host.
-///  · Todo tiene límite de tiempo: al cumplirse se corta el script y todo lo que lanzó (sus descendientes).
+///  · Todo tiene límite de tiempo: al cumplirse se corta el script y todo lo que lanzó (sus descendientes). Un trabajo largo
+///    (`latido: true`, «limite»: "trabajo") no tiene tope, pero tiene que latir (pieza «trabajos»: <ID>_LATIDO): si deja de
+///    latir, se corta igual.
+///  · Al salir de la app se corta lo que siga corriendo (`cortarTodo`): un trabajo queda «interrumpido» y se sigue después.
 ///  · Entrada y salida viven en una carpeta temporal propia (0700) que se borra al terminar.
 @MainActor
 public enum Procesador {
@@ -19,18 +22,32 @@ public enum Procesador {
     }
 
     public static let textoLimite = "Tardó demasiado y lo detuve. Intenta de nuevo."
+    public static let textoLatido = "Dejó de avanzar y lo detuve. Intenta de nuevo."
     public static let textoFallo = "No pude terminar. Intenta de nuevo."
+    /// Un trabajo sin latido por más que esto se corta (lo mismo que `trabajos.MUERTO`); el primero tiene `latidoPrimero`.
+    public static var latidoMuerto: TimeInterval = 45
+    public static var latidoPrimero: TimeInterval = 120
+    public static var latidoRevisar: TimeInterval = 5
 
     /// Cuántos scripts están corriendo (para no actualizar ni cerrar en medio de uno).
     public private(set) static var enCurso = 0
+    /// Los que están corriendo (para cortarlos al salir).
+    private static var vivos: [Int32: Process] = [:]
 
+    public typealias Lector = (ruta: String, empezar: @MainActor () -> Void, terminar: @MainActor () -> Void)
     /// Pieza «trabajos» (LectorProgreso), si la app la tiene: `Procesador.lectorProgreso = { aviso in let l = LectorProgreso(
     /// prefijo: Host.id, aviso: aviso); return (l.url.path, l.empezar, l.terminar) }`.
-    public static var lectorProgreso: ((@escaping @MainActor ([[String: Any]]) -> Void) -> (ruta: String, empezar: @MainActor () -> Void, terminar: @MainActor () -> Void))?
+    public static var lectorProgreso: (@MainActor (@escaping @MainActor ([[String: Any]]) -> Void) -> Lector)?
+
+    /// Detiene todo lo que sigue corriendo (y lo que lanzó). Lo llama el host al salir.
+    public static func cortarTodo() {
+        for p in vivos.values where p.isRunning { matarArbol(p.processIdentifier, SIGTERM) }
+    }
 
     /// Lo de bajo nivel. `entrada`: los datos de la interfaz (van en un archivo, después de `args`).
+    /// `latido: true`: sin tope de tiempo mientras el script lata (pieza «trabajos»); `limite` no cuenta.
     public static func correr(_ script: String, _ args: [String], entrada: [String: Any]? = nil, secreto: String? = nil, limite: Int = 120,
-                              entorno: [String: String] = [:], progreso: (@MainActor ([[String: Any]]) -> Void)? = nil,
+                              latido: Bool = false, entorno: [String: String] = [:], progreso: (@MainActor ([[String: Any]]) -> Void)? = nil,
                               fin: @escaping @MainActor (Resultado) -> Void) {
         let falla = { (e: String) in fin(Resultado(respuesta: ["ok": false, "error": e], salidaEstandar: "", porLimite: false)) }
         guard Texto.calza(script, "\\w+\\.py") else { return falla("script raro") }
@@ -66,11 +83,17 @@ public enum Procesador {
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONUTF8"] = "1"
         env["PYTHONDONTWRITEBYTECODE"] = "1"  // sin __pycache__ dentro de la app (rompería su firma)
-        var lector: (ruta: String, empezar: @MainActor () -> Void, terminar: @MainActor () -> Void)? = nil
+        var lector: Lector? = nil
         if let progreso, let crear = lectorProgreso {
             let l = crear(progreso)
             env[prefijo + "PROGRESO"] = l.ruta
             lector = l
+        }
+        // Un trabajo late tocando este archivo (trabajos.latir_host): el host mira cuándo fue la última vez.
+        let archivoLatido = dir.appendingPathComponent("latido")
+        if latido {
+            FileManager.default.createFile(atPath: archivoLatido.path, contents: nil, attributes: [.posixPermissions: 0o600])
+            env[prefijo + "LATIDO"] = archivoLatido.path
         }
         p.environment = env
         p.currentDirectoryURL = dir
@@ -84,7 +107,8 @@ public enum Procesador {
             tuboSalida.fileHandleForReading.readabilityHandler = { h in estado.sumar(h.availableData) }
         }
         let lectorFinal = lector
-        p.terminationHandler = { _ in
+        p.terminationHandler = { proceso in
+            let pid = proceso.processIdentifier
             if secreto != nil {
                 tuboSalida.fileHandleForReading.readabilityHandler = nil
                 estado.sumar(tuboSalida.fileHandleForReading.readDataToEndOfFile())
@@ -92,10 +116,13 @@ public enum Procesador {
             Task { @MainActor in
                 guard estado.terminar() else { return }
                 enCurso -= 1
+                vivos.removeValue(forKey: pid)
                 lectorFinal?.terminar()
                 var r = estado.porLimite ? [:] : Archivos.leerJSON(salida)
                 try? FileManager.default.removeItem(at: dir)
-                if estado.porLimite {
+                if estado.porLimite && latido {
+                    r = ["ok": false, "codigo": "limite", "texto": textoLatido, "valores": [String: Any](), "error": Idioma.t(textoLatido)]
+                } else if estado.porLimite {
                     r = ["ok": false, "codigo": "limite", "texto": textoLimite, "valores": ["s": segundos], "error": Idioma.t(textoLimite)]
                 } else if r.isEmpty {
                     r = ["ok": false, "codigo": "fallo", "texto": textoFallo, "valores": [String: Any](), "error": Idioma.t(textoFallo)]
@@ -110,13 +137,14 @@ public enum Procesador {
             try? FileManager.default.removeItem(at: dir)
             return falla(error.localizedDescription)
         }
+        vivos[p.processIdentifier] = p
         lectorFinal?.empezar()
         if let secreto {
             tuboEntrada.fileHandleForWriting.write(Data(secreto.utf8))
             try? tuboEntrada.fileHandleForWriting.close()
         }
         // El límite: primero se le pide que termine (a él y a lo que lanzó) y, si sigue, se corta.
-        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(segundos)) {
+        let cortar: @Sendable () -> Void = {
             guard p.isRunning else { return }
             estado.marcarLimite()
             matarArbol(p.processIdentifier, SIGTERM)
@@ -124,24 +152,42 @@ public enum Procesador {
                 if p.isRunning { matarArbol(p.processIdentifier, SIGKILL) }
             }
         }
+        if latido {
+            revisarLatido(p, archivoLatido, inicio: Date(), cortar)
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(segundos)) { cortar() }
+        }
+    }
+
+    /// Cada pocos segundos: si el archivo del latido no se tocó hace más de `latidoMuerto` (el primero tiene `latidoPrimero`),
+    /// el trabajo quedó colgado y se corta.
+    private static func revisarLatido(_ p: Process, _ archivo: URL, inicio: Date, _ cortar: @escaping @Sendable () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + latidoRevisar) {
+            Task { @MainActor in
+                guard p.isRunning else { return }
+                let tocado = (try? FileManager.default.attributesOfItem(atPath: archivo.path))?[.modificationDate] as? Date ?? inicio
+                let ultimo = max(tocado, inicio.addingTimeInterval(latidoPrimero - latidoMuerto))
+                if Date().timeIntervalSince(ultimo) > latidoMuerto { cortar() } else { revisarLatido(p, archivo, inicio: inicio, cortar) }
+            }
+        }
     }
 
     /// El JSON de salida del script (o ["ok": false, "codigo", "texto", "error"]).
-    public static func correrJSON(_ script: String, _ args: [String], limite: Int = 120, progreso: (@MainActor ([[String: Any]]) -> Void)? = nil,
-                                  fin: @escaping @MainActor ([String: Any]) -> Void) {
-        correr(script, args, limite: limite, progreso: progreso) { fin($0.respuesta) }
+    public static func correrJSON(_ script: String, _ args: [String], limite: Int = 120, latido: Bool = false,
+                                  progreso: (@MainActor ([[String: Any]]) -> Void)? = nil, fin: @escaping @MainActor ([String: Any]) -> Void) {
+        correr(script, args, limite: limite, latido: latido, progreso: progreso) { fin($0.respuesta) }
     }
 
     /// Lo que manda la interfaz va en un archivo de entrada (después de `args`, antes de la salida).
-    public static func conEntrada(_ script: String, _ args: [String], _ datos: [String: Any], limite: Int = 120,
+    public static func conEntrada(_ script: String, _ args: [String], _ datos: [String: Any], limite: Int = 120, latido: Bool = false,
                                   progreso: (@MainActor ([[String: Any]]) -> Void)? = nil, fin: @escaping @MainActor ([String: Any]) -> Void) {
-        correr(script, args, entrada: datos, limite: limite, progreso: progreso) { fin($0.respuesta) }
+        correr(script, args, entrada: datos, limite: limite, latido: latido, progreso: progreso) { fin($0.respuesta) }
     }
 
     /// La forma de siempre: `conEntrada("ia.py", "probar", ["ia": "claude"])`.
-    public static func conEntrada(_ script: String, _ accion: String, _ datos: [String: Any], limite: Int = 120,
+    public static func conEntrada(_ script: String, _ accion: String, _ datos: [String: Any], limite: Int = 120, latido: Bool = false,
                                   progreso: (@MainActor ([[String: Any]]) -> Void)? = nil, fin: @escaping @MainActor ([String: Any]) -> Void) {
-        conEntrada(script, [accion], datos, limite: limite, progreso: progreso, fin: fin)
+        conEntrada(script, [accion], datos, limite: limite, latido: latido, progreso: progreso, fin: fin)
     }
 
     /// Un secreto por la entrada estándar (patrón de los conectores). La salida estándar vuelve en `salidaEstandar`.

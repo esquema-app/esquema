@@ -21,7 +21,8 @@ const SCRIPT = /^\w+\.py$/;
 const LITERAL = /^[\w.-]+$/;
 const CAMPO = /^[A-Za-z_]\w{0,60}$/;
 const TIPOS = new Set(["texto", "enum", "bool", "entero", "rutaRelativa", "base64", "lista"]);
-const MAXIMO_ENTRADA = 5 * 1024 * 1024;
+const MAXIMO_ENTRADA = 5 * 1024 * 1024;   // lo que puede pesar la entrada de una acción, salvo que diga «maximo»
+const TOPE_ENTRADA = 50 * 1024 * 1024;    // «maximo» como mucho
 const MAXIMO_JSON = 50 * 1024 * 1024;
 const PROHIBIDOS = new Set(["__proto__", "constructor", "prototype"]);
 
@@ -202,10 +203,15 @@ function erroresAccion(nombre, a) {
   if (!esObjeto(datos)) e.push(`${donde}: «datos» es {campo: regla}`);
   if (!Array.isArray(args) || !args.every((x) => typeof x === "string")) e.push(`${donde}: «args» es una lista de textos`);
   if (e.length) return e;
+  let maximo = a.maximo === undefined ? MAXIMO_ENTRADA : a.maximo;
+  if (!Number.isInteger(maximo) || maximo < 1 || maximo > TOPE_ENTRADA) {
+    e.push(`${donde}: «maximo» (bytes de la entrada) es un entero hasta ${TOPE_ENTRADA}`);
+    maximo = MAXIMO_ENTRADA;
+  }
   for (const [campo, regla] of Object.entries(datos)) {
     if (campo === "*") { if (regla !== "pasar") e.push(`${donde}: «*» solo puede ser "pasar"`); continue; }
     if (!CAMPO.test(campo) || PROHIBIDOS.has(campo)) e.push(`${donde}: campo raro «${campo}»`);
-    e.push(...erroresRegla(`${donde}: «${campo}»`, regla));
+    e.push(...erroresRegla(`${donde}: «${campo}»`, regla, maximo));
   }
   for (const arg of args) {
     if (arg.startsWith("$")) {
@@ -224,7 +230,13 @@ function erroresAccion(nombre, a) {
   }
   if (porArchivo.length && a.entrada !== "archivo") e.push(`${donde}: ${porArchivo.join(", ")} no van en args: necesita "entrada": "archivo"`);
   if (a.entrada !== undefined && a.entrada !== null && a.entrada !== "archivo") e.push(`${donde}: «entrada» es "archivo" o null`);
-  if (!Number.isInteger(a.limite) || a.limite < 1 || a.limite > 3600) e.push(`${donde}: «limite» (segundos) es obligatorio, entre 1 y 3600`);
+  e.push(...erroresLimite(donde, a.limite, datos));
+  if (a.vigilar !== undefined) {
+    const r = Object.hasOwn(datos, "ruta") ? datos.ruta : null, x = Object.hasOwn(datos, "texto") ? datos.texto : null;
+    if (!["lee", "escribe"].includes(a.vigilar) || !(esObjeto(r) && r.tipo === "rutaRelativa") || (a.vigilar === "escribe" && !(esObjeto(x) && x.tipo === "texto"))) {
+      e.push(`${donde}: «vigilar» es "lee" o "escribe", con «ruta» (rutaRelativa) en datos (y «texto» para escribe)`);
+    }
+  }
   if (a.responde !== undefined && a.responde !== null && !(typeof a.responde === "string" && FUNCION.test(a.responde))) e.push(`${donde}: «responde» es el nombre de una función`);
   if (a.progreso !== undefined && !(typeof a.progreso === "string" && FUNCION.test(a.progreso))) e.push(`${donde}: «progreso» es el nombre de una función`);
   for (const k of ["eco", "despues"]) {
@@ -234,17 +246,39 @@ function erroresAccion(nombre, a) {
   return e;
 }
 
-function erroresRegla(donde, r) {
+const limiteOk = (x) => x === "trabajo" || (Number.isInteger(x) && x >= 1 && x <= 3600);
+
+/** «limite»: segundos (1 a 3600), "trabajo" (sin tope, mientras lata: pieza «trabajos») o según el valor de un campo enum:
+ *  {"segun": "orden", "valores": {"documentar": "trabajo", "leer": 60}, "otro": 120}. */
+function erroresLimite(donde, limite, datos) {
+  const malo = [`${donde}: «limite» es obligatorio: segundos (1 a 3600), "trabajo" o {"segun": campo, "valores": {…}, "otro": …}`];
+  if (!esObjeto(limite)) return limiteOk(limite) ? [] : malo;
+  const regla = typeof limite.segun === "string" && Object.hasOwn(datos, limite.segun) ? datos[limite.segun] : null;
+  const ok = Object.keys(limite).every((k) => ["segun", "valores", "otro"].includes(k)) && esObjeto(regla) && regla.tipo === "enum"
+    && Array.isArray(regla.valores) && esObjeto(limite.valores) && limiteOk(limite.otro)
+    && Object.entries(limite.valores).every(([k, v]) => regla.valores.includes(k) && limiteOk(v));
+  return ok ? [] : malo;
+}
+
+/** El límite de esta vez: segundos, o "trabajo" (sin tope mientras el script lata). */
+function limiteDe(def, entrada) {
+  const l = def.limite;
+  if (!esObjeto(l)) return l;
+  const v = entrada && Object.hasOwn(entrada, l.segun) ? entrada[l.segun] : undefined;
+  return typeof v === "string" && Object.hasOwn(l.valores, v) ? l.valores[v] : l.otro;
+}
+
+function erroresRegla(donde, r, maximo = MAXIMO_ENTRADA) {
   if (!esObjeto(r) || !TIPOS.has(r.tipo)) return [`${donde}: tipo desconocido`];
   const e = [];
-  if (r.tipo === "texto" && !(Number.isInteger(r.max) && r.max > 0 && r.max <= MAXIMO_ENTRADA)) e.push(`${donde}: un texto necesita «max»`);
+  if (r.tipo === "texto" && !(Number.isInteger(r.max) && r.max > 0 && r.max <= maximo)) e.push(`${donde}: un texto necesita «max»`);
   if (r.tipo === "enum" && !(Array.isArray(r.valores) && r.valores.length && r.valores.every((x) => typeof x === "string" && LITERAL.test(x)))) e.push(`${donde}: un enum necesita «valores» (textos simples)`);
   if (r.tipo === "entero" && ["min", "max"].some((k) => r[k] !== undefined && !Number.isSafeInteger(r[k]))) e.push(`${donde}: «min»/«max» son enteros`);
-  if (r.tipo === "base64" && !(Number.isInteger(r.maxBytes) && r.maxBytes > 0 && r.maxBytes <= MAXIMO_ENTRADA)) e.push(`${donde}: base64 necesita «maxBytes»`);
+  if (r.tipo === "base64" && !(Number.isInteger(r.maxBytes) && r.maxBytes > 0 && r.maxBytes <= maximo)) e.push(`${donde}: base64 necesita «maxBytes»`);
   if (r.tipo === "rutaRelativa" && r.extensiones !== undefined && !(Array.isArray(r.extensiones) && r.extensiones.every((x) => typeof x === "string" && /^\.\w{1,10}$/.test(x)))) e.push(`${donde}: «extensiones» es una lista como [".md"]`);
   if (r.tipo === "lista") {
     if (r.max !== undefined && !(Number.isInteger(r.max) && r.max > 0 && r.max <= 10000)) e.push(`${donde}: «max» de una lista es un entero`);
-    if (r.de !== undefined) e.push(...(r.de && r.de.tipo === "lista" ? [`${donde}: una lista de listas no`] : erroresRegla(donde + " (cada uno)", r.de)));
+    if (r.de !== undefined) e.push(...(r.de && r.de.tipo === "lista" ? [`${donde}: una lista de listas no`] : erroresRegla(donde + " (cada uno)", r.de, maximo)));
   }
   return e;
 }
@@ -323,8 +357,21 @@ function validarDatos(def, datos) {
   }
   let texto;
   try { texto = JSON.stringify(entrada); } catch { return { ok: false, campo: "*", codigo: "invalido" }; }
-  if (Buffer.byteLength(texto) > MAXIMO_ENTRADA) return { ok: false, campo: "*", codigo: "grande" };
+  if (Buffer.byteLength(texto) > (Number.isInteger(def.maximo) ? def.maximo : MAXIMO_ENTRADA)) return { ok: false, campo: "*", codigo: "grande" };
   return { ok: true, entrada: JSON.parse(texto) };
+}
+
+/** Los campos de «eco» que se pueden devolver aunque los datos no pasen: solo los que son válidos por sí solos (así la interfaz
+ *  sabe a qué orden responde el error, y nunca vuelve algo que no calza con su regla). */
+function ecoValido(def, datos) {
+  const r = {};
+  if (!esObjeto(datos)) return r;
+  for (const k of def.eco || []) {
+    if (!Object.hasOwn(def.datos, k) || !Object.hasOwn(datos, k)) continue;
+    const x = validarValor(def.datos[k], datos[k]);
+    if (x.ok) r[k] = x.valor;
+  }
+  return r;
 }
 
 /** Los argumentos del script: literales, o el valor de un campo enum/entero ya validado. Nada más. */
@@ -333,6 +380,6 @@ function armarArgs(def, entrada) {
 }
 
 module.exports = {
-  ID, ACCION, FUNCION, SCRIPT, MAXIMO_ENTRADA, esObjeto, leerJSON, escribirAtomico, leerApp, carpetaDatos, prepararCarpeta, valida,
+  ID, ACCION, FUNCION, SCRIPT, MAXIMO_ENTRADA, TOPE_ENTRADA, esObjeto, limiteDe, ecoValido, erroresLimite, leerJSON, escribirAtomico, leerApp, carpetaDatos, prepararCarpeta, valida,
   limpiarConfig, crearConfig, crearIdioma, dentro, esRelativa, erroresAccion, cargarAcciones, validarDatos, validarValor, armarArgs,
 };

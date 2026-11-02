@@ -105,7 +105,7 @@ if (modo !== 0o700 || modoConfig !== 0o600) falla(`la carpeta de Esquema no es p
 // Pieza «host-escritorio»: las acciones declaradas (acciones.json) cargan todas, y lo propio de Esquema queda registrado.
 {
   const h = await app.evaluate(() => ({ errores: global.esquemaPruebas.host.acciones.errores, declaradas: global.esquemaPruebas.host.acciones.declaradas(), todas: global.esquemaPruebas.host.acciones.todas() }));
-  const faltan = ["proyecto", "dibujar", "crearReadme", "estructura", "probarIA"].filter((a) => !h.declaradas.includes(a));
+  const faltan = ["proyecto", "dibujar", "crearReadme", "estructura", "abrirArchivo", "guardarArchivo", "probarIA"].filter((a) => !h.declaradas.includes(a));
   const sinAtender = ["elegirCarpeta", "abrirProyecto", "abrirArchivo", "guardarArchivo", "papelera", "exportar", "catalogoPlantillas", "descargarPlantilla", "buscarActualizacion", "actualizar", "copiar", "abrirEnlace", "config", "listo"].filter((a) => !h.todas.includes(a));
   if (h.errores.length || faltan.length || sinAtender.length) falla("acciones del host: " + JSON.stringify({ errores: h.errores, faltan, sinAtender }));
   // Sin carpeta abierta, una orden que la necesita no corre sobre otra: «Elige una carpeta primero» (con su orden de vuelta).

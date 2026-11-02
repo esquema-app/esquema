@@ -1,6 +1,33 @@
 {
  "formato": 1,
  "acciones": {
+  "abrirArchivo": {
+   "script": "carpeta.py",
+   "args": [
+    "leer"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "ruta": {
+     "tipo": "rutaRelativa",
+     "extensiones": [
+      ".md",
+      ".mmd"
+     ],
+     "requerido": true
+    }
+   },
+   "inyectar": {
+    "carpeta": "carpetaActual"
+   },
+   "responde": "archivoAbierto",
+   "eco": [
+    "ruta"
+   ],
+   "vigilar": "lee",
+   "limite": 30,
+   "pieza": "app"
+  },
   "catalogoInstalados": {
    "script": "catalogo.py",
    "args": [
@@ -35,6 +62,22 @@
    },
    "responde": "catalogoQuitado",
    "cola": "escritura",
+   "limite": 30,
+   "pieza": "catalogo"
+  },
+  "catalogoUltima": {
+   "script": "catalogo.py",
+   "args": [
+    "ultima"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "tipo": {
+     "tipo": "texto",
+     "max": 31
+    }
+   },
+   "responde": "catalogoUltima",
    "limite": 30,
    "pieza": "catalogo"
   },
@@ -119,6 +162,43 @@
    "limite": 60,
    "pieza": "app"
   },
+  "guardarArchivo": {
+   "script": "carpeta.py",
+   "args": [
+    "guardar"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "ruta": {
+     "tipo": "rutaRelativa",
+     "extensiones": [
+      ".md",
+      ".mmd"
+     ],
+     "requerido": true
+    },
+    "texto": {
+     "tipo": "texto",
+     "max": 2097152,
+     "requerido": true
+    },
+    "nuevo": {
+     "tipo": "bool"
+    }
+   },
+   "inyectar": {
+    "carpeta": "carpetaActual"
+   },
+   "responde": "archivoGuardado",
+   "eco": [
+    "ruta"
+   ],
+   "cola": "escritura",
+   "vigilar": "escribe",
+   "maximo": 16777216,
+   "limite": 30,
+   "pieza": "app"
+  },
   "listaIA": {
    "script": "ia.py",
    "args": [
@@ -147,7 +227,7 @@
     }
    },
    "responde": "iaProbada",
-   "limite": 120,
+   "limite": 150,
    "pieza": "ia"
   },
   "proyecto": {
@@ -206,7 +286,23 @@
     "orden"
    ],
    "progreso": "proyectoProgreso",
-   "limite": 3600,
+   "limite": {
+    "segun": "orden",
+    "valores": {
+     "documentar": "trabajo",
+     "agregar": "trabajo",
+     "responder": "trabajo",
+     "continuar": "trabajo",
+     "historia_cierre": "trabajo",
+     "estudiar": "trabajo",
+     "incongruencias": "trabajo",
+     "generar": "trabajo",
+     "crear": 600,
+     "wiki_preparar": 600,
+     "wiki_publicar": 600
+    },
+    "otro": 300
+   },
    "pieza": "app"
   }
  }

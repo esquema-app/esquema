@@ -92,9 +92,28 @@ if p.get("script") != "proyecto.py" or p.get("args") != ["$orden"] or set((p.get
     problemas.append("app.json: «proyecto» declarada con $orden (las ORDENES de bin/proyecto.py), carpeta inyectada (carpetaActual), progreso proyectoProgreso y eco orden")
 if not tiene(py, r'not entrada\.get\("carpeta"\)', r"args\[0\] not in SIN_CARPETA", r"Elige una carpeta primero"):
     problemas.append("bin/proyecto.py: sin carpeta, solo SIN_CARPETA corre (lo demás responde «Elige una carpeta primero»)")
-for n in ("crearReadme", "estructura"):
+for n in ("crearReadme", "estructura", "abrirArchivo", "guardarArchivo"):
     if (acciones_json.get(n) or {}).get("inyectar", {}).get("carpeta") != "carpetaActual":
         problemas.append(f"app.json: «{n}» con la carpeta inyectada (carpetaActual)")
+# Límite por orden: las largas (CON_PROGRESO que corren con la IA, y generar) son "trabajo": sin tope mientras laten (pieza
+# «trabajos» 0.2: Trabajo.latir o mantener_vivo); las demás con segundos.
+lim = p.get("limite") or {}
+largas = set(re.search(r"CON_PROGRESO = \(([^)]+)\)", py).group(1).replace('"', "").replace(" ", "").split(",")) - {"crear"} | {"generar"}
+if not isinstance(lim, dict) or lim.get("segun") != "orden" or {o for o, v in (lim.get("valores") or {}).items() if v == "trabajo"} != largas \
+        or not isinstance(lim.get("otro"), int) or "trabajos.mantener_vivo()" not in py:
+    problemas.append("app.json: «proyecto» con límite por orden: " + ", ".join(sorted(largas)) + " como \"trabajo\" (generar late con trabajos.mantener_vivo) y segundos para lo demás")
+# Abrir y guardar: bin/carpeta.py con «vigilar» (el vigilante del host conoce lo que Esquema lee y escribe, así no lo avisa como un
+# cambio de afuera), la ruta como rutaRelativa .md/.mmd y el guardado en la fila (de a uno y en orden; salir y actualizar lo esperan).
+ruta_md = {"tipo": "rutaRelativa", "extensiones": [".md", ".mmd"], "requerido": True}
+ab, gu = acciones_json.get("abrirArchivo") or {}, acciones_json.get("guardarArchivo") or {}
+if ab.get("script") != "carpeta.py" or ab.get("args") != ["leer"] or ab.get("vigilar") != "lee" or (ab.get("datos") or {}).get("ruta") != ruta_md \
+        or ab.get("eco") != ["ruta"] or ab.get("responde") != "archivoAbierto":
+    problemas.append("app.json: «abrirArchivo» declarada con carpeta.py leer, vigilar lee, ruta .md/.mmd y eco ruta")
+if gu.get("script") != "carpeta.py" or gu.get("args") != ["guardar"] or gu.get("vigilar") != "escribe" or gu.get("cola") != "escritura" \
+        or (gu.get("datos") or {}).get("ruta") != ruta_md or gu.get("eco") != ["ruta"] or gu.get("responde") != "archivoGuardado":
+    problemas.append("app.json: «guardarArchivo» declarada con carpeta.py guardar, vigilar escribe, en la fila, ruta .md/.mmd y eco ruta")
+if not tiene(leer("bin/carpeta.py"), r"def _sin_carpeta", r"def leer\(entrada\):\s+if _sin_carpeta", r"def guardar\(entrada\):.*?if _sin_carpeta"):
+    problemas.append("bin/carpeta.py: leer y guardar sin carpeta (\"\" de la app) responden «Elige una carpeta primero» (nunca la carpeta de trabajo)")
 # config: la carpeta solo la escribe la app (el selector del sistema o un reciente), nunca la acción config de la interfaz.
 if (app_json.get("config") or {}).get("carpeta") != {"tipo": "texto", "interfaz": False}:
     problemas.append('app.json: config.carpeta tiene que ser {"tipo": "texto", "interfaz": false} (la interfaz nunca la cambia)')
@@ -110,7 +129,7 @@ def internas(texto, patron):
 carpeta_swift = os.path.join(RAIZ, "app/Sources/Esquema")
 if os.path.isdir(carpeta_swift):
     swift = "".join(leer(os.path.join("app/Sources/Esquema", n)) for n in sorted(os.listdir(carpeta_swift)) if n.endswith(".swift"))
-    puente_mac = leer("app/Sources/PiezaHost/Puente.swift") or ""
+    puente_mac = (leer("app/Sources/PiezaHost/Puente.swift") or "") + (leer("app/Sources/PiezaHost/Carpeta.swift") or "")
     host_mac = "".join(leer(f"app/Sources/PiezaHost/{n}.swift") or "" for n in ("Host", "Procesador", "Enchufe")) + puente_mac
     registradas_mac = internas(swift, r'registrar\("(\w+)"')
     atiende_mac = registradas_mac | internas(puente_mac, r'internas\["(\w+)"\]') | declaradas
@@ -128,10 +147,14 @@ if os.path.isdir(carpeta_swift):
     if not tiene(host_mac, r"hasPrefix\(prefijo\)", r'env\[prefijo \+ "PROGRESO"\]', r"matarArbol") or not tiene(swift, r"Host\.arrancar\(", r"Procesador\.lectorProgreso = ", r"LectorProgreso\(prefijo: Host\.id",
                                                                                                                r'inyectores\["carpetaActual"\]'):
         problemas.append("Mac: Host.arrancar con el lector de progreso (pieza «trabajos») y la carpeta inyectada; el Procesador del host sin ESQUEMA_* de afuera y con límite")
-    if not tiene(swift, r"static func absoluta.*?Enchufe\.dentro\(base, valor, extensiones: \[\"\.md\", \"\.mmd\"\]\)",
-                 r"static func papelera.*?Carpeta\.absoluta\(ruta, en: base\).*?Puente\.shared\.papelera\(u\)", r"desdeInterfaz: false",
-                 r"static func guardarArchivo.*?Fila\.agregar", r"proyectos\.json"):
-        problemas.append("Mac: rutas de la interfaz con Enchufe.dentro (.md/.mmd), Papelera solo con ellas, la carpeta en config solo desde la app, guardados en la fila y recientes de proyectos.json")
+    # La carpeta con el marcador de siempre («carpeta.marcador», config.carpeta: CarpetaElegida() sin argumentos) y el vigilante del
+    # host; la Papelera solo con rutas revisadas por Enchufe.dentro (.md/.mmd); los recientes de proyectos.json.
+    if not tiene(swift, r'static let extensiones = \["\.md", "\.mmd"\]', r"p\.carpeta = CarpetaElegida\(\)", r"p\.vigilante = Vigilante\(extensiones: extensiones\)",
+                 r"static func papelera.*?Enchufe\.dentro\(base, ruta, extensiones: extensiones\).*?p\.papelera\(u\)", r"proyectos\.json",
+                 r"p\.actualizaciones = \.init\(") \
+            or re.search(r'registrar\("(abrirArchivo|guardarArchivo|buscarActualizacion|actualizar)"\)', swift) \
+            or not tiene(leer("app/Sources/PiezaHost/Carpeta.swift") or "", r'marcador: String = "carpeta\.marcador", clave: String\? = "carpeta"'):
+        problemas.append("Mac: carpeta con el marcador de siempre (CarpetaElegida), vigilante y actualizaciones del host, Papelera con Enchufe.dentro (.md/.mmd), abrir y guardar declarados, recientes de proyectos.json")
     act = leer("app/Sources/PiezaActualizaciones/Actualizaciones.swift") or ""
     paquete = leer("app/Package.swift") or ""
     if not tiene(act, r"/releases/download/", r"esDescargaNuestra\(zip, repo: c\.repo\)", r"shasum -a 256", r"comillas\(", r"--proto-redir '=https'") \
@@ -160,7 +183,7 @@ if escritorio:
     problemas += [f'Windows/Linux no atiende "{a}" (ni registrada, ni del host, ni declarada)' for a in sorted((acciones | contrato) - atiende_e)]
     if "actualizaciones: crearActualizaciones(" not in escritorio:
         problemas.append("Windows/Linux: el host atiende buscarActualizacion/actualizar solo si recibe la pieza «actualizaciones»")
-    llamadas_e = internas(escritorio, r'llamar\("(\w+)"') | internas(host_js, r'llamar\("(\w+)"') | internas(leer("escritorio/src/vigilante.js"), r'avisar\("(\w+)"')
+    llamadas_e = internas(escritorio, r'llamar\("(\w+)"') | internas(host_js, r'llamar\("(\w+)"') | internas(leer("escritorio/src/vigilante.js"), r'llamar\("(\w+)"')
     problemas += [f"Windows/Linux llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(llamadas_e - funciones_ui)]
     problemas += [f'Windows/Linux nunca responde "{f}"' for f in sorted(respuestas_app - llamadas_e - respuestas_declaradas)]
     if not tiene(host_js, r"contextIsolation: true", r"sandbox: true", r"nodeIntegration: false", r"webviewTag: false", r"ipcMain\.on\(id, alMensaje\)",
@@ -172,11 +195,14 @@ if escritorio:
     precarga = leer("escritorio/src/preload.js") or ""
     if not tiene(precarga, r"--pieza-host=", r"exposeInMainWorld\(`\$\{id\.toUpperCase\(\)\}_HOST`", r"exposeInMainWorld\(`\$\{id\}Escritorio`") or precarga.count("exposeInMainWorld") != 2:
         problemas.append("Windows/Linux: preload.js (pieza «host-escritorio») solo expone ESQUEMA_HOST y esquemaEscritorio.enviar")
-    if not tiene(escritorio, r"crearHost\(\{", r"lectorProgreso,", r'inyectar: \{ carpetaActual: ', r"desdeInterfaz: false",
-                 r'A\.registrar\("papelera".*?absoluta\(ruta, base\).*?host\.papelera\(abs\)', r'A\.registrar\("guardarArchivo".*?host\.fila\.agregar', r'"proyectos\.json"') \
-            or not tiene(leer("escritorio/src/vigilante.js") or "", r"dentro\(base, relativa, \{ extensiones: EXTENSIONES \}\)") \
+    if not tiene(escritorio, r"crearHost\(\{", r"lectorProgreso,", r'inyectar: \{ carpetaActual: ', r'carpeta: \{ clave: "carpeta" \}',
+                 r"vigilar: \{ extensiones: EXTENSIONES, alCambiar: ", r'const EXTENSIONES = \["\.md", "\.mmd"\]',
+                 r"host\.dentro\(base, ruta, \{ extensiones: EXTENSIONES \}\)",
+                 r'A\.registrar\("papelera".*?absoluta\(ruta, base\).*?host\.papelera\(abs\)', r'"proyectos\.json"') \
+            or re.search(r'A\.registrar\("(abrirArchivo|guardarArchivo)"', escritorio) \
+            or not tiene(leer("escritorio/src/vigilante.js") or "", r"dentro\(this\.base, relativa, \{ extensiones: this\.extensiones \}\)") \
             or not tiene(leer("escritorio/src/progreso.js") or "", r"function lectorProgreso", r"cada = 500"):
-        problemas.append("Windows/Linux: crearHost con el lector de progreso y la carpeta inyectada; rutas con dentro() (.md/.mmd), Papelera solo con ellas, la carpeta en config solo desde la app, guardados en la fila y recientes de proyectos.json")
+        problemas.append("Windows/Linux: crearHost con el lector de progreso, la carpeta (config.carpeta) y su vigilante; rutas con dentro() (.md/.mmd), Papelera solo con ellas, abrir y guardar declarados y recientes de proyectos.json")
     act = leer("escritorio/src/actualizaciones.js") or ""
     if not tiene(act, r"/releases/download/", r"esDescargaNuestra\(archivo, o\.repo\)", r"huella !== esperada", r"leerHuella") \
             or not tiene(escritorio, r'crearActualizaciones\(\{ app, net, repo: "esquema-app/esquema", nombre: "Esquema" \}\)'):

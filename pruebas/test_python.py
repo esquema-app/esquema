@@ -941,7 +941,9 @@ class Plantillas(unittest.TestCase):
         l = {p["id"]: p for p in catalogo.listar("plantillas")}
         self.assertEqual(l["registro"]["nombre"]["es"], "Mía")
         self.assertNotIn("mala", l)
-        self.assertNotIn("script", l["con-extra"], "lo que no es del formato no llega a la interfaz")
+        # Pieza «catálogo» 0.2 (seguridad): el validador ve el objeto ENTERO, así que un campo que no es del formato la deja fuera
+        # (antes se recortaba en silencio y entraba sin él).
+        self.assertNotIn("con-extra", l, "lo que no es del formato no llega a la interfaz")
         self.assertEqual({p["id"] for p in correr("estado.py")["plantillas"]}, set(l))
         shutil.rmtree(d)
 

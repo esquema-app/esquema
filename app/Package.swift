@@ -8,7 +8,8 @@ let package = Package(
     targets: [
         .executableTarget(name: "Esquema", dependencies: ["PiezaHost", "PiezaActualizaciones", "PiezaCatalogo", "PiezaTrabajos"], path: "Sources/Esquema"),
         // Pieza «host-mac» (de Pieza: no se edita a mano): la ventana, el puente con sus guardas, config e idioma desde app.json,
-        // menús, apariencia y las acciones declaradas en acciones.json. Esquema le registra lo suyo en EsquemaApp.swift.
+        // menús, apariencia, actualizaciones, la carpeta con marcador y su vigilante (Carpeta.swift) y las acciones declaradas en
+        // acciones.json. Esquema le registra lo suyo en EsquemaApp.swift.
         .target(name: "PiezaHost", path: "Sources/PiezaHost"),
         // Pieza «actualizaciones» (de Pieza: no se edita a mano). Esquema la configura con su repo y su nombre.
         .target(name: "PiezaActualizaciones", path: "Sources/PiezaActualizaciones"),

@@ -273,6 +273,7 @@ body:has(.pz-capa) #toast.visible, body:has(.p-pie) #toast.visible, body:has(.pr
 .plantilla .estado-catalogo small { color: var(--acento); font-weight: 600; margin-top: 4px; }
 .plantilla[aria-busy="true"] { opacity: .7; }
 .proponer { margin: 14px 0 0; text-align: center; }
+.aviso-catalogo { margin: 0 0 10px; color: var(--texto-suave); font-size: 13px; }
 .enlace { border: 0; background: none; padding: 6px 4px; min-height: 32px; color: var(--acento); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font: inherit; }
 
 /* ───── Proyectos (ui/proyectos.js) ───── */
