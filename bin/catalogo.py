@@ -62,8 +62,8 @@ ID_MAYUSCULAS = r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*"
 CARPETA = r"[a-z][a-z0-9-]{0,30}"
 NOMBRE_PY = r"[A-Za-z_][A-Za-z0-9_]{0,40}"
 EXTRA = ("ruta", "sha256", "tamano", "origen")
-#: Los nombres viejos de «ruta» y «tamano» en un índice: solo se quitan cuando están EN VEZ de ellos (una plantilla de Esquema
-#: tiene su propio campo «archivo», que es contenido).
+#: Los nombres viejos de «ruta» y «tamano» en un índice: solo se quitan cuando están EN VEZ de ellos (una plantilla puede
+#: tener su propio campo «archivo», que es contenido).
 ALIAS = (("archivo", "ruta"), ("bytes", "tamano"))
 #: Frases en español (claves de traducción). La interfaz hace Tp(r.frase) con lo que llega (no «plantilla»: un tipo con
 #: singular «plantilla» devuelve ahí el objeto descargado).
