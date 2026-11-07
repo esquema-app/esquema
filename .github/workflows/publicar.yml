@@ -28,7 +28,7 @@ jobs:
         with: { persist-credentials: false }
       - name: Pruebas rápidas (no se publica una versión rota)
         run: |
-          if [ -f pruebas/correr.sh ]; then bash pruebas/correr.sh
+          if [ -f pruebas/correr.sh ]; then SIN_RUST=1 bash pruebas/correr.sh   # la app nativa la compila cada sistema más abajo
           else [ ! -f pruebas/contrato.py ] || python3 pruebas/contrato.py
             if ls pruebas/test_*.py >/dev/null 2>&1; then python3 -m unittest discover -s pruebas -p 'test_*.py'; fi; fi
       - id: v

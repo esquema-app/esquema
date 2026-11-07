@@ -303,7 +303,7 @@
     "red": []
    },
    "generados": {
-    ".github/workflows/publicar.yml": "752e4b3c320154f9fc5fd788c44f0d60ab97e3018dc23d50948a205e20d1769f",
+    ".github/workflows/publicar.yml": "a012689e3ace6cfdcf74735a31fa1923af901068953a438938500a8b7301d69f",
     "build.sh": "769b9a72c95005d2652fef40cca76fc79103b445d07ae57ef4caaafa09ce3941",
     "escritorio/herramientas/preparar.sh": "eca4b65425640a47ae76d4385eddf207d2feffb47a11da1eb280add116a69176",
     "herramientas/empaquetar.sh": "3af0b68e40c6a66bc0fd4758ed05e7deeef4bb113187cffcf8b0c4f2f0b74b4a",
