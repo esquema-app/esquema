@@ -9,6 +9,7 @@
 //   const host = PiezaHost.crearHost({ nombre: "ana", global: "Ana", simular: { listo: (d, c) => c.responder("estado", DEMO) } });
 //   host.responder({ estado(e) { … }, iaProbada(r) { … } });   // queda en window.Ana
 //   host.enviar("probarIA", { ia: "claude" });
+//   host.atender("armarCopia", async (d) => ({ ok: true }));   // lo que la app le pide y espera (host-tauri: host.pedir)
 //   host.plataforma   // "mac" | "windows" | "linux" | "movil" | "web"
 (function (raiz, fabrica) {
   const m = fabrica();
@@ -123,6 +124,20 @@
       return respuestas;
     }
 
+    /** Lo que la app le pide a la página y espera (`host.pedir("x", datos, límite)` en «host-tauri»): `host.atender("x", async
+     *  (datos) => respuesta)`. Lo que devuelve `f` (o null si falla) vuelve por `respuestaPagina {id, respuesta}`. */
+    function atender(funcion, f) {
+      if (typeof f !== "function") throw new Error("host-ui: atender necesita una función.");
+      return responder({
+        [funcion]: async (pedido) => {
+          const id = esObjeto(pedido) && typeof pedido.id === "string" ? pedido.id : "";
+          let r = null;
+          try { r = await f(esObjeto(pedido) && esObjeto(pedido.datos) ? pedido.datos : {}); } catch { r = null; }
+          if (id) enviar("respuestaPagina", { id, respuesta: r === undefined ? null : r });
+        },
+      });
+    }
+
     /** La dirección de un medio que sirve la app (`host.registrar_medios("video", …)` en el host): `host.medio("video",
      *  "clips/a.mp4")`. Cada parte de la ruta va codificada; nunca «..». */
     function medio(nombreMedio, ruta) {
@@ -138,7 +153,7 @@
       esWeb: plataforma === "web",
       esEscritorio: plataforma === "windows" || plataforma === "linux",
       esMovil: plataforma === "movil",
-      enviar, responder, llamar, luego,
+      enviar, responder, atender, llamar, luego,
       /** Para las pruebas: cancela lo que la simulación dejó esperando. */
       cancelarPendientes() { for (const t of pendientes) clearTimeout(t); pendientes.clear(); },
     };

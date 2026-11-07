@@ -100,7 +100,7 @@
   "host-ui": {
    "version": "0.3.0",
    "archivos": {
-    "ui/host.js": "9d18c5e8f719d19e7d883851426687c701fd503dbba09b34aa96c01074d129b0"
+    "ui/host.js": "07505d7d288b0fdfa0d3a31430a57331f59198e2ebd413d3adf1f244883d501f"
    },
    "ficha": {
     "requiere": [],
@@ -239,7 +239,7 @@
     "escritorio/src/pieza/protocolo.rs": "b19b87bb18ac63841871cad19da256372986ffe52512a6389fc87a1c59ca518b",
     "escritorio/src/pieza/sistema.rs": "ecaef6d2c859ddf9b5b4dd707e1828932aa812f4e99ac670c25ec4527426457c",
     "escritorio/src/pieza/vigilante.rs": "6be8519e7c8f9996e30af4c4f78695994966eb8476a4900eb9bbb840a583973d",
-    "escritorio/src/pieza/host.rs": "c5ddad35e7f970e9241d5b29bd214b01573e5599ea986e54b49eeabe1fdb5c79",
+    "escritorio/src/pieza/host.rs": "5611d1bda78d0bbf67eb0474aeb77f8c25c73b763f5937ab32ed772ad343293b",
     "escritorio/iconos/32x32.png": "0c334ce1216ed797b3adf0a255bb68e22189ef538fe4a303180ef6c7e07ed7be",
     "escritorio/iconos/128x128.png": "c86e3d530fc01c4bf60952a4005e269a6899a52aa3ca441b51e52e3afbd7dd5b",
     "escritorio/iconos/128x128@2x.png": "8eb6cfbd01f498c1496e592d5ae169954b8448ae92e519863d7179d32e32ae73",
