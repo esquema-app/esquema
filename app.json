@@ -1,6 +1,7 @@
 {
  "nombre": "Esquema",
  "id": "esquema",
+ "version": "0.2.0",
  "datos": "sistema",
  "plataformas": [
   "mac",
@@ -262,5 +263,17 @@
    "limite": 30,
    "scriptDeLaApp": true
   }
+ },
+ "empaquetado": {
+  "descripcion": "Diagramas y documentación, con tu propia IA",
+  "categoria": "public.app-category.developer-tools",
+  "linux_categoria": "Development",
+  "carpetas": [
+   "plantillas",
+   "tipos"
+  ],
+  "permisos": [],
+  "ocupada": [],
+  "deb": true
  }
 }

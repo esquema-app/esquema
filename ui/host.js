@@ -60,6 +60,10 @@
     const canales = { escritorio: `${nombre}Escritorio`, movil: `${nombre}Movil`, ...(opciones.canales || {}) };
     for (const c of Object.values(canales)) if (!/^[A-Za-z][A-Za-z0-9]{0,40}$/.test(String(c))) throw new Error("host-ui: canal no válido.");
     const declarada = ventana[`${nombre.toUpperCase()}_HOST`];
+    // host-tauri pone la dirección base de la app (`<id>://localhost/`; en Windows, `http://<id>.localhost/`): los medios
+    // viven en el mismo origen que la interfaz. Los hosts de antes servían `<id>://<nombre>/…`.
+    const baseDeclarada = ventana[`${nombre.toUpperCase()}_BASE`];
+    const base = typeof baseDeclarada === "string" && /^(?:[a-z][a-z0-9]*:\/\/localhost|http:\/\/[a-z][a-z0-9]*\.localhost)\/$/.test(baseDeclarada) ? baseDeclarada : "";
     const plataforma = PLATAFORMAS.includes(declarada) ? declarada : "web";
     if (ventana.document?.documentElement?.dataset) ventana.document.documentElement.dataset.host = plataforma;
 
@@ -119,8 +123,18 @@
       return respuestas;
     }
 
+    /** La dirección de un medio que sirve la app (`host.registrar_medios("video", …)` en el host): `host.medio("video",
+     *  "clips/a.mp4")`. Cada parte de la ruta va codificada; nunca «..». */
+    function medio(nombreMedio, ruta) {
+      if (!/^[a-z][a-z0-9-]{0,30}$/.test(String(nombreMedio || "")) || nombreMedio === "ui") throw new Error("host-ui: medio no válido.");
+      const partes = String(ruta ?? "").split("/");
+      if (!partes.length || partes.some((p) => p === "" || p === "." || p === "..")) throw new Error("host-ui: ruta de medio no válida.");
+      const r = partes.map(encodeURIComponent).join("/");
+      return base ? `${base}${nombreMedio}/${r}` : `${nombre}://${nombreMedio}/${r}`;
+    }
+
     return {
-      plataforma, nombre, global,
+      plataforma, nombre, global, base, medio,
       esWeb: plataforma === "web",
       esEscritorio: plataforma === "windows" || plataforma === "linux",
       esMovil: plataforma === "movil",

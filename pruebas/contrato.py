@@ -225,6 +225,37 @@ if escritorio:
         problemas.append("Windows/Linux: .npmrc con ignore-scripts=true y package-lock.json versionado")
     if paquete.get("version") != (re.search(r"<key>CFBundleShortVersionString</key>\s*<string>([^<]+)</string>", leer("app/Info.plist") or "") or [None, None])[1]:
         problemas.append("La versión de escritorio/package.json y la de app/Info.plist tienen que ser iguales (publicar.yml)")
+# ───────────── Mac, Windows y Linux (pieza «host-tauri» en escritorio/src/pieza/ + lo propio en escritorio/src/main.rs) ─────────────
+tauri = leer("escritorio/src/main.rs")
+if tauri:
+    host_rs = leer("escritorio/src/pieza/host.rs") or ""
+    interna = host_rs[host_rs.find("fn interna("):]
+    interna = interna[:interna.find("\n    }\n")]
+    registradas_t = internas(tauri, r'\.registrar\("(\w+)"')
+    internas_t = set(re.findall(r'^\s*"(\w+)"(?:\s+if\s[^=]*)?\s*=>', interna, re.M))
+    atiende_t = registradas_t | internas_t | declaradas
+    problemas += [f'Mac/Windows/Linux no atiende "{a}" (ni registrada, ni del host, ni declarada)' for a in sorted((acciones | contrato) - atiende_t)]
+    if 'actualizaciones::Actualizaciones::nuevas("esquema-app/esquema", "Esquema")' not in tauri:
+        problemas.append("Mac/Windows/Linux: el host atiende buscarActualizacion/actualizar solo si recibe la pieza «actualizaciones» (main.rs)")
+    llamadas_t = internas(tauri, r'llamar\("(\w+)"') | internas(host_rs, r'llamar\("(\w+)"')
+    problemas += [f"Mac/Windows/Linux llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(llamadas_t - funciones_ui - {"soltados"})]
+    problemas += [f'Mac/Windows/Linux nunca responde "{f}"' for f in sorted(respuestas_app - llamadas_t - respuestas_declaradas)]
+    if not tiene(host_rs, r"etiqueta == PRINCIPAL \|\| host\.otras", r'starts_with\(&format!\("\{\}ui/", host\.base\)\)', r"NewWindowResponse::Deny",
+                 r"if u\.as_str\(\)\.starts_with\(&ui\)", r"window\.top !== window"):
+        problemas.append("Mac/Windows/Linux: el puente de «host-tauri» solo para las ventanas propias con su página en ui/, sin navegar fuera ni abrir ventanas (host.rs)")
+    conf = json.loads(leer("escritorio/tauri.conf.json") or "{}")
+    if conf.get("identifier") != "app.esquema.mac":
+        problemas.append("escritorio/tauri.conf.json: el identificador sigue siendo app.esquema.mac (el permiso de la carpeta y la firma lo siguen)")
+    if (conf.get("app") or {}).get("withGlobalTauri"):
+        problemas.append("escritorio/tauri.conf.json: la página no ve la API de Tauri (withGlobalTauri: false)")
+    rec = (conf.get("bundle") or {}).get("resources") or {}
+    for r in ("../app.json", "../acciones.json", "../bin/", "../ui/", "../plantillas/", "../tipos/"):
+        if r not in rec:
+            problemas.append(f"escritorio/tauri.conf.json: {r} va dentro de la app (bundle.resources)")
+    if conf.get("version") != app_json.get("version"):
+        problemas.append("La versión de escritorio/tauri.conf.json y la de app.json tienen que ser iguales (pieza.py generar .)")
+    if re.search(r'"(claude|codex|gemini)"', tauri):
+        problemas.append("Mac/Windows/Linux: la app no llama a ninguna IA por su cuenta (eso es de bin/ia.py)")
 html = leer("ui/index.html")
 csp = re.search(r'Content-Security-Policy" content="([^"]+)"', html)
 if not csp or "script-src 'self'" not in csp.group(1) or "'unsafe-eval'" in csp.group(1) or "object-src 'none'" not in csp.group(1):
@@ -234,4 +265,4 @@ if re.search(r"<script>|\son\w+=", html) or re.search(r"\son(click|load|error|in
 if problemas:
     print("✗ Contrato roto:\n  - " + "\n  - ".join(problemas))
     sys.exit(1)
-print(f"✓ Contrato: {len(acciones)} acciones y {len(funciones_ui)} funciones en orden en la interfaz" + (", Mac" if os.path.isdir(carpeta_swift) else "") + (", Windows y Linux" if escritorio else ""))
+print(f"✓ Contrato: {len(acciones)} acciones y {len(funciones_ui)} funciones en orden en la interfaz" + (", Mac" if os.path.isdir(carpeta_swift) else "") + (", Windows y Linux" if escritorio else "") + (", Mac, Windows y Linux (host-tauri)" if tauri else ""))

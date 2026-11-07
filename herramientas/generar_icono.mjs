@@ -1,6 +1,6 @@
 // Íconos de las apps desde ui/favicon.svg (el mismo logo de la interfaz). Solo para desarrollo: se versionan los resultados.
-//   app/Esquema.icns                 Mac: el logo a 824 px dentro de 1024 (la rejilla de íconos de macOS), con sombra suave.
-//   escritorio/iconos/esquema-N.png  Windows y Linux (16…512) y esquema.ico (16…256).
+//   escritorio/iconos/icon.icns      Mac: el logo a 824 px dentro de 1024 (la rejilla de íconos de macOS), con sombra suave.
+//   escritorio/iconos/*.png          32x32, 128x128, 128x128@2x e icono.png (512), e icon.ico (16…256) para Windows y Linux.
 // Playwright dibuja el SVG y Pillow arma el .icns y el .ico.
 // Uso: node herramientas/generar_icono.mjs   (PLAYWRIGHT=/ruta/a/playwright si no está instalado aquí)
 import fs from "node:fs";
@@ -26,10 +26,9 @@ async function dibujar(destino, lado, logoLado, sombra) {
 await dibujar(path.join(tmp, "mac.png"), 1024, 824, true);
 const dir = path.join(RAIZ, "escritorio", "iconos");
 fs.mkdirSync(dir, { recursive: true });
-for (const n of [16, 32, 48, 64, 128, 256, 512]) await dibujar(path.join(dir, `esquema-${n}.png`), n, n, false);
+for (const [n, f] of [[32, "32x32.png"], [128, "128x128.png"], [256, "128x128@2x.png"], [512, "icono.png"]]) await dibujar(path.join(dir, f), n, n, false);
 await b.close();
 execFileSync("python3", ["-c", `from PIL import Image
-Image.open(${JSON.stringify(path.join(tmp, "mac.png"))}).convert("RGBA").save(${JSON.stringify(path.join(RAIZ, "app", "Esquema.icns"))}, sizes=[(16,16),(32,32),(64,64),(128,128),(256,256),(512,512),(1024,1024)])
-Image.open(${JSON.stringify(path.join(dir, "esquema-256.png"))}).convert("RGBA").save(${JSON.stringify(path.join(dir, "esquema.ico"))}, sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])`]);
-fs.copyFileSync(path.join(dir, "esquema-512.png"), path.join(dir, "esquema.png"));
-console.log("Listo: app/Esquema.icns y escritorio/iconos/");
+Image.open(${JSON.stringify(path.join(tmp, "mac.png"))}).convert("RGBA").save(${JSON.stringify(path.join(dir, "icon.icns"))}, sizes=[(16,16),(32,32),(64,64),(128,128),(256,256),(512,512),(1024,1024)])
+Image.open(${JSON.stringify(path.join(dir, "128x128@2x.png"))}).convert("RGBA").save(${JSON.stringify(path.join(dir, "icon.ico"))}, sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])`]);
+console.log("Listo: escritorio/iconos/");

@@ -32,6 +32,8 @@ app/.build/
 escritorio/node_modules/
 escritorio/dist/
 escritorio/vendor/
+escritorio/target/
+escritorio/gen/
 node_modules/
 __pycache__/
 .terminos-privados

@@ -1,7 +1,8 @@
 # Instala (o actualiza) Esquema en Windows con un solo comando (PowerShell):
 #   irm https://raw.githubusercontent.com/esquema-app/esquema/main/instalar.ps1 | iex
 # Baja la última versión publicada en GitHub, verifica su huella SHA-256 y la instala solo para tu usuario
-# (sin permisos de administrador). Tus documentos quedan en tu carpeta y nunca se tocan.
+# (sin permisos de administrador). Tus datos quedan en tu computador y nunca se tocan.
+# Generado por la pieza «empaquetado» de Pieza (MPL-2.0, https://mozilla.org/MPL/2.0/) desde app.json.
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $repo = 'esquema-app/esquema'
@@ -11,7 +12,7 @@ if (-not [Environment]::Is64BitOperatingSystem) { Falla 'Esquema necesita Window
 Write-Host 'Buscando la última versión de Esquema…'
 try { $rel = Invoke-RestMethod -Headers @{ Accept = 'application/vnd.github+json' } "https://api.github.com/repos/$repo/releases/latest" } catch { Falla 'No pude consultar GitHub.' }
 $tag = $rel.tag_name
-if (-not $tag) { Falla 'No encontré una versión publicada.' }
+if (-not ($tag -match '^v\d+\.\d+\.\d+$')) { Falla 'No encontré una versión publicada.' }
 $base = "https://github.com/$repo/releases/download/$tag"
 $tmp = Join-Path $env:TEMP 'esquema-instalar'
 New-Item -ItemType Directory -Force $tmp | Out-Null
@@ -29,4 +30,4 @@ Write-Host 'v Descarga verificada' -ForegroundColor Green
 # Instalador silencioso (por usuario); al terminar abre Esquema.
 Start-Process -FilePath $exe -ArgumentList '/S', '--force-run' -Wait
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
-Write-Host "v Esquema $tag instalada. Se abrió: elige tu idioma y la carpeta de tu proyecto." -ForegroundColor Green
+Write-Host "v Esquema $tag instalada. Se abrió: lo primero es elegir tu idioma." -ForegroundColor Green
