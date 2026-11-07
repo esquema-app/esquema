@@ -239,7 +239,7 @@
     "escritorio/src/pieza/protocolo.rs": "b19b87bb18ac63841871cad19da256372986ffe52512a6389fc87a1c59ca518b",
     "escritorio/src/pieza/sistema.rs": "ecaef6d2c859ddf9b5b4dd707e1828932aa812f4e99ac670c25ec4527426457c",
     "escritorio/src/pieza/vigilante.rs": "6be8519e7c8f9996e30af4c4f78695994966eb8476a4900eb9bbb840a583973d",
-    "escritorio/src/pieza/host.rs": "faba1de3532ff12b12f87f62225be99d527e573b2ccefc5ddb2916b6ce90d25d",
+    "escritorio/src/pieza/host.rs": "c5ddad35e7f970e9241d5b29bd214b01573e5599ea986e54b49eeabe1fdb5c79",
     "escritorio/iconos/32x32.png": "0c334ce1216ed797b3adf0a255bb68e22189ef538fe4a303180ef6c7e07ed7be",
     "escritorio/iconos/128x128.png": "c86e3d530fc01c4bf60952a4005e269a6899a52aa3ca441b51e52e3afbd7dd5b",
     "escritorio/iconos/128x128@2x.png": "8eb6cfbd01f498c1496e592d5ae169954b8448ae92e519863d7179d32e32ae73",
@@ -282,7 +282,7 @@
     "escritorio/Cargo.toml": "9a3175ba0edb24d70c35fd78a256fb9a2683191707981c77ecfdd5814114c320",
     "escritorio/Info.plist": "feda06c9a825f17848d85aae03b1ce1e22d5e162628c04884b0b4a88e304655f",
     "escritorio/build.rs": "8af41c0062014fc594e4bb9899e60ee9930ab57d4cf0c73041ff557d6ec736e6",
-    "escritorio/pruebas/arranque.sh": "7b633172388aef888963d954f410950b4e50c68ea74c8c54d9a4a82185af69a7",
+    "escritorio/pruebas/arranque.sh": "227fc194f1a3a1cc36f28a893ce2a578c03f1af07463faecc01398a0768330a2",
     "escritorio/tauri.conf.json": "cca7020b14dff79d6c5de444eac187b894010d0d2e0b61c20c78074ac0018439",
     "escritorio/vacio/index.html": "20462ae1e58c427988a17fa7479c9d24582bd7eb0cfca3b041199a7e8f2f2d74"
    },

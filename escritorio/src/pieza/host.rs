@@ -522,7 +522,11 @@ impl Host {
         let g = &self.global;
         // El JSON va como argumento: nunca se arma código con lo que manda nadie.
         let js = format!("window.{g} && typeof window.{g}.{funcion} === \"function\" && window.{g}.{funcion}({})", d);
-        w.eval(js).is_ok()
+        let ok = w.eval(js).is_ok();
+        if ok {
+            anotar_registro(&format!("→ {etiqueta} {funcion}"));
+        }
+        ok
     }
 
     // ───────────── Acciones ─────────────
@@ -901,8 +905,14 @@ impl Host {
         let h = self.handle()?;
         let url = self.url(&format!("ui/{pagina}"))?;
         let b = self.preparar_web(WebviewWindowBuilder::new(h, etiqueta, WebviewUrl::CustomProtocol(url)));
-        let w = ajustar(b).build().ok()?;
+        // Antes de crearla: su página puede mandar «listo» antes de que build() vuelva.
         self.otras.lock().ok()?.insert(etiqueta.into());
+        let Ok(w) = ajustar(b).build() else {
+            if let Ok(mut o) = self.otras.lock() {
+                o.remove(etiqueta);
+            }
+            return None;
+        };
         let h2 = self.clone();
         let et = etiqueta.to_string();
         w.on_window_event(move |ev| {
@@ -991,15 +1001,24 @@ impl Host {
         }
         let h2 = self.clone();
         b = self.preparar_web(b).on_page_load(move |w, p| {
+            anotar_registro(&format!("página {}", if p.event() == PageLoadEvent::Finished { "cargada" } else { "cargando" }));
+            // Una página nueva (o recargada) no está «lista» hasta que mande «listo» otra vez.
+            if p.event() == PageLoadEvent::Started {
+                if let Ok(mut l) = h2.listas.lock() {
+                    l.remove(PRINCIPAL);
+                }
+            }
             if p.event() == PageLoadEvent::Finished && mostrarla && !h2.mostrada.swap(true, Ordering::SeqCst) {
                 let _ = w.show();
                 let _ = w.set_focus();
             }
         });
-        let w = b.build().ok()?;
+        // La ventana nueva no está «lista» hasta que su página mande «listo», que puede llegar antes de que build() vuelva: por
+        // eso se olvida antes (y al empezar a cargar), nunca después.
         if let Ok(mut l) = self.listas.lock() {
             l.remove(PRINCIPAL);
         }
+        let w = b.build().ok()?;
         let h3 = self.clone();
         w.on_window_event(move |ev| h3.evento_ventana(ev));
         let g = self.ganchos.read().ok().and_then(|g| g.al_crear_ventana.clone());
@@ -1358,20 +1377,25 @@ fn pieza(webview: tauri::Webview, msg: Value, estado: tauri::State<'_, Host>) {
     let propia = etiqueta == PRINCIPAL || host.otras.lock().map(|o| o.contains(&etiqueta)).unwrap_or(false);
     let en_ui = webview.url().map(|u| u.as_str().starts_with(&format!("{}ui/", host.base))).unwrap_or(false);
     if !propia || !en_ui {
+        anotar_registro(&format!("rechazado {etiqueta}"));
         return;
     }
     let Some(accion) = msg.get("accion").and_then(Value::as_str).filter(|a| e::es_accion(a)).map(String::from) else { return };
-    // Para la prueba de arranque (escritorio/pruebas/arranque.sh): PIEZA_REGISTRO=<archivo> anota el nombre de cada acción que
-    // llega por el puente (solo el nombre, nunca los datos).
-    if let Some(r) = std::env::var_os("PIEZA_REGISTRO") {
-        use std::io::Write;
-        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(r) {
-            let _ = writeln!(f, "{etiqueta} {accion}");
-        }
-    }
+    anotar_registro(&format!("{etiqueta} {accion}"));
     let datos = msg.get("datos").filter(|d| d.is_object()).cloned().unwrap_or(json!({}));
     let ctx = Ctx { responder_a: (etiqueta != PRINCIPAL).then_some(etiqueta) };
     thread::spawn(move || host.despachar(&accion, datos, ctx));
+}
+
+/// Para la prueba de arranque (escritorio/pruebas/arranque.sh): con PIEZA_REGISTRO=<archivo>, el host anota ahí el nombre de
+/// cada acción que llega por el puente (solo el nombre, nunca los datos) y cuándo carga la página. Sin la variable, nada.
+fn anotar_registro(linea: &str) {
+    if let Some(r) = std::env::var_os("PIEZA_REGISTRO") {
+        use std::io::Write;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(r) {
+            let _ = writeln!(f, "{linea}");
+        }
+    }
 }
 
 /// Arranca la app: arma el host, deja registrar lo propio (`configurar`), instala menús, aplica la apariencia y abre la
@@ -1396,6 +1420,7 @@ pub fn arrancar(contexto: tauri::Context<Wry>, op: Opciones, configurar: impl Fn
             let h = h_protocolo.clone();
             thread::spawn(move || {
                 let r = h.servir(&req);
+                anotar_registro(&format!("sirve {} {}", r.estado, req.uri().path()));
                 let mut b = tauri::http::Response::builder().status(r.estado);
                 for (k, v) in r.cabeceras {
                     b = b.header(k, v);

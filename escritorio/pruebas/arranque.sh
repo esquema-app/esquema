@@ -14,12 +14,14 @@ HOME="$casa" XDG_CONFIG_HOME="$casa/.config" PIEZA_REGISTRO="$registro" APPIMAGE
 pid=$!
 for _ in $(seq 1 40); do
   sleep 1
-  if grep -q "^principal listo$" "$registro" 2>/dev/null; then
-    echo "✓ Esquema abrió y la interfaz habla con el host ($(wc -l < "$registro") mensajes por el puente)"
+  # La página mandó «listo» y el host le respondió con el estado (el registro anota lo que va y lo que vuelve).
+  if grep -q "^principal listo$" "$registro" 2>/dev/null && grep -q "^→ principal estado$" "$registro" 2>/dev/null; then
+    echo "✓ Esquema abrió y la interfaz habla con el host ($(grep -c "^principal " "$registro") mensajes por el puente)"
     exit 0
   fi
   kill -0 "$pid" 2>/dev/null || break
 done
-echo "✗ Esquema no abrió o la interfaz no mandó «listo»" >&2
+echo "✗ Esquema no abrió, la interfaz no mandó «listo» o no recibió el estado" >&2
+echo "Registro:" >&2; cat "$registro" >&2 2>/dev/null || echo "  (nada)" >&2
 tail -20 "$casa/salida.txt" >&2 || true
 exit 1
