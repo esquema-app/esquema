@@ -3,7 +3,8 @@
 #   curl -fsSL https://raw.githubusercontent.com/esquema-app/esquema/main/instalar.sh | bash
 # (En Windows: irm https://raw.githubusercontent.com/esquema-app/esquema/main/instalar.ps1 | iex)
 # Baja la última versión publicada en GitHub, verifica su huella SHA-256 y la instala solo para tu usuario.
-# No pide contraseña ni instala nada más: tus documentos quedan en tu carpeta y nunca se tocan.
+# No pide contraseña ni instala nada más: tus datos quedan en tu computador y nunca se tocan.
+# Generado por la pieza «empaquetado» de Pieza (MPL-2.0, https://mozilla.org/MPL/2.0/) desde app.json.
 set -euo pipefail
 REPO="esquema-app/esquema"
 verde() { printf "\033[32m%s\033[0m\n" "$1"; }
@@ -20,20 +21,20 @@ case "$SO" in
   Linux)
     [ "$(uname -m)" = "x86_64" ] || error "Por ahora Esquema para Linux es para procesadores x86_64 (Intel/AMD)."
     ARCHIVO=Esquema-Linux.tar.gz ;;
-  *) error "Este instalador es para Mac y Linux. En Windows usa: irm https://raw.githubusercontent.com/$REPO/main/instalar.ps1 | iex" ;;
+  *) error "Este instalador no tiene Esquema para tu sistema. En Windows usa: irm https://raw.githubusercontent.com/$REPO/main/instalar.ps1 | iex" ;;
 esac
 
 echo "Buscando la última versión de Esquema…"
 INFO=$(curl -fsSL -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$REPO/releases/latest") || error "No pude consultar GitHub."
 # (sin python: en un Mac recién comprado /usr/bin/python3 pide instalar herramientas de Apple)
 TAG=$(printf '%s' "$INFO" | tr ',' '\n' | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
-[ -n "$TAG" ] || error "No encontré una versión publicada."
+[[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || error "No encontré una versión publicada."
 BASE="https://github.com/$REPO/releases/download/$TAG"
 
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 echo "Descargando Esquema $TAG…"
-curl -fL --progress-bar "$BASE/$ARCHIVO" -o "$TMP/$ARCHIVO" || error "Esta versión aún no tiene descarga para tu sistema."
-curl -fsSL "$BASE/$ARCHIVO.sha256" -o "$TMP/$ARCHIVO.sha256"
+curl -fL --proto '=https' --progress-bar "$BASE/$ARCHIVO" -o "$TMP/$ARCHIVO" || error "Esta versión aún no tiene descarga para tu sistema."
+curl -fsSL --proto '=https' "$BASE/$ARCHIVO.sha256" -o "$TMP/$ARCHIVO.sha256"
 [ "$(huella "$TMP/$ARCHIVO")" = "$(cut -d' ' -f1 "$TMP/$ARCHIVO.sha256")" ] || error "La descarga no coincide con su huella. No instalé nada."
 verde "✓ Descarga verificada"
 
@@ -47,7 +48,8 @@ if [ "$SO" = Darwin ]; then
   ditto "$TMP/app/Esquema.app" "$HOME/Applications/Esquema.app"
   verde "✓ Esquema $TAG instalada en ~/Applications"
   open "$HOME/Applications/Esquema.app"
-else
+fi
+if [ "$SO" = Linux ]; then
   DIR="$HOME/.local/share/Esquema"
   mkdir -p "$TMP/app" "$HOME/.local/bin" "$HOME/.local/share/applications" "$HOME/.local/share/icons/hicolor/256x256/apps"
   tar -xzf "$TMP/$ARCHIVO" -C "$TMP/app" --strip-components=1
@@ -68,16 +70,15 @@ LANZADOR
 [Desktop Entry]
 Type=Application
 Name=Esquema
-Comment=Diagramas y documentación que GitHub ya entiende
+Comment=Diagramas y documentación, con tu propia IA
 Exec=$HOME/.local/bin/esquema %U
 Icon=esquema
 Terminal=false
-Categories=Development;Office;
+Categories=Development;
 StartupWMClass=Esquema
 ESCRITORIO
   update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
-  true
   verde "✓ Esquema $TAG instalada (búscala en tus aplicaciones o escribe: esquema)"
   nohup "$HOME/.local/bin/esquema" >/dev/null 2>&1 &
 fi
-echo "Se abrió Esquema: elige tu idioma y la carpeta de tu proyecto."
+echo "Se abrió Esquema: lo primero es elegir tu idioma."

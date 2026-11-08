@@ -158,8 +158,8 @@ con tu cuenta, y «Publicar en la wiki» usa tu git.
 
 ## Estado
 
-El núcleo (motor, interfaz, plantillas, IA y pruebas) corre en el navegador con una carpeta de ejemplo ficticia y en las apps de
-**Mac** (nativa, SwiftPM + WKWebView) y **Windows y Linux** (Electron), con la misma interfaz. Las apps vigilan tu carpeta: si
+El núcleo (motor, interfaz, plantillas, IA y pruebas) corre en el navegador con una carpeta de ejemplo ficticia y en una sola app
+nativa para **Mac, Windows y Linux** (Rust + Tauri, con el navegador que ya trae tu sistema: liviana), con la misma interfaz. La app vigila tu carpeta: si
 cambias un archivo en otro editor (VS Code, `git pull`…), Esquema lo recarga; si tenías cambios sin guardar, te pregunta con cuál
 versión quedarte. Las plantillas de la comunidad llegan desde [esquema-catalogo](https://github.com/esquema-app/esquema-catalogo).
 Lo planificado (BPMN, estados, ER, gantt, mapa mental) está en [AGENTS.md](AGENTS.md#lo-que-viene-planificado).
@@ -182,7 +182,7 @@ node herramientas/pagina_capturas.mjs     # la página (docs/) como en GitHub Pa
 bash pruebas/correr.sh                    # todas las pruebas (la interfaz necesita Playwright)
 node herramientas/comparar_mermaid.mjs    # rendimiento y compatibilidad contra Mermaid real (lo instala aparte)
 bash build.sh                             # Mac: compila e instala en ~/Applications/Esquema.app
-cd escritorio && npm ci && node node_modules/electron/install.js && npx electron .   # Windows y Linux, sin empaquetar
+cd escritorio && cargo run                # Mac, Windows o Linux, sin empaquetar (necesita Rust)
 ```
 
 Lee [AGENTS.md](AGENTS.md) (sirve igual para personas y para tu IA) y [CONTRIBUTING.md](CONTRIBUTING.md). Las fallas de seguridad

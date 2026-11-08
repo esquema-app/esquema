@@ -1,4 +1,4 @@
-// Interfaz de Esquema: la misma en Mac (WKWebView), Windows y Linux (Electron) y en el navegador (vista previa con demo.json).
+// Interfaz de Esquema: la misma en la app de Mac, Windows y Linux (Tauri) y en el navegador (vista previa con demo.json).
 // La app manda el estado con window.Esquema.estado(json); la interfaz pide cosas con host.enviar(accion, datos) (contrato en
 // pruebas/puente.json). El texto es la fuente de verdad: el lienzo y la vista del documento se dibujan desde él, y cada cambio en el
 // lienzo es un cambio chico en el texto (motor/flujo.js, motor/secuencia.js).
@@ -6,7 +6,7 @@
   "use strict";
   const M = window.EsquemaMotor;
   // ───────────── Puente con la app: pieza «host-ui» (ui/host.js) ─────────────
-  // Mac (WKWebView), Windows y Linux (Electron) o, en el navegador, `simular` (más abajo) con ui/demo.json. Pone <html data-host>.
+  // La app (Mac, Windows y Linux, pieza «host-tauri») o, en el navegador, `simular` (más abajo) con ui/demo.json. Pone <html data-host>.
   const host = PiezaHost.crearHost({ nombre: "esquema", global: "Esquema", simular: (accion, d, c) => simular(accion, d, c) });
   const HOST = host.plataforma;
   const E = {
@@ -1601,7 +1601,7 @@
         return (navigator.clipboard?.writeText(d.texto) || Promise.reject()).then(() => A.copiado({ ok: true }), () => A.copiado({ ok: true }));
       case "abrirEnlace": return toast("En la app, aquí se abre el enlace en tu navegador");
       case "catalogoPlantillas": return luego(400, () => A.catalogoListo({ ok: true, plantillas: JSON.parse(JSON.stringify(DEMO.catalogo || [])) }));
-      case "descargarPlantilla": return luego(500, () => {  // en la app: Swift o Electron (pieza «catálogo») la bajan de raw.githubusercontent.com y bin/catalogo.py la valida
+      case "descargarPlantilla": return luego(500, () => {  // en la app: el host en Rust (pieza «catálogo») la bajan de raw.githubusercontent.com y bin/catalogo.py la valida
         const x = (DEMO.catalogo || []).find((y) => y.id === d.id);
         A.plantillaDescargada(x ? { ok: true, tipo: "plantillas", id: x.id, plantilla: sinIndice(JSON.parse(JSON.stringify(x))) } : { ok: false, id: d.id, codigo: "no_esta", plantilla: "Ya no está en el catálogo. Vuelve a abrirlo.", error: "Ya no está en el catálogo. Vuelve a abrirlo." });
       });

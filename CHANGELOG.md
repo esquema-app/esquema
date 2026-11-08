@@ -4,6 +4,10 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 [Releases](https://github.com/esquema-app/esquema/releases).
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
+## Sin publicar
+- **Una sola app para Mac, Windows y Linux, mucho más liviana.** Esquema ahora usa el navegador que ya trae tu sistema en vez de traer uno propio: se instala más rápido, ocupa mucho menos y gasta menos memoria. Tus documentos, tu carpeta y tus ajustes siguen igual.
+  *One app for Mac, Windows and Linux, much lighter. Esquema now uses the browser your system already has instead of bundling its own: faster to install, far smaller, less memory. Your documents, folder and settings stay the same.*
+
 ## 0.2.0 · 2026-11-02
 - **Escribir en documentos largos es más fluido:** mientras escribes, la vista vuelve a armar solo el párrafo que cambió; los
   diagramas no se redibujan. · *Typing in long documents is smoother: while you type, the preview rebuilds only the paragraph that

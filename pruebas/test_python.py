@@ -1057,14 +1057,15 @@ class Repo(unittest.TestCase):
         self.assertGreater(len(t), 30000)
 
     def test_piezas_y_app_json(self):
-        """Las piezas (bin/nucleo.py, bin/ia.py) leen app.json junto a bin/: tiene que ir dentro de la app de Mac y de la de
-        Windows/Linux, y la config que aceptan las apps es la misma que declara app.json."""
+        """Las piezas (bin/nucleo.py, bin/ia.py) leen app.json junto a bin/: tiene que ir dentro de la app (Mac, Windows y Linux,
+        pieza «host-tauri»), y la config que acepta la app es la misma que declara app.json."""
         app = json.load(open(os.path.join(RAIZ, "app.json"), encoding="utf-8"))
         self.assertEqual((app["id"], app["nombre"]), ("esquema", "Esquema"))
         self.assertEqual(set(app["config"]), {"idioma_ui", "tema", "bienvenida", "ia", "carpeta"})
-        self.assertIn('cp "$RAIZ/app.json"', open(os.path.join(RAIZ, "herramientas", "empaquetar.sh"), encoding="utf-8").read())
-        extra = json.load(open(os.path.join(RAIZ, "escritorio", "package.json"), encoding="utf-8"))["build"]["extraResources"]
-        self.assertIn({"from": "../app.json", "to": "esquema/app.json"}, extra)
+        recursos = json.load(open(os.path.join(RAIZ, "escritorio", "tauri.conf.json"), encoding="utf-8"))["bundle"]["resources"]
+        for r in ("app.json", "acciones.json", "bin/", "ui/", "plantillas/", "tipos/"):
+            self.assertEqual(recursos[f"../{r}"], f"recursos/{r}")
+        self.assertIn("for d in app.json acciones.json bin ui plantillas tipos;", open(os.path.join(RAIZ, "herramientas", "empaquetar.sh"), encoding="utf-8").read())
         piezas = json.load(open(os.path.join(RAIZ, "piezas.json"), encoding="utf-8"))["piezas"]
         for pid, info in piezas.items():
             for ruta in info["archivos"]:

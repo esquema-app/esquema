@@ -29,8 +29,8 @@ Reglas que importan: código, comentarios y textos en español (todo texto nuevo
 biblioteca estándar; lo que Esquema escribe tiene que seguir siendo Mermaid que GitHub muestra (lo propio va en `%% esquema:`).
 
 **Archivos de piezas:** `bin/nucleo.py`, `bin/ia.py`, `bin/trabajos.py`, `bin/catalogo.py`, `bin/contenido.py`, `ui/i18n.js`,
-`ui/host.js`, `ui/tema.*`, `ui/componentes.*`, `ui/bienvenida.*`, la app de Mac en `app/Sources/Pieza*/` y la de Windows y Linux en
-`escritorio/src/` (salvo `main.js`) vienen de [Pieza](https://github.com/pieza-app/pieza) (están en `piezas.json`, con el aviso de la
+`ui/host.js`, `ui/tema.*`, `ui/componentes.*`, `ui/bienvenida.*`, la app nativa en
+`escritorio/src/pieza/` (todo salvo `escritorio/src/main.rs`) vienen de [Pieza](https://github.com/pieza-app/pieza) (están en `piezas.json`, con el aviso de la
 MPL-2.0). No los cambies aquí: propón el cambio en Pieza y llega a Esquema con «Pieza al día».
 
 Los aportes entran con la licencia del proyecto, [AGPL-3.0](LICENSE).
@@ -68,7 +68,7 @@ Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
   If your change is visible, also update the README, the page (`docs/`), screenshots and `CHANGELOG.md`, or say so in the
   pull request and we'll do it.
 - **Piece files:** `bin/nucleo.py`, `bin/ia.py`, `bin/trabajos.py`, `bin/catalogo.py`, `bin/contenido.py`, `ui/i18n.js`, `ui/host.js`,
-  `ui/tema.*`, `ui/componentes.*`, `ui/bienvenida.*`, `app/Sources/Pieza*/` and `escritorio/src/` (except `main.js`) come from [Pieza](https://github.com/pieza-app/pieza) (listed in
+  `ui/tema.*`, `ui/componentes.*`, `ui/bienvenida.*`, `escritorio/src/pieza/` (everything but `escritorio/src/main.rs`) come from [Pieza](https://github.com/pieza-app/pieza) (listed in
   `piezas.json`, MPL-2.0 notice included). Don't change them here: propose the change in Pieza and it arrives through «Pieza al día».
 - **Review:** everything goes through a pull request and a maintainer merges it. Contributions are licensed under AGPL-3.0.
   We also check that the README, the page and the docs still describe the app as it is.
