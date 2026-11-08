@@ -26,7 +26,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
+      # correr.sh también prueba la interfaz: necesita Playwright (la misma versión que revisar.yml).
+      - name: Playwright para las pruebas de la interfaz
+        if: hashFiles('pruebas/interfaz.mjs') != ''
+        run: |
+          npm i --no-save --ignore-scripts --prefix "$RUNNER_TEMP/pw" playwright@1.56.1
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
       - name: Pruebas rápidas (no se publica una versión rota)
+        env: { PLAYWRIGHT: "${{ runner.temp }}/pw/node_modules/playwright" }
         run: |
           if [ -f pruebas/correr.sh ]; then SIN_RUST=1 bash pruebas/correr.sh   # la app nativa la compila cada sistema más abajo
           else [ ! -f pruebas/contrato.py ] || python3 pruebas/contrato.py
