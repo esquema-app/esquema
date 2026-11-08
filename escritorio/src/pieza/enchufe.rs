@@ -360,6 +360,27 @@ impl Config {
         r.extend(limpios);
         r
     }
+    /// Una clave que app.json no describe (un objeto con forma propia, p. ej. `inicio_mes`): la app la valida antes, y `leer`
+    /// no la devuelve (sigue en el archivo para quien la use, p. ej. los scripts de Python). Lo demás queda igual.
+    pub fn poner_propia(&self, clave: &str, valor: Value) {
+        let nombre_ok = (1..=40).contains(&clave.len()) && clave.starts_with(|c: char| c.is_ascii_lowercase())
+            && clave.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+        if self.reglas.contains_key(clave) || !nombre_ok {
+            return;
+        }
+        let _g = self.escribir.lock().unwrap_or_else(|e| e.into_inner());
+        (self.preparar)();
+        let mut d: BTreeMap<String, Value> = self.crudo().into_iter().collect();
+        d.insert(clave.into(), valor);
+        let texto = json_sangria_1(&Value::Object(d.into_iter().collect())) + "\n";
+        if let Err(e) = escribir_atomico(&self.ruta, texto.as_bytes(), 0o600) {
+            eprintln!("config.json: {e}");
+        }
+    }
+    /// Lo que hay en config.json tal cual (también las claves propias de la app).
+    pub fn leer_todo(&self) -> Map<String, Value> {
+        self.crudo()
+    }
     pub fn texto(&self, clave: &str) -> String {
         self.leer().get(clave).and_then(Value::as_str).unwrap_or("").to_string()
     }
@@ -1019,6 +1040,13 @@ mod pruebas {
         assert!(!i.elegido(&c));
         c.guardar(&json!({"idioma_ui": "en"}), true);
         assert_eq!(i.f(&c, "Hola {n}", &json!({"n": 2})), "Hi 2");
+        // Una clave propia de la app (un objeto que app.json no describe): queda en el archivo y sobrevive a los guardados.
+        c.poner_propia("inicio_mes", json!({"modo": "dia", "dia": 25}));
+        c.poner_propia("tema", json!("rosado"));
+        c.guardar(&json!({"tema": "oscuro"}), true);
+        assert_eq!(c.leer_todo()["inicio_mes"], json!({"modo": "dia", "dia": 25}));
+        assert!(!c.leer().contains_key("inicio_mes"));
+        assert_eq!(c.texto("tema"), "oscuro");
     }
 
     #[test]

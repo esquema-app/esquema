@@ -64,6 +64,9 @@ pub struct Ventana {
     pub marco: bool,
     /// Mac: barra de título transparente, la interfaz llega hasta arriba (los botones del Mac quedan encima).
     pub barra_transparente: bool,
+    /// Con `barra_transparente`: los px de arriba que mueven la ventana al arrastrar (doble clic: agrandar), como la barra de
+    /// título que no se ve. Lo que se toca ahí (botones, campos, enlaces) sigue funcionando. 0: la interfaz lo resuelve.
+    pub alto_franja: f64,
     /// Mac: vidrio (vibrancy); Windows 11: Mica.
     pub vidrio: bool,
     /// Con qué nombre se recuerda el tamaño y el lugar (ventana.json).
@@ -81,6 +84,7 @@ impl Default for Ventana {
             al_cerrar: AlCerrar::Salir,
             marco: true,
             barra_transparente: false,
+            alto_franja: 0.0,
             vidrio: false,
             nombre: "ventana".into(),
         }
@@ -264,6 +268,7 @@ struct Ganchos {
     al_tocar_aviso: Option<GanchoTocar>,
     al_soltar: Option<GanchoSoltar>,
     al_crear_ventana: Option<GanchoVentana>,
+    despues_del_estado: Option<Gancho>,
 }
 
 pub struct Interno {
@@ -459,6 +464,11 @@ impl Host {
         self.ganchos.write().expect("ganchos").estado = Some(Arc::new(f));
     }
     /// Lo que corre solo, una vez y recién con el idioma elegido.
+    /// Justo después de mandarle el estado a la ventana principal (al abrir y con `enviar_estado`): p. ej. pedirle a la página algo
+    /// que se arma con el estado recién llegado.
+    pub fn despues_del_estado(&self, f: impl Fn(&Host) + Send + Sync + 'static) {
+        self.ganchos.write().expect("ganchos").despues_del_estado = Some(Arc::new(f));
+    }
     pub fn al_iniciar_tareas(&self, f: impl Fn(&Host) + Send + Sync + 'static) {
         self.ganchos.write().expect("ganchos").tareas = Some(Arc::new(f));
     }
@@ -683,6 +693,9 @@ impl Host {
                     l.insert(etiqueta.clone());
                 }
                 self.llamar("estado", Value::Object(self.estado()), ctx.destino());
+                if ctx.responder_a.is_none() {
+                    self.tras_el_estado();
+                }
             }
             // La respuesta de la página a un `pedir`: solo de la ventana principal y solo para un pedido que sigue esperando.
             "respuestaPagina" => {
@@ -694,23 +707,18 @@ impl Host {
                     }
                 }
             }
-            "config" => {
-                let antes = self.config.leer();
-                self.config.guardar(d, true);
-                let ahora = self.config.leer();
-                if antes.get("idioma_ui") != ahora.get("idioma_ui") {
-                    self.idioma.olvidar();
-                    self.armar_menu();
-                }
-                if antes.get("tema") != ahora.get("tema") {
-                    self.aplicar_tema();
-                }
-                let g = self.ganchos.read().ok().and_then(|g| g.al_cambiar_config.clone());
-                if let Some(f) = g {
-                    f(&ahora, &antes, self);
-                }
-                if self.idioma_elegido() {
-                    self.iniciar_tareas();
+            "config" => self.config_de_interfaz(d),
+            // La franja de la barra transparente (puente_js): mover o agrandar la ventana que la tocó.
+            "moverVentana" | "agrandarVentana" if self.franja() > 0.0 => {
+                let etiqueta = ctx.responder_a.clone().unwrap_or_else(|| PRINCIPAL.into());
+                if let Some(w) = self.handle().and_then(|a| a.get_webview_window(&etiqueta)) {
+                    if accion == "moverVentana" {
+                        let _ = w.start_dragging();
+                    } else if w.is_maximized().unwrap_or(false) {
+                        let _ = w.unmaximize();
+                    } else {
+                        let _ = w.maximize();
+                    }
                 }
             }
             "abrirEnlace" => {
@@ -769,8 +777,43 @@ impl Host {
             None => base,
         }
     }
+    /// Los px de la franja que mueve la ventana (solo Mac con barra transparente).
+    fn franja(&self) -> f64 {
+        let v = &self.opciones.ventana;
+        if cfg!(target_os = "macos") && v.barra_transparente { v.alto_franja.max(0.0) } else { 0.0 }
+    }
     pub fn enviar_estado(&self) {
         self.llamar("estado", Value::Object(self.estado()), None);
+        self.tras_el_estado();
+    }
+    fn tras_el_estado(&self) {
+        let g = self.ganchos.read().ok().and_then(|g| g.despues_del_estado.clone());
+        if let Some(f) = g {
+            f(self);
+        }
+    }
+
+    /// Lo que hace la acción `config` de la interfaz: guarda las claves de app.json (no las de `"interfaz": false`), rearma los
+    /// menús si cambió el idioma, aplica la apariencia, avisa a `al_cambiar_config` y, con idioma elegido, parte las tareas. Para
+    /// una app que registra su propio `config` (p. ej. para guardar ajustes con forma propia antes) y después sigue con esto.
+    pub fn config_de_interfaz(&self, d: &Value) {
+        let antes = self.config.leer();
+        self.config.guardar(d, true);
+        let ahora = self.config.leer();
+        if antes.get("idioma_ui") != ahora.get("idioma_ui") {
+            self.idioma.olvidar();
+            self.armar_menu();
+        }
+        if antes.get("tema") != ahora.get("tema") {
+            self.aplicar_tema();
+        }
+        let g = self.ganchos.read().ok().and_then(|g| g.al_cambiar_config.clone());
+        if let Some(f) = g {
+            f(&ahora, &antes, self);
+        }
+        if self.idioma_elegido() {
+            self.iniciar_tareas();
+        }
     }
 
     pub fn iniciar_tareas(&self) {
@@ -1001,7 +1044,7 @@ impl Host {
         };
         let enlace2 = enlace;
         let mut b = b
-            .initialization_script(puente_js(&self.id, &self.base))
+            .initialization_script(puente_js(&self.id, &self.base, self.franja()))
             .on_navigation(move |u| {
                 if u.as_str().starts_with(&ui) {
                     return true;
@@ -1401,9 +1444,25 @@ impl Host {
 /// El puente que ve la página: `window.<ID>_HOST` (la plataforma), `window.<ID>_BASE` (para `host.medio`) y
 /// `window.<id>Escritorio.enviar(msg)`, lo mismo que espera la pieza «host-ui». Copia JSON: a la app nunca llega un objeto
 /// de la página. Solo en el marco principal.
-pub fn puente_js(id: &str, base: &str) -> String {
+pub fn puente_js(id: &str, base: &str, franja: f64) -> String {
     let mayus = id.to_uppercase();
     let plat = e::plataforma();
+    // La franja de arriba que mueve la ventana (Mac, barra transparente): arrastrar la mueve y doble clic la agranda, salvo sobre
+    // algo que se toca.
+    let franja = if franja > 0.0 {
+        format!(
+            r#"
+  var tocable = "button, a, input, select, textarea, label, summary, [role=button], [contenteditable], [data-sin-franja]";
+  var moverVentana = function (accion) {{ return function (ev) {{
+    if (ev.button !== 0 || ev.clientY > {franja} || (ev.target && ev.target.closest && ev.target.closest(tocable))) return;
+    window.{id}Escritorio.enviar({{ accion: accion, datos: {{}} }});
+  }}; }};
+  window.addEventListener("mousedown", function (ev) {{ if (ev.detail === 1) moverVentana("moverVentana")(ev); }}, true);
+  window.addEventListener("dblclick", moverVentana("agrandarVentana"), true);"#
+        )
+    } else {
+        String::new()
+    };
     format!(
         r#"(function () {{
   if (window.top !== window) return;
@@ -1417,7 +1476,7 @@ pub fn puente_js(id: &str, base: &str) -> String {
         if (i && typeof i.invoke === "function") i.invoke("pieza", {{ msg: JSON.parse(JSON.stringify(msg)) }}).catch(function () {{}});
       }} catch (e) {{}}
     }}
-  }}));
+  }}));{franja}
 }})();"#
     )
 }
@@ -1650,7 +1709,10 @@ mod pruebas {
         let e = h.estado();
         assert_eq!(e["idioma"], "es");
         assert!(e.contains_key("config"));
-        let js = puente_js("ana", "ana://localhost/");
+        let js = puente_js("ana", "ana://localhost/", 0.0);
         assert!(js.contains("ANA_HOST") && js.contains("anaEscritorio") && js.contains("window.top !== window"));
+        assert!(!js.contains("moverVentana"));
+        let js = puente_js("ana", "ana://localhost/", 30.0);
+        assert!(js.contains("ev.clientY > 30") && js.contains("moverVentana") && js.contains("agrandarVentana"));
     }
 }
