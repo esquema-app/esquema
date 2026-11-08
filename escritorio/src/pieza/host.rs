@@ -348,7 +348,7 @@ impl Host {
         let interno = Arc::new_cyclic(|debil: &std::sync::Weak<Interno>| {
             let d = debil.clone();
             let t = Arc::new(move |x: &str| d.upgrade().map(|h| h.idioma.t(&h.config, x)).unwrap_or_else(|| x.to_string()));
-            let procesador = Procesador::nuevo(python, recursos.clone(), &id, datos.clone(), t).con_lector(op.lector_progreso.clone());
+            let procesador = Procesador::nuevo(python, recursos.clone(), &id, datos.clone(), t).con_lector(op.lector_progreso.clone()).con_herramientas(herramientas_de(&recursos));
             Interno {
                 id: id.clone(),
                 nombre: a.nombre.clone(),
@@ -1155,7 +1155,16 @@ impl Host {
                     AlCerrar::Salir => self.salir(),
                 }
             }
+            // Mientras se arrastra un archivo encima: la página no ve el arrastre (lo atiende el sistema), así que se le avisa
+            // para que marque la zona donde soltar (`soltando {encima}`).
+            WindowEvent::DragDrop(tauri::DragDropEvent::Enter { .. }) => {
+                self.llamar("soltando", json!({"encima": true}), None);
+            }
+            WindowEvent::DragDrop(tauri::DragDropEvent::Leave) => {
+                self.llamar("soltando", json!({"encima": false}), None);
+            }
             WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) => {
+                self.llamar("soltando", json!({"encima": false}), None);
                 let reales: Vec<PathBuf> = paths.iter().filter_map(|p| std::fs::canonicalize(p).ok()).collect();
                 let nombres: Vec<String> = reales.iter().filter_map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned())).collect();
                 if let Ok(mut s) = self.soltados.lock() {
@@ -1634,6 +1643,20 @@ pub fn python_de(recursos: &Path) -> PathBuf {
     };
     candidatos.push(recursos.join("escritorio").join("vendor").join(vendor).join("python").join(exe));
     candidatos.into_iter().find(|p| p.exists()).unwrap_or_else(|| PathBuf::from(if cfg!(windows) { "python" } else { "python3" }))
+}
+
+/// La carpeta de los programas que trae la app (ffmpeg, whisper-cli…), junto a Python; en desarrollo,
+/// `escritorio/vendor/<os>/herramientas` si ya se armó con `preparar.sh`. None si no hay.
+pub fn herramientas_de(recursos: &Path) -> Option<PathBuf> {
+    let vendor = match e::plataforma() {
+        "mac" => "mac",
+        "windows" => "win",
+        _ => "linux",
+    };
+    [recursos.join("..").join("herramientas"), recursos.join("escritorio").join("vendor").join(vendor).join("herramientas")]
+        .into_iter()
+        .find(|p| p.is_dir())
+        .map(|p| std::fs::canonicalize(&p).unwrap_or(p))
 }
 
 fn dirs_documentos() -> Option<PathBuf> {

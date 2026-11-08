@@ -238,7 +238,7 @@ if tauri:
     if 'actualizaciones::Actualizaciones::nuevas("esquema-app/esquema", "Esquema")' not in tauri:
         problemas.append("Mac/Windows/Linux: el host atiende buscarActualizacion/actualizar solo si recibe la pieza «actualizaciones» (main.rs)")
     llamadas_t = internas(tauri, r'llamar\("(\w+)"') | internas(host_rs, r'llamar\("(\w+)"')
-    problemas += [f"Mac/Windows/Linux llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(llamadas_t - funciones_ui - {"soltados"})]
+    problemas += [f"Mac/Windows/Linux llama window.Esquema.{f} y la interfaz no la tiene" for f in sorted(llamadas_t - funciones_ui - {"soltados", "soltando"})]
     problemas += [f'Mac/Windows/Linux nunca responde "{f}"' for f in sorted(respuestas_app - llamadas_t - respuestas_declaradas)]
     if not tiene(host_rs, r"etiqueta == PRINCIPAL \|\| host\.otras", r'starts_with\(&format!\("\{\}ui/", host\.base\)\)', r"NewWindowResponse::Deny",
                  r"if u\.as_str\(\)\.starts_with\(&ui\)", r"window\.top !== window"):

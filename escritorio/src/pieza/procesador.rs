@@ -87,6 +87,9 @@ pub struct Procesador {
     pub recursos: PathBuf,
     pub id: String,
     pub datos: PathBuf,
+    /// Los programas que trae la app (ffmpeg, whisper-cli…: `vendor/<os>/herramientas` al empaquetar). Llega a cada script en
+    /// `<ID>_HERRAMIENTAS`, que la app no puede pisar.
+    pub herramientas: Option<PathBuf>,
     prefijo: String,
     t: Traducir,
     lector: Option<Arc<dyn LectorProgreso>>,
@@ -106,6 +109,7 @@ impl Procesador {
             prefijo: format!("{}_", id.to_uppercase()),
             id: id.to_string(),
             datos,
+            herramientas: None,
             t,
             lector: None,
             gracia: Duration::from_secs(3),
@@ -114,6 +118,10 @@ impl Procesador {
             en_curso: AtomicUsize::new(0),
             vivos: Mutex::new(HashSet::new()),
         }
+    }
+    pub fn con_herramientas(mut self, h: Option<PathBuf>) -> Self {
+        self.herramientas = h;
+        self
     }
     pub fn con_lector(mut self, l: Option<Arc<dyn LectorProgreso>>) -> Self {
         self.lector = l;
@@ -192,7 +200,7 @@ impl Procesador {
                 c.env(k, v);
             }
         }
-        let reservadas: Vec<String> = ["RECURSOS", "DATOS", "PROGRESO", "LATIDO"].iter().map(|x| format!("{}{x}", self.prefijo)).collect();
+        let reservadas: Vec<String> = ["RECURSOS", "DATOS", "PROGRESO", "LATIDO", "HERRAMIENTAS"].iter().map(|x| format!("{}{x}", self.prefijo)).collect();
         let de_la_app = self.entorno_app.lock().ok().and_then(|e| e.clone()).map(|f| f()).unwrap_or_default();
         for (k, v) in de_la_app.iter().chain(o.entorno.iter()) {
             if es_variable(k) && !reservadas.contains(k) {
@@ -204,6 +212,9 @@ impl Procesador {
             .env("PYTHONIOENCODING", "utf-8")
             .env("PYTHONUTF8", "1")
             .env("PYTHONDONTWRITEBYTECODE", "1");
+        if let Some(h) = &self.herramientas {
+            c.env(format!("{}HERRAMIENTAS", self.prefijo), h);
+        }
         let lector = match (&self.lector, o.progreso) {
             (Some(l), Some(aviso)) => l.crear(&self.id, aviso),
             _ => None,
@@ -421,6 +432,17 @@ mod pruebas {
         assert_eq!(r["arg"], "leer");
         assert!(r["fuga"].is_null());
         assert_eq!(r["datos"], true);
+    }
+
+    #[test]
+    fn herramientas_de_la_app() {
+        let (d, p) = app("import json,os,sys\njson.dump({'ok':True,'h':os.environ.get('ANA_HERRAMIENTAS')},open(sys.argv[-1],'w'))\n");
+        assert!(p.correr_json("x.py", &[], Opciones::default())["h"].is_null(), "sin herramientas, nada");
+        let h = d.join("herramientas");
+        let p = p.con_herramientas(Some(h.clone()));
+        std::env::set_var("ANA_HERRAMIENTAS", "/de/afuera");
+        let o = Opciones { entorno: [("ANA_HERRAMIENTAS".to_string(), "/de/la/app".to_string())].into(), ..Default::default() };
+        assert_eq!(p.correr_json("x.py", &[], o)["h"], h.to_string_lossy().as_ref(), "ni afuera ni la app la pisan");
     }
 
     #[test]
