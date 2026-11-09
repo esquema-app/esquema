@@ -4,8 +4,10 @@
 # Uso: bash escritorio/pruebas/arranque.sh [ejecutable]   (sin ejecutable, compila el de desarrollo)
 # Necesita: xvfb-run y dbus-run-session. Generado por Pieza («host-tauri»): si lo cambias, desde ahí es de la app.
 set -euo pipefail
+# La ruta del ejecutable se resuelve antes del cd (llega relativa a la raíz del repo).
+if [ $# -ge 1 ]; then BIN="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"; fi
 cd "$(dirname "$0")/.."
-if [ $# -ge 1 ]; then BIN="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"; else cargo build --quiet; BIN="${CARGO_TARGET_DIR:-$PWD/target}/debug/esquema"; fi
+if [ $# -ge 1 ]; then :; else cargo build --quiet; BIN="${CARGO_TARGET_DIR:-$PWD/target}/debug/esquema"; fi
 casa=$(mktemp -d)
 trap 'kill "$pid" 2>/dev/null || true; rm -rf "$casa" 2>/dev/null || true' EXIT
 registro="$casa/puente.txt"
