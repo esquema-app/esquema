@@ -282,7 +282,7 @@
     "escritorio/Cargo.toml": "9a3175ba0edb24d70c35fd78a256fb9a2683191707981c77ecfdd5814114c320",
     "escritorio/Info.plist": "feda06c9a825f17848d85aae03b1ce1e22d5e162628c04884b0b4a88e304655f",
     "escritorio/build.rs": "8af41c0062014fc594e4bb9899e60ee9930ab57d4cf0c73041ff557d6ec736e6",
-    "escritorio/pruebas/arranque.sh": "227fc194f1a3a1cc36f28a893ce2a578c03f1af07463faecc01398a0768330a2",
+    "escritorio/pruebas/arranque.sh": "fc6bb557ad2be4af28d1564245d5bc6b5b624e3988e977f9dfd0bc7d21fb9287",
     "escritorio/tauri.conf.json": "cca7020b14dff79d6c5de444eac187b894010d0d2e0b61c20c78074ac0018439",
     "escritorio/vacio/index.html": "20462ae1e58c427988a17fa7479c9d24582bd7eb0cfca3b041199a7e8f2f2d74"
    },
