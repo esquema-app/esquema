@@ -275,7 +275,7 @@
   }
   function lateral() {
     const inicio = E.carpeta && !E.proyecto ? `<button class="archivo" data-accion="inicio" aria-current="${!E.sel && !E.panel}">${ic("inicio")}<span>Inicio</span></button>` : "";
-    return `<aside class="lateral${E.lateral ? " abierto" : ""}" aria-label="Archivos">
+    return `<aside class="lateral pz-zona-oscura${E.lateral ? " abierto" : ""}" aria-label="Archivos">
       <div class="marca"><img src="favicon.svg" alt=""><b>Esquema</b></div>
       ${/* Crear es siempre dentro de un proyecto («Nuevo en <proyecto>», en su carpeta del lateral); arriba solo lo global. */ ""}
       <nav class="lista">
