@@ -1,9 +1,10 @@
 /* Esquema · interfaz. Base neutra, un solo color de acción (azul tinta), rojo solo para errores. Mobile first en lo que importa:
    nada se sale a 390 px, objetivos de 44 px en celular, diálogos que salen desde abajo. */
-/* Colores: pieza «tema» (ui/tema.css, cargada antes). Aquí solo los pares que Esquema cambia y lo propio del lienzo y los
+/* Colores: pieza «tema» (ui/tema.css, cargada antes), con los neutros de la familia y la barra lateral oscura (.pz-zona-oscura
+   de «componentes»). Aquí solo el azul tinta, el rojo y el verde de Esquema y lo propio del lienzo y los
    diagramas (--lienzo, --punto, --d-*), con light-dark() para que sigan solos al modo. El SVG que se exporta no usa estas
    variables: lleva sus colores adentro (M.COLORES en motor/dibujo.js). */
-:root { --texto-suave-claro: #596377; --rojo-claro: #c02b2b; --rojo-oscuro: #ff8080; --verde-claro: #1d7444; --linea-claro: #e2e6ec; --linea-oscuro: #273041; }
+:root { --acento-claro: #2f5fd0; --acento-oscuro: #7fa2ff; --rojo-claro: #c02b2b; --rojo-oscuro: #ff8080; --verde-claro: #1d7444; }
 :root {
   --lienzo: light-dark(#fbfcfd, #12171f); --punto: light-dark(#dce1e9, #252d3b);
   --d-nodo: light-dark(#ffffff, #1b212c); --d-borde: light-dark(#3d4a5c, #9aa6ba); --d-texto: light-dark(#1b2230, #e8ecf3);
@@ -26,9 +27,11 @@ button { cursor: pointer; }
 /* ───── Estructura ───── */
 #app { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; height: 100dvh; }
 .lateral { background: var(--panel); border-right: 1px solid var(--linea); display: flex; flex-direction: column; min-height: 0; }
+.lateral.pz-zona-oscura { border-right: 0; background: var(--barra-lateral); }
+.lateral .archivo[aria-current="true"] { background: var(--barra-lateral-2); box-shadow: inset 3px 0 0 var(--acento); }
 .marca { display: flex; align-items: center; gap: 10px; padding: 14px 14px 6px; }
 .marca img { width: 26px; height: 26px; }
-.marca b { font-size: 15px; letter-spacing: .2px; }
+.marca b { font-size: 17px; letter-spacing: -0.01em; }
 .carpeta { display: flex; align-items: center; gap: 8px; margin: 4px 10px 10px; padding: 6px 8px; border-radius: 8px; border: 0; background: transparent; color: var(--texto-suave); text-align: left; min-width: 0; }
 .carpeta:hover { background: var(--hover); color: var(--texto); }
 .carpeta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

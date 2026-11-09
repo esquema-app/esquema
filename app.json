@@ -17,7 +17,8 @@
   "tema": [
    "sistema",
    "claro",
-   "oscuro"
+   "oscuro",
+   "vidrio"
   ],
   "bienvenida": "bool",
   "ia": [
