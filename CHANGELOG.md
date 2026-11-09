@@ -5,6 +5,8 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar
+
+## 0.3.0 · 2026-11-08
 - **Una sola app para Mac, Windows y Linux, mucho más liviana.** Esquema ahora usa el navegador que ya trae tu sistema en vez de traer uno propio: se instala más rápido, ocupa mucho menos y gasta menos memoria. Tus documentos, tu carpeta y tus ajustes siguen igual.
   *One app for Mac, Windows and Linux, much lighter. Esquema now uses the browser your system already has instead of bundling its own: faster to install, far smaller, less memory. Your documents, folder and settings stay the same.*
 
