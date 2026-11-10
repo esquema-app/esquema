@@ -5,6 +5,8 @@ Lo que cambia para quien usa Esquema, en palabras simples. Las versiones anterio
 *What changes for people using Esquema, in plain words. Earlier versions are listed in Releases.*
 
 ## Sin publicar
+
+## 0.4.0 · 2026-11-09
 - Esquema tiene el estilo nuevo de la familia: barra lateral oscura, fondo cálido y el azul tinta de siempre. · *Esquema has the family's new look: a dark sidebar, a warm background and the same ink blue.*
 
 ## 0.3.0 · 2026-11-08
